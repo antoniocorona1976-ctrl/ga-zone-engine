@@ -38,43 +38,49 @@ Definizione formale del payload del segnale come tupla strutturata:
 - `expiry`: istante di scadenza, $\leq$ emissione + 2 giorni di trading
 - `setup_class`: directional | trade_range
 
-Invariante **no-refresh**: un segnale emesso non viene modificato. Se le condizioni di mercato cambiano, il motore emette un nuovo segnale con nuovo `signal_id`, il segnale precedente prosegue il proprio lifecycle indipendentemente.
+Due regole strutturali del contratto:
 
-Distinzione tra invarianti del segnale (immutabili dopo emissione) e stato del segnale (variabile nel lifecycle).
+**Payload immutabile** — una volta emesso, il `signal_id` non subisce modifiche al payload. La tupla è congelata: zona, target, stop, expiry restano quelli emessi.
+
+**Sostituzione e segnale unico attivo** — quando il motore valuta che le condizioni di mercato richiedono di rivedere il segnale (nuova zona, nuovi target, nuovo stop), emette un nuovo segnale con un nuovo `signal_id` e contestualmente il segnale precedente viene revocato: sparisce dall'insieme dei segnali attivi e non prosegue alcun lifecycle. A ogni istante è attivo al massimo un solo segnale, coerentemente col vincolo "1 contratto alla volta" della dichiarazione di intenti (punto 7) e con la regola di revisione continua del segnale (punto 6).
 
 ### Capitolo 7 — Stati del segnale e state machine (~2 pp)
-Stati ammessi:
-- `emitted`: pubblicato, in attesa di raw touch sulla entry zone
-- `executable`: raw touch avvenuto, guardie di esecuzione superate
-- `executed`: fill operatore confermato (in simulazione: prima quotazione dentro la banda)
-- `target_1_hit`: il prezzo raggiunge target 1 dopo il fill
-- `target_2_hit`: il prezzo raggiunge target 2 dopo target 1
-- `stopped`: il prezzo raggiunge lo stop loss dopo il fill
-- `invalidated`: condizione di invalidazione strutturale prima del touch
-- `missed_target`: target 1 raggiunto dal prezzo prima del touch della entry zone
-- `expired`: scadenza raggiunta in qualsiasi stato non terminale
 
-Transizioni ammesse e timer di scadenza (cap 2 giorni di trading da `timestamp_emission`).
+Stato unico non-terminale:
+- `active`: segnale emesso, in attesa di un evento che lo porti in stato terminale (raggiungimento target/stop, invalidazione, scadenza, revoca per sostituzione)
+
+Stati terminali:
+- `target_1_hit`: il prezzo, dopo il primo raw touch della entry zone, ha raggiunto target 1
+- `target_2_hit`: idem, target 2 dopo target 1
+- `stopped`: il prezzo, dopo il primo raw touch della entry zone, ha raggiunto lo stop loss
+- `invalidated`: condizione di invalidazione strutturale prima del raw touch (movimento contrario che rompe l'ipotesi del setup)
+- `missed_target`: target 1 raggiunto dal prezzo prima che la entry zone fosse toccata
+- `expired`: 2 giorni di trading trascorsi senza terminazione precedente
+- `revoked`: segnale superseduto dall'emissione di un nuovo `signal_id` (vedi Cap.6, regola di sostituzione)
+
+**Trigger di esecuzione come evento, non come stato.** Al primo raw touch della entry zone con guardie di esecuzione superate (Cap.8), il motore produce un evento `trigger_event` notificato all'operatore. Questo evento non è uno stato del segnale: il segnale resta `active` finché un evento successivo non lo porta in uno stato terminale. La distinzione "executable / executed" non esiste a livello di contratto del segnale, perché in real-time il motore non osserva il fill manuale dell'operatore. In simulazione di backtest il trigger_event è trattato come fill virtuale a un prezzo determinato; la regola di simulazione (es. fill al primo prezzo della banda toccato) è specificata in Parte III/V e non altera la state machine pubblica.
+
+Timer di scadenza: 2 giorni di trading dal `timestamp_emission`. A scadenza, se il segnale è ancora `active`, transita in `expired`.
 
 Inclusione esplicita di **M-1** (carryover CAP-01): l'identificazione real-time del primo pivot strutturale post-apertura va trattata almeno a livello di interfaccia (cosa il motore osserva, quando, con che cadenza); l'algoritmo di pivot detection è rinviato a Parte III (Cap 14, feature engineering).
 
 ### Capitolo 8 — Guardie di esecuzione al raw touch (~2 pp)
-Condizioni di filtro applicate al raw touch della entry zone prima di promuovere il segnale a `executable`:
+Condizioni di filtro applicate al raw touch della entry zone prima di emettere il `trigger_event`:
 - guardia di volatilità (range del minuto entro soglia)
 - guardia di spread (bid-ask spread entro soglia, da Directa real-time)
 - guardia di liquidità (volume del minuto sopra soglia)
 - guardia di distanza dal target 1 (target ancora raggiungibile rispetto al prezzo corrente)
 
-Le soglie sono parametri liberi del cromosoma del GA (rinvio a Parte V per congelamento). Le formule del modello di volatilità sono in Parte III.
+Se almeno una guardia non è superata, il raw touch viene ignorato: nessun trigger_event viene emesso e il segnale resta `active` fino a un evento successivo. Le soglie delle quattro guardie sono parametri liberi del cromosoma del GA, congelati in Parte V. Le formule del modello di volatilità che alimentano la guardia di volatilità sono in Parte III.
 
-**M-3 (Review v4) — RITIRATO**: il promemoria riguardava la presunta asta di apertura 8:00-9:00 con barre theoretical opening price. Il supervisore ha chiarito che il FIB negozia in modo continuo 8:00-22:00 senza fase d'asta. Nessuna neutralizzazione di fase iniziale è richiesta. Non integrare in CAP-02.
+Nessuna assunzione di fasi speciali nella sessione 8:00-22:00 (il FIB negozia in modo continuo per l'intera finestra).
 
 ### Capitolo 9 — Politica di pubblicazione su Telegram (~2 pp)
 Formato concreto del messaggio Telegram leggibile in mobilità (l'operatore opera da cellulare durante orario di lavoro):
 - struttura del messaggio (campi obbligatori e ordine)
 - latenza massima ammissibile dall'emissione interna alla ricezione sul cellulare
 - politica anti-duplicato: un `signal_id` viene pubblicato una sola volta
-- politica per nuovo segnale: emesso come messaggio separato con nuovo `signal_id`, NON come modifica/edit del messaggio precedente (coerente con l'invariante no-refresh)
+- politica per nuovo segnale: emesso come messaggio separato con nuovo `signal_id`, NON come modifica/edit del messaggio precedente; il messaggio del segnale revocato resta visibile in chat per traccia, ma non rappresenta un segnale attivo (coerente con la regola di sostituzione di Cap.6)
 - gestione errori di pubblicazione (timeout API Telegram, retry policy)
 
 Lo schema esatto delle stringhe del messaggio è rinviato all'Appendice E; in Parte II si fissano il contratto informativo e i vincoli operativi.
@@ -92,13 +98,13 @@ Requisito di determinismo: dato lo stesso storico 1-min e lo stesso bundle froze
 - [ ] I 5 capitoli (Cap 6-10) sono presenti, completi e nell'ordine corretto
 - [ ] Tutte le 8 eredità di CAP-01 sono citate esplicitamente almeno una volta nei capitoli pertinenti
 - [ ] Cap 6: il payload è specificato come tupla strutturata con tutti i campi e i loro vincoli (banda, $d_{stop} > b$, expiry $\leq$ 2 giorni trading, $\geq$ 80 punti target 1)
-- [ ] Cap 6: l'invariante no-refresh è dichiarata e separata dallo stato variabile
-- [ ] Cap 7: la state machine ha tutti gli stati elencati e le transizioni esplicite (anche graficamente o in tabella)
+- [ ] Cap 6: payload immutabile e regola di sostituzione (revoca del precedente + emissione nuovo signal_id, segnale unico attivo) sono dichiarate esplicitamente
+- [ ] Cap 7: la state machine ha un solo stato non-terminale (`active`) e i sette stati terminali (target_1_hit, target_2_hit, stopped, invalidated, missed_target, expired, revoked) con transizioni esplicite (anche graficamente o in tabella); il trigger_event è dichiarato come evento e non come stato
 - [ ] Cap 7: il cap 2 giorni di trading è implementato come timer concreto, non come prosa generica
 - [ ] Cap 7: M-1 è trattato almeno a livello di interfaccia (cosa osserva il motore, con che cadenza)
 - [ ] Cap 8: tutte e 4 le guardie sono nominate; il rinvio a Parte V per le soglie è esplicito
 - [ ] Cap 8: nessuna assunzione di fasi speciali nella sessione 8:00-22:00 (M-3 ritirato dal supervisore)
-- [ ] Cap 9: la politica anti-duplicato e il "nuovo messaggio per nuovo signal_id" sono coerenti con l'invariante no-refresh
+- [ ] Cap 9: la politica anti-duplicato e il "nuovo messaggio per nuovo signal_id" sono coerenti con la regola di sostituzione di Cap.6 (mai edit del messaggio precedente)
 - [ ] Cap 10: il requisito di determinismo del replay è dichiarato come vincolo, non come desiderio
 - [ ] Registro tecnico italiano formale (no linguaggio divulgativo)
 - [ ] Formule e notazione in LaTeX inline e display dove serve
