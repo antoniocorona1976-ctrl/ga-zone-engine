@@ -50,7 +50,7 @@ Q-01 chiusa = perimetro 8:00-22:00 (rettifica supervisore).
 
 #### Promemoria per Parti successive (segnalati da Review v4, non rework di CAP-01)
 - **M-1 (carryover da v2)**: identificazione real-time del primo pivot strutturale post-apertura — algoritmo da chiarire in Parte II
-- **M-3 (Review v4)**: trattamento delle barre 1-min durante l'asta 8:00-9:00 nel pre-processing del feed storico — rischio di pivot spurî da neutralizzare in Parte II/Appendice D
+- **M-3 (Review v4) — RITIRATO**: il promemoria assumeva la presenza di una fase d'asta 8:00-9:00 con barre theoretical opening price. Chiarito dal supervisore che il FIB negozia in modo continuo 8:00-22:00 senza fase d'asta separata. Nessun trattamento speciale richiesto.
 - **M-4 (Review v4)**: documentare il tasso di rimpiazzo NSGA-II atteso che giustifica la baseline 12.800-25.600 min — da formalizzare in Parte V
 
 #### Domande aperte per il Planner

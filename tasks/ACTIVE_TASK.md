@@ -1,114 +1,128 @@
-# TASK ATTIVO: CAP-01 — Parte I del documento metodologico v2
+# TASK ATTIVO: CAP-02 — Parte II del documento metodologico v2
 
 **Assegnato da**: Planner
-**Output atteso**: docs\methodology_v2\CAP_01_parte_I.md
-**Stato**: IN ATTESA — eseguire solo dopo che i 2 PDF di riferimento sono in docs\reference\
+**Output atteso**: `docs/methodology_v2/CAP_02_parte_II.md`
+**Stato**: IN ATTESA — eseguire dopo conferma supervisore
 
 ## Obiettivo
-Scrivere la Parte I del documento metodologico v2 "Motore genetico strutturale per segnali FIB".
-Questa parte risponde a: chi usa il sistema, su cosa, con quali strumenti, con quali aspettative quantitative.
-Non contiene formule del modello. Non contiene setup tecnico. Solo ambito, vincoli e definizione del successo.
 
-## Capitoli da produrre (6-8 pagine totali in italiano formale)
+Scrivere la Parte II del documento metodologico v2: **Contratto del segnale FIB**. Questa parte risponde a: cosa è esattamente un segnale, in quali stati può trovarsi nel suo ciclo di vita, sotto quali condizioni può essere eseguito, come viene pubblicato all'operatore, e come viene loggato per essere riprodotto deterministicamente in backtest e in review.
 
-### Capitolo 1 — Obiettivo operativo
-Il sistema genera segnali long/short sul FIB (futures mini su FTSE MIB, mercato IDEM, codice MIB).
-Sessione operativa primaria: 9:00-17:40 CET (sessione regolare IDEM).
-Target operativo: 500 punti al giorno oppure 70% dell'escursione intraday del FIB misurata
-dall'apertura della sessione fino alla chiusura, prendendo come riferimento il range massimo osservato
-nel giorno dal primo segnale post-apertura. Il sistema non esegue ordini autonomamente.
-Pubblica segnali strutturati; l'operatore decide e agisce manualmente.
-Specificare esplicitamente: il sistema genera SOLO segnali (punto 1 dichiarazione di intenti).
+Non contiene la matematica del modello (volatilità, survival, GA) → Parti III-V. Non contiene parametri numerici congelati → Parte V. Contiene il **contratto** che il motore deve onorare e che il GA ottimizza.
 
-### Capitolo 2 — Profilo operatore e vincoli operativi
-Operatore: risk manager bancario italiano, operatore retail non professionale ai sensi MiFID II.
-Opera da cellulare durante la giornata lavorativa. Non puo' monitorare il terminale in modo continuo.
-Dimensionamento: 1 contratto FIB alla volta (1 contratto FIB = 5 euro per punto indice).
-Commissioni: 5 euro per operazione di apertura o chiusura (punto 10 dichiarazione).
-Gestione size, incrementi di posizione, take profit e stop profit: scelte esclusivamente dell'operatore,
-non codificate nel segnale (punti 7 e 8 dichiarazione). Il segnale pubblica direzione, zona ingresso,
-target strutturale e stop strutturale; non pubblica gestione della posizione.
-SL personale dell'operatore: -200 punti di emergenza immediato dopo il fill (prassi operatore,
-non parametro del sistema). Rollover: gestione da definire in funzione dello spread futures/cash
-nelle ultime sessioni prima della scadenza (punto 9 dichiarazione).
+## Eredità obbligatoria da CAP-01
 
-### Capitolo 3 — Infrastruttura disponibile
-PC: Intel Core i5-7200U 2.5GHz (mobile, dual-core/4-thread), 8GB RAM DDR4, Intel HD Graphics 620,
-238GB SSD, Windows 10. Ambiente Python: Anaconda (base).
-Broker: Directa SIM (accesso da mobile). Interfaccia operativa da qualificare tra Darwin, DAPI e
-Visual Trader — verifica della disponibilita' dei dati real-time utili al modello rinviata all'Appendice C.
-Dati storici: FIB continuo 1-minuto, minimo 5 anni, da Portara/CQG — specifiche richiesta e valutazione
-costo rinviate all'Appendice D. Questa e' la lacuna da colmare prima dell'avvio del progetto.
-Feed real-time in forward-run: Directa (da qualificare quale API).
-Canale notifiche segnali: Telegram bot personale (dettagli setup in Appendice E).
+Tutte le decisioni del supervisore prese in CAP-01 (Q-01..Q-04 chiuse) entrano come vincoli rigidi in Parte II:
 
-### Capitolo 4 — Compute budget e strategia cloud
-Valutazione PC per ciascuna fase del progetto:
+1. **Sessione operativa**: 8:00-22:00 CET, finestra unica e continua di negoziazione FIB. Il movimento strutturale e i target sono ancorati a questa finestra.
+2. **Banda di ingresso**: parametro libero del cromosoma con dominio $b \in [b_{min}, 40]$ punti FIB; $b_{min} = 5$ provvisorio.
+3. **Vincolo geometrico**: $d_{stop} > b$ obbligatorio; cromosomi che lo violano sono non validi.
+4. **Target**: target 1 e target 2 entrambi obbligatori, ancorati a livelli strutturali.
+5. **Cap validità**: ≤ 2 giorni di trading dall'emissione; il GA può ottimizzare il timing di chiusura entro questo tetto.
+6. **Movimento strutturale**: definito dalla somma dei moduli degli swing tra pivot strutturali; ancoraggio al primo min/max identificato dopo l'apertura della sessione (dalle 8:00 in poi).
+7. **Filtro emissione**: ≥ 80 punti FIB su target 1, o rettangolo trade range ≥ 80 punti.
+8. **No execution**: il motore emette segnali, non ordini. Punto 1 dichiarazione di intenti.
 
-Fase sviluppo e test unitari: adeguato. I5-7200U regge scrittura codice, test su finestre brevi,
-debug della state machine, inference real-time del bundle frozen.
+Ogni capitolo deve citare l'eredità pertinente, non duplicare la motivazione.
 
-Fase backtest singolo cromosoma su 5 anni FIB 1-min (~650.000 osservazioni):
-stima 2-8 minuti per cromosoma a seconda del layer attivo. Lento ma fattibile.
+## Capitoli da produrre (~10 pagine totali in italiano formale)
 
-Fase training completo GA: NSGA-II popolazione 128, generazioni fino a 150, walk-forward nested
-con purge/embargo, bootstrap stazionario B=2000 per DSR/PBO. Stima: 128 cromosomi x 150 generazioni
-x 4-8 minuti/cromosoma = 12.800-25.600 minuti su single-thread, ovvero 9-18 giorni di calcolo continuo.
-Verdict: non fattibile sul PC di casa.
+### Capitolo 6 — Schema del segnale e invarianti (~2 pp)
+Definizione formale del payload del segnale come tupla strutturata:
+- `signal_id`: identificatore univoco
+- `timestamp_emission`: istante di emissione (precisione minuto)
+- `direction`: long | short
+- `entry_zone`: banda $[p_{ref} - b, p_{ref} + b]$ con $p_{ref}$ prezzo strutturale di riferimento e $b \in [b_{min}, 40]$
+- `target_1`, `target_2`: prezzi strutturali (long: $> p_{ref}$; short: $< p_{ref}$)
+- `stop_loss`: prezzo strutturale, $d_{stop} > b$
+- `expiry`: istante di scadenza, $\leq$ emissione + 2 giorni di trading
+- `setup_class`: directional | trade_range
 
-Fase forward-run (inference live): adeguato. Il bundle frozen e' leggero, l'inference di un segnale
-richiede secondi.
+Invariante **no-refresh**: un segnale emesso non viene modificato. Se le condizioni di mercato cambiano, il motore emette un nuovo segnale con nuovo `signal_id`, il segnale precedente prosegue il proprio lifecycle indipendentemente.
 
-Strategia cloud: AWS spot instance c5.4xlarge (16 vCPU, 32GB RAM, ~0.34 USD/ora spot).
-Stima training completo GA su cloud: 8-16 ore, costo 3-6 USD. Con overhead e prove: budget 20-30 euro
-per run completo. Frequenza di retraining prevista: trimestrale o semestrale.
-Il PC e' l'ambiente primario di sviluppo; il cloud e' usato esclusivamente per il training del GA.
+Distinzione tra invarianti del segnale (immutabili dopo emissione) e stato del segnale (variabile nel lifecycle).
 
-### Capitolo 5 — Definizione operativa del successo
-Traduzione quantitativa del target operativo. Le variabili sono definite qui; i valori soglia
-emergono dalla prima campagna di validazione OOS.
+### Capitolo 7 — Stati del segnale e state machine (~2 pp)
+Stati ammessi:
+- `emitted`: pubblicato, in attesa di raw touch sulla entry zone
+- `executable`: raw touch avvenuto, guardie di esecuzione superate
+- `executed`: fill operatore confermato (in simulazione: prima quotazione dentro la banda)
+- `target_1_hit`: il prezzo raggiunge target 1 dopo il fill
+- `target_2_hit`: il prezzo raggiunge target 2 dopo target 1
+- `stopped`: il prezzo raggiunge lo stop loss dopo il fill
+- `invalidated`: condizione di invalidazione strutturale prima del touch
+- `missed_target`: target 1 raggiunto dal prezzo prima del touch della entry zone
+- `expired`: scadenza raggiunta in qualsiasi stato non terminale
 
-Metrica primaria di segnale: expected net return per segnale eseguito, espresso in punti FIB
-al netto delle commissioni (1 punto FIB = 5 euro; 5 euro commissione = 1 punto equivalente per operazione).
-Formula: E[R_net | executed] = E[R_gross | executed] - 2 punti equivalenti commissioni (apertura + chiusura).
+Transizioni ammesse e timer di scadenza (cap 2 giorni di trading da `timestamp_emission`).
 
-Metriche di lifecycle (da calcolare sul replay OOS della state machine):
-- Emission count: numero segnali pubblicati per sessione
-- Executable rate: frazione segnali che raggiungono il raw touch con guardie superate
-- Target hit rate: frazione segnali eseguiti che raggiungono il target strutturale
-- Invalidation rate: frazione segnali invalidati prima del touch
-- Missed target rate: target raggiunto prima della entry zone
+Inclusione esplicita di **M-1** (carryover CAP-01): l'identificazione real-time del primo pivot strutturale post-apertura va trattata almeno a livello di interfaccia (cosa il motore osserva, quando, con che cadenza); l'algoritmo di pivot detection è rinviato a Parte III (Cap 14, feature engineering).
 
-Metriche di rischio: CVaR al 95%, max drawdown intraday, MAE/MFE aggregati.
+### Capitolo 8 — Guardie di esecuzione al raw touch (~2 pp)
+Condizioni di filtro applicate al raw touch della entry zone prima di promuovere il segnale a `executable`:
+- guardia di volatilità (range del minuto entro soglia)
+- guardia di spread (bid-ask spread entro soglia, da Directa real-time)
+- guardia di liquidità (volume del minuto sopra soglia)
+- guardia di distanza dal target 1 (target ancora raggiungibile rispetto al prezzo corrente)
 
-Metriche anti-overfitting: DSR (Deflated Sharpe Ratio) come filtro primario di selezione del bundle;
-PBO via CSCV come misura di fragilita' della selezione.
+Le soglie sono parametri liberi del cromosoma del GA (rinvio a Parte V per congelamento). Le formule del modello di volatilità sono in Parte III.
 
-Filtro di emissione minimo (punto 4 dichiarazione): il sistema non pubblica segnali con target
-strutturale inferiore a 80 punti FIB, salvo il caso di trade range con ampiezza definita.
+**M-3 (Review v4) — RITIRATO**: il promemoria riguardava la presunta asta di apertura 8:00-9:00 con barre theoretical opening price. Il supervisore ha chiarito che il FIB negozia in modo continuo 8:00-22:00 senza fase d'asta. Nessuna neutralizzazione di fase iniziale è richiesta. Non integrare in CAP-02.
 
-Il successo del motore non e' "ha guadagnato X euro". E': il bundle frozen supera i gate OOS,
-il DSR e' positivo, il PBO e' sotto soglia, le metriche lifecycle sono stabili tra regime calmo
-e regime turbolento. Il profitto operativo dell'operatore dipende dall'esecuzione, non solo dal segnale.
+### Capitolo 9 — Politica di pubblicazione su Telegram (~2 pp)
+Formato concreto del messaggio Telegram leggibile in mobilità (l'operatore opera da cellulare durante orario di lavoro):
+- struttura del messaggio (campi obbligatori e ordine)
+- latenza massima ammissibile dall'emissione interna alla ricezione sul cellulare
+- politica anti-duplicato: un `signal_id` viene pubblicato una sola volta
+- politica per nuovo segnale: emesso come messaggio separato con nuovo `signal_id`, NON come modifica/edit del messaggio precedente (coerente con l'invariante no-refresh)
+- gestione errori di pubblicazione (timeout API Telegram, retry policy)
+
+Lo schema esatto delle stringhe del messaggio è rinviato all'Appendice E; in Parte II si fissano il contratto informativo e i vincoli operativi.
+
+### Capitolo 10 — Replay e riproducibilità del lifecycle (~2 pp)
+Definizione del formato dei log che consente di ricostruire deterministicamente il lifecycle di ogni segnale a partire dallo storico delle barre 1-min:
+- log di emissione (snapshot completo del payload + stato delle feature al momento dell'emissione)
+- log delle transizioni di stato (ogni transizione registra: timestamp, stato precedente, stato nuovo, prezzo che ha innescato la transizione)
+- log di chiusura (stato terminale + statistiche aggregate per il segnale)
+
+Requisito di determinismo: dato lo stesso storico 1-min e lo stesso bundle frozen, il replay produce **esattamente** la stessa sequenza di stati e gli stessi timestamp. Niente non-determinismo introdotto dal motore.
 
 ## Acceptance criteria — tutti devono essere soddisfatti per PASS in Review
-- [ ] I 5 capitoli sono presenti, completi e nell'ordine corretto
-- [ ] Capitolo 1: il target 500pt/70% e' definito senza ambiguita' (su quale escursione, da quando)
-- [ ] Capitolo 2: i punti 1, 7, 8, 9, 10 della dichiarazione di intenti sono citati esplicitamente
-- [ ] Capitolo 3: il PC e' specificato con i dati tecnici reali (non generici)
-- [ ] Capitolo 4: la stima del training GA include numeri (non solo "e' lento")
-- [ ] Capitolo 5: nessuna formula vaga; tutto e' variabile numerica o soglia da calibrare
-- [ ] Registro tecnico identico al documento originale (niente linguaggio divulgativo o colloquiale)
-- [ ] Lunghezza: 6-8 pagine (stima ~1500-2000 parole)
 
-## Out-of-scope — Development NON include queste cose in CAP-01
-- Formule matematiche del modello (EGARCH, survival, GA): vengono nelle Parti II-V
-- Setup tecnico di Claude Code o GitHub: Appendice B
-- Specifiche API Directa o Portara: Appendici C e D
-- Telegram bot setup: Appendice E
-- Definizione operativa dei 3 agenti Planner/Development/Review: Appendice F
-- Parametri numerici congelati del GA (popolazione, generazioni, ecc.): Parte V
+- [ ] I 5 capitoli (Cap 6-10) sono presenti, completi e nell'ordine corretto
+- [ ] Tutte le 8 eredità di CAP-01 sono citate esplicitamente almeno una volta nei capitoli pertinenti
+- [ ] Cap 6: il payload è specificato come tupla strutturata con tutti i campi e i loro vincoli (banda, $d_{stop} > b$, expiry $\leq$ 2 giorni trading, $\geq$ 80 punti target 1)
+- [ ] Cap 6: l'invariante no-refresh è dichiarata e separata dallo stato variabile
+- [ ] Cap 7: la state machine ha tutti gli stati elencati e le transizioni esplicite (anche graficamente o in tabella)
+- [ ] Cap 7: il cap 2 giorni di trading è implementato come timer concreto, non come prosa generica
+- [ ] Cap 7: M-1 è trattato almeno a livello di interfaccia (cosa osserva il motore, con che cadenza)
+- [ ] Cap 8: tutte e 4 le guardie sono nominate; il rinvio a Parte V per le soglie è esplicito
+- [ ] Cap 8: nessuna assunzione di fasi speciali nella sessione 8:00-22:00 (M-3 ritirato dal supervisore)
+- [ ] Cap 9: la politica anti-duplicato e il "nuovo messaggio per nuovo signal_id" sono coerenti con l'invariante no-refresh
+- [ ] Cap 10: il requisito di determinismo del replay è dichiarato come vincolo, non come desiderio
+- [ ] Registro tecnico italiano formale (no linguaggio divulgativo)
+- [ ] Formule e notazione in LaTeX inline e display dove serve
+- [ ] Niente moltiplicazioni misleading o numeri inventati (lezione di Review v3 di CAP-01)
+
+## Out-of-scope — Development NON include queste cose in CAP-02
+
+- Formule EGARCH, modello survival, feature engineering causale → Parti III-IV
+- Operatori GA, fitness multi-obiettivo, walk-forward → Parte V
+- Algoritmo concreto di pivot detection → Parte III (Cap 14)
+- Setup tecnico API Directa, Telegram, Portara → Appendici C-E
+- Parametri numerici congelati delle guardie e dei timer → Parte V
 
 ## Done when
-Il capitolo risponde senza ambiguita' a questa domanda:
-"Cosa fa questo sistema, chi lo usa, su quale strumento, con quale infrastruttura, e come misuriamo se funziona?"
+
+Il documento risponde senza ambiguità a queste domande:
+1. Cosa contiene esattamente un segnale emesso dal motore?
+2. Quali stati può attraversare e con quali transizioni?
+3. Sotto quali condizioni un raw touch della entry zone si traduce in segnale eseguito?
+4. Come arriva il segnale al cellulare dell'operatore e cosa succede se cambiano le condizioni?
+5. Come si ricostruisce deterministicamente il lifecycle di un segnale a partire dallo storico?
+
+## Pipeline attesa
+
+Stesso schema di CAP-01: Development scrive v1 → Review v1 audit ostile con classificazione GA → Supervisore decide cosa mandare a Development → Development v2 → Review v2 → … fino a PASS.
+
+Promemoria operativo per Development: la lezione di CAP-01 è che il primo giro produce sistematicamente buchi semantici (definizioni divergenti dalla fonte) e aritmetici (numeri che non quadrano). Non temere il PASS al primo giro: la pipeline esiste perché i bug ci sono.

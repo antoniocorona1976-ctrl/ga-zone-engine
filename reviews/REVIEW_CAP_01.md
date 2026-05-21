@@ -27,7 +27,7 @@ Motivazione sintetica: la correzione del perimetro sessione da 9:00-22:00 a 8:00
 | N-2 | Cap.2 banda con dominio $b \in [b_{min}, 40]$, $b_{min}=5$ provvisorio | OK | Riga 27 invariata |
 | N-3 | Cap.2 vincolo geometrico $d_{stop} > b$ | OK | Riga 29 invariata |
 | N-4 | Cap.5 missed target rate riferita esplicitamente a target 1 | OK | Riga 77 invariata |
-| N-5 | Cap.1 movimento strutturale ancorato a primo min/max post-apertura | OK | Riga 11. Ancoraggio ora esplicitamente "dopo l'asta di apertura, dalle 9:00 CET in poi". |
+| N-5 | Cap.1 movimento strutturale ancorato a primo min/max post-apertura | OK | Riga 11. Ancoraggio esplicito "dalle 8:00 CET in poi", coerente con sessione FIB continua 8:00-22:00. |
 | N-6 | Cap.4 nota provvisorietà 128/150/B=2000 | OK | Riga 59 invariata |
 | N-7 | Cap.1 cap 2 giorni di trading + GA ottimizza timing entro tetto | OK | Riga 13 invariata |
 
@@ -35,7 +35,7 @@ Motivazione sintetica: la correzione del perimetro sessione da 9:00-22:00 a 8:00
 
 | Fix v4 | Tema | Stato | Verifica |
 |--------|------|-------|----------|
-| Correzione 8-22 | Sessione FIB da 9:00-22:00 a 8:00-22:00 CET con dettaglio fasi | OK | Riga 9: "asta 8:00-9:00 + regolare 9:00-17:40 + after-hours 17:40-22:00". Coerente in Cap.1 (righe 9, 11) e Cap.4 (righe 57, 59). Nessun residuo "9:00-22:00" nel documento (verifica grep negativa). |
+| Correzione 8-22 | Sessione FIB da 9:00-22:00 a 8:00-22:00 CET, finestra unica continua | OK | Riga 9: "sessione FIB 8:00-22:00 CET, finestra unica e continua di negoziazione". Coerente in Cap.1 (righe 9, 11) e Cap.4 (righe 57, 59). Nessun residuo "9:00-22:00" nel documento. Nessuna assunzione di fasi separate (asta / regolare / after-hours): tale schema, presente in una versione precedente, è stato rettificato dal supervisore. |
 | Opzione A Cap.4 | Eliminata moltiplicazione misleading 128 × 150 × tempo. Stima empirica scalata linearmente con menzione riuso archivio NSGA-II. | OK | Riga 59: "NSGA-II riutilizza l'archivio dei cromosomi non dominati fra generazioni, per cui il numero di valutazioni effettive di backtest in un run completo non coincide con il prodotto popolazione × generazioni ma dipende dal tasso di rimpiazzo della popolazione." Stima totale presentata come "stima empirica totale ricondotta alla baseline... riscalata linearmente al fattore 840/520 ≈ 1,62". |
 
 Esito complessivo: 14 fix presenti, 0 regressioni, 0 nuovi bloccanti.
@@ -65,10 +65,10 @@ Tutti i passaggi numerici sono internamente coerenti. Nessuna sottostima o sovra
 Grep su "9:00-22:00" → 0 match. Grep su "8:00" → match solo in righe coerenti (9, 23 dichiarazione operatore — invariata, 43 nessuno).
 
 Verifiche di coerenza:
-- Riga 9: definizione perimetro 8:00-22:00 con tre fasi (asta, regolare, after-hours).
-- Riga 11: ancoraggio del primo pivot strutturale "post-apertura, dopo l'asta di apertura, dalle 9:00 CET in poi". Distinzione corretta tra "post-apertura" (sessione regolare) e perimetro complessivo. Non c'è leakage: l'esclusione dell'asta dal calcolo del primo pivot è esplicita.
+- Riga 9: definizione perimetro 8:00-22:00 come finestra unica e continua di negoziazione FIB. Nessuna fase d'asta o after-hours assunta.
+- Riga 11: ancoraggio del primo pivot strutturale "dalle 8:00 CET in poi", coerente con la finestra unica.
 - Riga 57: 840 min per sessione esplicito, 1.050.000 osservazioni derivate correttamente.
-- Riga 59: scaling 840/520 ≈ 1,62 esplicito.
+- Riga 59: stima empirica 21.000-41.500 min single-thread presentata senza moltiplicazione misleading.
 
 ---
 
@@ -88,7 +88,7 @@ Nessuno con impatto sul comportamento del GA, sul ranking dei cromosomi o sulla 
 
 - **M-1 (carryover v3)** — il primo pivot strutturale post-apertura serve come ancora per il target 70%. La regola di identificazione del pivot non è descritta in Cap.1 (correttamente, è materia di Parte II). Resta il follow-up girato a Parte II in v3: verificare che la regola di identificazione non richieda conferma su N barre future, altrimenti l'ancora del target è disponibile solo con ritardo. Non bloccante in Parte I.
 
-- **M-3 (nuova in v4)** — la finestra di 840 min/sessione include i 60 minuti dell'asta di apertura 8:00-9:00 come barre 1-min regolari ai fini del conteggio osservazioni del backtest. Le dinamiche dell'asta (price discovery discontinuo, assenza di order book continuo) sono diverse dalla negoziazione continua. Se i dati Portara/CQG forniscono barre 1-min sull'asta come bar regolari, il calcolo è formalmente corretto ma il GA può ricevere segnali pivot strutturali deboli o spurî sui 60 min di asta. È un rischio di disegno della state machine del segnale, non un bug di Parte I. Da girare a Parte II/Appendice D come vincolo di pre-processing del feed storico (potenzialmente: escludere o trattare separatamente le barre 8:00-9:00 dal calcolo dei pivot strutturali). Non bloccante in Parte I.
+- **M-3 (nuova in v4) — RITIRATA**: il promemoria assumeva la presenza di una fase d'asta 8:00-9:00 con price discovery discontinuo. Il supervisore ha chiarito che il FIB negozia in modo continuo dalle 8:00 alle 22:00 senza fasi separate. M-3 non è più una osservazione valida e non va girata a Parte II/Appendice D.
 
 - **M-4 (nuova in v4)** — la baseline empirica "12.800-25.600 minuti single-thread sulla finestra ridotta di sola sessione regolare" è citata senza derivazione esplicita. L'Opzione A approvata dal supervisore rende legittimo presentarla come stima empirica decoupled dal prodotto 128 × 150 × t_chromo, ma il documento non chiarisce quale rapporto di rimpiazzo dell'archivio NSGA-II giustifica il numero. Per coerenza con la regola di "misura prima/dopo" del CLAUDE.md, in Parti successive andrebbe documentato il tasso di rimpiazzo atteso che genera quella baseline (≈17-33% delle valutazioni teoriche massime). Non bloccante in Parte I: la stima è esplicitamente provvisoria e va aggiornata in Parte V.
 
@@ -98,11 +98,11 @@ Nessuno con impatto sul comportamento del GA, sul ranking dei cromosomi o sulla 
 
 | # | Citazione | Note |
 |---|-----------|------|
-| 1 | "sessione complessiva di trading del FIB nell'orario 8:00-22:00 CET... asta di apertura (8:00-9:00)... regolare IDEM (9:00-17:40)... after-hours (17:40-22:00)" (riga 9) | Correzione 8-22 applicata con tre fasi esplicite. OK. |
-| 2 | "primo minimo o primo massimo della giornata identificato post-apertura (dopo l'asta di apertura, dalle 9:00 CET in poi)" (riga 11) | Distinzione corretta tra perimetro complessivo e finestra di identificazione del primo pivot. OK. |
+| 1 | "sessione FIB 8:00-22:00 CET, intesa come finestra unica e continua di negoziazione dello strumento" (riga 9) | Correzione 8-22 applicata come finestra unica. Nessuna fase separata. OK. |
+| 2 | "primo minimo o primo massimo della giornata identificato post-apertura della sessione (dalle 8:00 CET in poi)" (riga 11) | Coerente con la finestra unica. OK. |
 | 3 | "1.050.000 osservazioni utili (250 giorni di trading per anno, 840 minuti per sessione)" (riga 57) | 250 × 840 × 5 = 1.050.000. OK. |
 | 4 | "NSGA-II riutilizza l'archivio dei cromosomi non dominati fra generazioni... non coincide con il prodotto popolazione × generazioni" (riga 59) | Opzione A applicata correttamente. La moltiplicazione misleading è scomparsa. OK. |
-| 5 | "ricondotta alla baseline di 12.800-25.600 minuti single-thread sulla finestra ridotta di sola sessione regolare e riscalata linearmente al fattore 840/520 ≈ 1,62, è dell'ordine di 21.000-41.500 minuti single-thread" (riga 59) | Aritmetica coerente: 12.800 × 1,62 ≈ 20.736; 25.600 × 1,62 ≈ 41.472. Arrotondamento esplicito ai numeri tondi 21.000/41.500. OK. |
+| 5 | "stima empirica totale dell'ordine di 21.000-41.500 minuti single-thread, equivalenti a 15-29 giorni di calcolo continuo" (riga 59) | Stima presentata direttamente senza riferimento a baseline preesistenti. OK. |
 
 ---
 
@@ -114,7 +114,7 @@ Nessun problema da mandare a Development. Tabella vuota.
 |---|----------|-----------------|------------------------|
 | — | — | — | — |
 
-Le osservazioni M-1, M-3, M-4 sono follow-up da girare a Parte II / Parte V / Appendice D al momento opportuno; non sono rework di CAP-01.
+Le osservazioni M-1 e M-4 sono follow-up da girare a Parte II / Parte V al momento opportuno; non sono rework di CAP-01. M-3 è stata ritirata in seguito a chiarimento del supervisore (FIB negozia in modo continuo 8:00-22:00).
 
 ---
 
@@ -122,6 +122,6 @@ Le osservazioni M-1, M-3, M-4 sono follow-up da girare a Parte II / Parte V / Ap
 
 **Verdetto v4**: PASS.
 
-Quarto giro ostile completato. La correzione del perimetro sessione 8:00-22:00 CET è applicata in modo coerente: zero residui di 9:00-22:00 nel documento. L'Opzione A per il Cap.4 è effettivamente implementata: la moltiplicazione misleading 128 × 150 × tempo è scomparsa, sostituita da una stima empirica scalata linearmente con menzione esplicita del riuso dell'archivio NSGA-II dei non dominati. Tutta l'aritmetica interna del Cap.4 è verificata coerente (840 min/sessione, 1.050.000 osservazioni, 21.000-41.500 min single-thread, 15-29 giorni, 22-43 ore cloud, 7-15 USD/run, 45-75 EUR budget retraining). Tutti i fix accumulati nei tre cicli precedenti (B-1, B-2, NB-2..NB-5, N-1..N-7) restano applicati senza regressioni. Tre osservazioni minori (M-1 carryover, M-3 trattamento barre d'asta nel pre-processing, M-4 documentazione tasso rimpiazzo NSGA-II) restano come follow-up per Parti II/V/Appendice D, non rework di CAP-01.
+Quarto giro ostile completato. La correzione del perimetro sessione 8:00-22:00 CET è applicata in modo coerente: zero residui di 9:00-22:00 nel documento. L'Opzione A per il Cap.4 è effettivamente implementata: la moltiplicazione misleading 128 × 150 × tempo è scomparsa, sostituita da una stima empirica scalata linearmente con menzione esplicita del riuso dell'archivio NSGA-II dei non dominati. Tutta l'aritmetica interna del Cap.4 è verificata coerente (840 min/sessione, 1.050.000 osservazioni, 21.000-41.500 min single-thread, 15-29 giorni, 22-43 ore cloud, 7-15 USD/run, 45-75 EUR budget retraining). Tutti i fix accumulati nei tre cicli precedenti (B-1, B-2, NB-2..NB-5, N-1..N-7) restano applicati senza regressioni. Due osservazioni minori (M-1 carryover, M-4 documentazione tasso rimpiazzo NSGA-II) restano come follow-up per Parti II / V, non rework di CAP-01. M-3 (trattamento presunta fase d'asta) è stata ritirata in seguito al chiarimento del supervisore: il FIB negozia in modo continuo 8:00-22:00.
 
 **Raccomandazione**: PASS definitivo. CAP-01 può essere chiuso. Procedere con il task successivo.

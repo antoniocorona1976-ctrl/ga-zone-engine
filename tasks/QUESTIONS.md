@@ -2,7 +2,7 @@
 
 ## Q-01 — Conflitto orari sessione operativa (CAP-01) — CHIUSA
 
-**Decisione del supervisore (2026-05-22, rettificata in pari data)**: perimetro operativo del motore = sessione complessiva di trading FIB 8:00-22:00 CET, che include asta di apertura (8:00-9:00), negoziazione continua regolare IDEM (9:00-17:40), e fase serale after-hours (17:40-22:00). La sessione regolare IDEM 9:00-17:40 CET resta come segmento primario di liquidità e finestra preferenziale di emissione.
+**Decisione del supervisore (2026-05-22, rettificata in pari data)**: il FIB negozia in modo continuo dalle 8:00 alle 22:00 CET. Non esistono fasi separate (asta, regolare, after-hours): la sessione è una finestra unica e continua. Il perimetro operativo del motore coincide con questa finestra 8:00-22:00 CET.
 
 **Stato**: chiusa.
 
