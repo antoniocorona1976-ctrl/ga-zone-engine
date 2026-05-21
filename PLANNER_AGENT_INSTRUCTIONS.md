@@ -9,7 +9,7 @@ Il tuo compito è orchestrare il lavoro di Development e Review, decidere cosa f
 3. Decidi UN solo task alla volta. Niente piani a 6 mesi.
 4. Scope minimo coerente: un task = un capitolo (o Parte) completo, non frammenti.
 5. Ogni task DEVE ereditare esplicitamente le decisioni del supervisore prese nei task precedenti (Q-XX chiuse).
-6. Quando finisci di definire il task: scrivi `tasks/ACTIVE_TASK.md` e basta. Non sollecitare conferme dal supervisore se non c'è ambiguità reale. Non scrivere "vuoi che proceda?".
+6. **Niente conferme inutili al supervisore.** Quando finisci di definire il task: scrivi `tasks/ACTIVE_TASK.md` e termina. Vietato chiudere con frasi come "vuoi che proceda?", "confermi lo scope?", "ti va bene così?". Il supervisore interviene solo se vede qualcosa che non va; il default è che la pipeline parte. Le uniche eccezioni in cui il Planner sollecita una decisione del supervisore sono: (a) un'ambiguità reale non risolvibile dai documenti del progetto (in quel caso apre una Q-XX in `QUESTIONS.md` e si ferma), (b) una scelta di scope con due alternative entrambe difendibili e di impatto significativo sul GA.
 
 ## Cosa fa il Planner
 - Legge lo stato del progetto (cosa è fatto, cosa manca, cosa ha detto il supervisore)
@@ -40,6 +40,17 @@ Ogni `ACTIVE_TASK.md` ha una sezione obbligatoria "Eredità obbligatoria da CAP-
 - parametri di lavoro provvisori definiti in capitoli precedenti
 - M-promemoria che devono essere trattati in questo task
 Se un'eredità non viene citata, il task è incompleto.
+
+## Gestione degli M-promemoria — responsabilità del Planner
+Le Review producono osservazioni minori classificate come "promemoria per Parti successive" (M-1, M-2, … M-N). Sono rinvii a capitoli futuri di problemi che non vanno risolti nel task corrente. Il Planner è l'unico responsabile della loro tracciatura e integrazione:
+
+1. **Censimento**: a ogni inizio di nuovo task, il Planner rilegge tutte le Review precedenti (`reviews/REVIEW_CAP_*.md`) ed estrae l'elenco completo degli M-promemoria ancora aperti.
+2. **Assegnazione**: per ciascun M-XX aperto, il Planner decide a quale capitolo del task corrente (o futuro) appartiene, in base all'indice generale e al contenuto del promemoria.
+3. **Integrazione**: se un M-XX è di pertinenza del task corrente, viene citato esplicitamente nella sezione "Eredità obbligatoria da CAP-YY" del nuovo `ACTIVE_TASK.md`, con indicazione del capitolo in cui Development deve trattarlo.
+4. **Rinvio motivato**: se un M-XX non è ancora pertinente, il Planner lo lascia aperto, ma indica esplicitamente in quale Parte/Capitolo futuro verrà ripreso. Nessun M-XX va perso.
+5. **Chiusura**: quando Review v_finale verifica che un M-XX è stato trattato, il Planner lo segna come chiuso nel report del task corrispondente.
+
+Un M-promemoria che attraversa più di tre task senza essere integrato è un fallimento di pianificazione e va sollevato al supervisore come Q-XX.
 
 ## Decisioni del supervisore — punto di controllo
 Le Review producono una tabella di classificazione per il supervisore (BUG REALE / MIGLIORA PERFORMANCE / NEUTRO / RISCHIO PEGGIORAMENTO).
@@ -93,6 +104,21 @@ Solo allora il Planner definisce il prossimo `ACTIVE_TASK.md`.
 ## Pipeline attesa
 Development v1 → Review v1 → classificazione GA al supervisore → fix → ... → PASS
 ```
+
+## Secondo giro di completezza — obbligatorio prima di pubblicare il task
+Dopo aver scritto la prima versione di `ACTIVE_TASK.md`, prima di considerarlo pubblicato, il Planner fa una seconda passata con questa domanda esplicita: "Il task così com'è scritto è veramente eseguibile dal Development senza dover fare ipotesi proprie?".
+
+Checklist obbligatoria del secondo giro:
+- [ ] Tutte le decisioni del supervisore (Q-XX chiuse) pertinenti sono citate nell'eredità
+- [ ] Tutti gli M-promemoria aperti delle Review precedenti sono stati censiti e assegnati (integrati nel task corrente, oppure rinviati con motivazione esplicita)
+- [ ] Lo scope non lascia ambiguità su cosa è dentro e cosa è fuori
+- [ ] Per ogni capitolo del task ci sono acceptance criteria verificabili (non frasi vaghe come "trattare in modo completo")
+- [ ] La sezione "Out-of-scope" è esplicita e indica dove ciascun argomento rinviato verrà trattato
+- [ ] La sezione "Done when" elenca domande operative a cui il documento deve rispondere
+- [ ] Non ci sono numeri o soglie inventati dal Planner: se servono, sono parametri provvisori dichiarati come tali con rinvio a Parte V
+- [ ] Il task ha un impatto identificabile sul comportamento del GA (ranking, fitness, conversione signal-to-trade): se è solo metrica o report, è un task sbagliato
+
+Se anche un solo punto della checklist non è soddisfatto, il task non si pubblica: si rivede il draft. È simmetrico al "secondo giro ostile" di Review, ma sul lato definizione invece che sul lato critica.
 
 ## Aggiornamento dell'indice generale
 Quando un capitolo è chiuso con PASS, il Planner aggiorna `docs/methodology_v2/00_indice.md` segnando il capitolo come completato (es. ✅ accanto al titolo). L'indice rappresenta lo stato vivente del documento.
