@@ -1,6 +1,6 @@
 ### REPORT SUPERVISORE — CAP-02
 **Task**: Parte II del documento metodologico v2 — Contratto del segnale FIB
-**Stato**: COMPLETATO — TASK PRONTO PER REVIEW
+**Stato**: COMPLETATO Iterazione 2 — TASK PRONTO PER REVIEW v2
 
 #### Cosa è stato prodotto
 - `docs/methodology_v2/CAP_02_parte_II.md` — Parte II, 5 capitoli (Cap.6 schema e invarianti; Cap.7 state machine; Cap.8 guardie di esecuzione; Cap.9 politica Telegram; Cap.10 replay e riproducibilità). Italiano formale, LaTeX inline e display, ~10 pagine equivalenti.
@@ -64,3 +64,56 @@ Nessuna. Tutti i punti del task sono stati indirizzati con materiale interno all
 2. Se in Parte V le quattro guardie con parametri indipendenti producono una crescita combinatoria del genoma tale da rendere il GA non addestrabile sul compute budget di CAP-01 (45-75 EUR a retraining), si valuta di accorpare due o più guardie sotto un'unica soglia composita (es. guardia di "qualità della barra" che integra volatilità+volume).
 3. Se la regola di sostituzione con segnale unico attivo $|\mathcal{A}(t)|\leq 1$ produce, in backtest OOS, un tasso di sostituzione superiore al 50% dei segnali emessi (cromosomi che sostituiscono troppo), il vincolo va integrato con una penalità nel fitness multi-obiettivo (Parte V, Cap.23). Questa è ottimizzazione del GA, non rollback strutturale del contratto.
 4. Se la latenza $L_{max} = 30$ s provvisoria si rivela non realistica in Appendice E (verifica empirica del canale Telegram), il valore va aggiornato in Parte V. L'aggiornamento è puntuale su Cap.9.3, non richiede riscrittura della Parte II.
+
+---
+
+## Iterazione 2 — Risposta ai finding di Review v1 + rifondazione architettura Cap.8
+
+**Origine**: Review v1 ha emesso verdetto CONDITIONAL (2 B + 6 NB + 3 N + 2 M). Durante la discussione con il supervisore per chiudere i finding sono emerse due decisioni strutturali che hanno richiesto una riscrittura integrale della Parte II, non un semplice patch:
+
+1. **Chiarificazione semantica del cap 2 giorni di trading** (decisione del supervisore): il timer di validità di 2gg trading decorre dal raw touch (esecuzione), non dal `timestamp_emission`. La Parte II originale assumeva la decorrenza dall'emissione.
+2. **Rifondazione del Cap.8** (decisione del supervisore in risposta a verifica metodologica): le "guardie di esecuzione al raw touch" come parametri liberi del cromosoma erano architettonicamente errate per tre ragioni: (a) la guardia di spread richiedeva storico di book non disponibile nei dati Portara/CQG pianificati in CAP-01; (b) i filtri post-emissione che bloccano il trigger contraddicono il principio "il motore emette segnali, l'esecuzione è dell'operatore" (punto 1 dichiarazione di intenti); (c) il raw touch deve essere sempre eseguibile, le condizioni di mercato vanno valutate prima dell'emissione, non dopo. Il Cap.8 è stato riscritto come "Condizioni di emissione del segnale" con tre condizioni pre-emissione (volatilità, liquidità, distanza dal target_1), eliminando la guardia di spread.
+
+**Chiusura dei finding di Review v1**:
+
+| Finding | Decisione applicata | Posizione in Parte II v2 |
+|---------|---------------------|--------------------------|
+| **B-1** (stop pre-touch non coperto) | C1: sotto-caso di `invalidated`, esplicitato nel testo. Decisione supervisore. | Cap.7.1 (definizione `invalidated` con condizione $p(t) \leq \texttt{stop\_loss}$ per long, simmetrica per short), Cap.7.2 (riga della tabella). 7 stati invariati. |
+| **B-2** (contraddizione missed_target) | Cade da sola con la nuova architettura: "raw touch eseguibile" non esiste più come concetto distinto da "raw touch". Decisione supervisore: raw touch sempre eseguibile. | Cap.7.3, Cap.8.4. |
+| **NB-1** (asimmetria missed_target_2) | (a) motivare nel testo richiamando Q-03 CAP-01. | Cap.7.1, definizione `missed_target`. |
+| **NB-2** (granularità $\Delta t_{cromosoma}$) | (a) intero in minuti di trading, dominio $\{1, \ldots, 1680\}$. | Cap.7.4. |
+| **NB-3** ($N_{pivot}$ vago) | (c) rinvio a Parte V con misura empirica sullo storico, vincolo metodologico dichiarato in Parte II. | Cap.7.5. |
+| **NB-4** (caso emissione 21:55) | (a) counter in minuti di trading scavalcando interruzioni, con esempio numerico. | Cap.7.4. |
+| **NB-5** (direzione raw touch) | Riformulazione corretta: il raw touch non impone direzione di provenienza; il prezzo entra nella zona da qualsiasi direzione. Tick discreto FIB=5pt esplicitato come fatto strutturale. | Cap.7.3, Cap.6 introduzione, Cap.6.1 (banda discreta multiplo di 5). |
+| **NB-6** (citazione M-3 errata) | Sostituzione: "ha ritirato l'osservazione M-3" anziché "decisione del supervisore in chiusura M-3". | Cap.8.4. |
+| **N-1, N-2, N-3** | Carryover legittimo, no rework su CAP-02. | Riferimenti rispettivamente a Parte V (fitness), Parte VII (gate), Parte V/VI (nomenclatura). |
+| **M-1, M-2** | Carryover legittimo. | Riferimenti a Parte III/Cap.14 e Appendice E. |
+
+**Decisioni strutturali aggiuntive dell'Iterazione 2**:
+
+- **Tick FIB = 5 punti formalizzato come fatto strutturale dello strumento.** Il documento originale ignorava la discretizzazione e usava esempi con bordi di zona non multipli di 5. Iterazione 2 esplicita il tick nell'introduzione di Parte II e nel Cap.6.1, e modifica la definizione della banda di ingresso da intervallo continuo $[p_{ref}-b, p_{ref}+b]$ a insieme discreto $\{p_{ref}-b, p_{ref}-b+5, \ldots, p_{ref}+b\}$, con dominio di $b$ ridefinito come $\{5, 10, 15, 20, 25, 30, 35, 40\}$ (8 valori discreti, cardinalità 8 anziché continuo).
+- **Cap.8 ricostruito come "Condizioni di emissione del segnale".** Tre condizioni pre-emissione (volatilità del minuto, liquidità del minuto, distanza strutturale $p_{ref}$ → target_1) con soglie come parametri liberi del cromosoma. Spread eliminata in quanto non addestrabile (no storico di book in Portara/CQG). Una sezione introduttiva 8.1 esplicita la filosofia: condizioni pre-emissione, raw touch sempre eseguibile, autonomia di esecuzione dell'operatore.
+- **Notifica `trigger_event` aggiunta al protocollo Telegram di Cap.9.5.** Coerentemente con il raw touch come evento di esecuzione, il motore pubblica una notifica separata al `trigger_event`. Distinta dal messaggio di emissione.
+
+**Misura prima/dopo dell'Iterazione 2**:
+
+| Metrica del comportamento GA | v1 (post-Review v1) | v2 (Iterazione 2) | Delta |
+|---|---|---|---|
+| Parametri liberi del cromosoma per filtri di mercato | 4 (volatilità, spread, liquidità, distanza) | 3 (volatilità, liquidità, distanza) | -1 (spread eliminata) — riduzione dello spazio di ricerca, riduzione del rischio di overfitting su parametri non addestrabili |
+| Architettura dei filtri | post-emissione al raw touch (guardie che bloccano il trigger) | pre-emissione (condizioni di valutazione dell'emissione); raw touch sempre eseguibile | cambio di paradigma — coerenza con punto 1 dichiarazione e con dati disponibili in storico FIB |
+| Cardinalità del dominio di $b$ | implicita continua su $[5, 40]$ | esplicitamente discreta $\{5, 10, 15, 20, 25, 30, 35, 40\}$ — 8 valori | da continuo a 8 valori: GA mutation discreta sul reticolo del tick FIB |
+| Cardinalità del dominio di $\Delta t_{cromosoma}$ | non specificata (NB-2 originale) | $\{1, \ldots, 1680\}$ minuti di trading | dominio dichiarato, GA può applicare mutazione discreta su intero |
+| Stati terminali della state machine | 7 (con bug B-1 aperto: stop pre-touch non coperto) | 7 (B-1 chiuso come sotto-caso esplicito di `invalidated`) | bug chiuso senza aggiungere stati |
+| Decorrenza del timer `expiry` | dall'emissione | dal raw touch (esecuzione) — chiarificazione supervisore | semantica corretta del cap 2gg trading |
+| Notifica al raw touch | implicita | esplicita come messaggio Telegram separato | tracciabilità operatore: distinzione fra emissione e trigger |
+
+**Punti aperti rinviati esplicitamente a decisione successiva**:
+
+1. **Patch CAP-01 (riga 13)**: la chiarificazione semantica del cap 2gg richiede una mini-patch in CAP-01 per coerenza retroattiva. Non eseguita in questa iterazione: il supervisore deve decidere se applicarla con o senza passaggio in Review. Parte II v2 è autoconsistente.
+2. **Tema separato `time_to_touch_max`**: durante la discussione è stato aperto il tema di un timer di attesa pre-trigger come "mix punti × tempo gestibile", per evitare segnali in attesa indefinita del raw touch. Non incluso in Parte II v2 per scelta del supervisore di chiudere prima i finding di Review v1. Rimane in tavola come tema di Parte II v3 se il supervisore lo riterrà necessario.
+3. **Vincolo di coerenza distanze geometriche ↔ volatilità**: principio metodologico emerso nella discussione (le distanze entry-stop-target dovrebbero essere coerenti con la volatilità corrente). Non formalizzato in Parte II v2: la decisione su dove introdurlo (Parte II vincolo di alto livello, oppure Parte IV materia di geometria delle zone) spetta al supervisore.
+
+**Criterio di rollback aggiornato per l'Iterazione 2**:
+
+5. Se in Parte V emerge che la condizione di distanza dal target_1 come parametro libero del cromosoma di emissione è ridondante con il vincolo geometrico di Parte IV (target/stop strutturalmente coerenti con $\hat{\sigma}$), la condizione va eliminata da Cap.8 e demandata a Parte IV. La revisione è puntuale su Cap.8.2 (terza condizione) e su Cap.8.3 (rimozione del termine corrispondente dalla congiunzione logica), non richiede riscrittura della Parte II.
+6. Se in misura empirica sullo storico FIB risulta che la condizione di liquidità con soglia $\tau_{liq}$ libera converge sistematicamente a valori prossimi a zero (il GA disattiva di fatto la condizione), la condizione va eliminata da Cap.8 e demandata a Parte V come scelta meta-cromosoma. Revisione puntuale.
