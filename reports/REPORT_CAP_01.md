@@ -60,3 +60,36 @@ Nessuna. Q-01, Q-02, Q-03, Q-04 tutte chiuse dal supervisore.
 1. Se in fase di valutazione OOS della prima campagna il movimento strutturale calcolato secondo la nuova definizione produce un target di confronto sistematicamente irraggiungibile (es. nessun bundle frozen riesce a catturare il 70% in più del 10% delle sessioni di test), si torna alla calibrazione della soglia 70% con il supervisore.
 2. Se in Parte V vengono congelati parametri NSGA-II diversi da 128/150/B=2000, Cap.4 di questa Parte I va aggiornato — l'aggiornamento è puntuale, non richiede riscrittura.
 3. Se $b_{min} = 5$ punti produce in training un eccesso di cromosomi con banda al minimo che non superano l'executable rate, il valore va rivisto in Parte V con il supervisore.
+
+---
+
+## Iterazione 2 — Chiarificazione semantica retrospettiva (post-PASS Review v4)
+
+**Origine**: chiarificazione esplicita del supervisore durante la lavorazione di CAP-02 Parte II, in risposta a due nodi metodologici emersi nel ciclo Development → Review v1 → Review v2 di CAP-02:
+1. Il cap di validità di 2 giorni di trading decorre dall'esecuzione (raw touch), non dall'emissione del segnale.
+2. Le "guardie di esecuzione al raw touch" sono state ristrutturate come "condizioni di emissione del segnale" (pre-emissione, non post). Una volta emesso, il raw touch è sempre eseguibile. La guardia di spread è stata eliminata in quanto non addestrabile sullo storico FIB 1-min Portara/CQG (lo spread richiederebbe storico di book non disponibile).
+
+**Modifiche apportate a CAP-01**:
+
+| Riga | Cosa cambia | Motivazione |
+|------|-------------|-------------|
+| 13 (Cap.1) | "Il limite massimo di estensione della validità del segnale è fissato a 2 giorni di trading dall'emissione" → "...del segnale eseguito è fissato a 2 giorni di trading decorrenti dall'esecuzione, intesa come il raw touch della entry zone". Aggiunta della menzione del timer pre-esecuzione (mix punti×tempo dipendente dal regime, formalizzato in Parte II Cap.7). | La validità di 2gg si applica al segnale eseguito (post-trigger), non al segnale in attesa di trigger. Il caso "segnale emesso e mai eseguito" è governato da un timer distinto pre-esecuzione. |
+| 77 (Cap.5) | "executable rate, frazione di segnali emessi che raggiungono il raw touch... superando le guardie di esecuzione" → "...che raggiungono il raw touch... entro il timer di attesa pre-esecuzione (il raw touch è sempre eseguibile...; le condizioni di mercato... sono valutate dal motore prima dell'emissione, non dopo)". | Coerenza con la nuova architettura di Parte II v2: il raw touch è sempre eseguibile, le condizioni di emissione sono pre-emissione, non filtri post-trigger. |
+
+**Perché non è una rottura del PASS Review v4**: il PASS riguardava la coerenza interna di CAP-01 sotto la lettura più ampia "validità del segnale" e "guardie di esecuzione" come concetto generico. La nuova lettura è un raffinamento semantico, non una contraddizione: nessun valore numerico, nessuna struttura argomentativa di CAP-01 viene invalidata; viene aggiunta precisione operativa che CAP-01 non aveva motivo di esplicitare prima della formalizzazione di Parte II. Il filtro 80pt, il vincolo $b \in [5, 40]$, il vincolo $d_{stop} > b$, le metriche DSR/PBO/CVaR, il compute budget, la sessione 8:00-22:00 CET — tutti restano invariati.
+
+**Modalità di esecuzione**: la patch è eseguita direttamente da Development senza nuovo passaggio in Review, su autorizzazione esplicita del supervisore. La motivazione è che la modifica recepisce decisioni del supervisore già prese (cap 2gg post-trigger, raw touch sempre eseguibile, spread eliminata), non introduce contenuto interpretativo nuovo da auditare.
+
+**Misura prima/dopo**:
+
+| Metrica | Prima dell'Iterazione 2 | Dopo l'Iterazione 2 | Delta |
+|---------|-------------------------|----------------------|-------|
+| Decorrenza cap 2gg | dall'emissione (riga 13) | dall'esecuzione/raw touch | semantica corretta del cap di validità post-trigger |
+| Trattamento segnale in attesa di raw touch | non distinto, assorbito nel cap 2gg | timer dedicato pre-esecuzione (mix punti×tempo, parametro libero del cromosoma) | nuova leva GA esplicitata, coerente con tema "se il segnale non si aggiorna è un problema" |
+| Definizione executable_rate | basata sulle "guardie di esecuzione" | basata sul raw touch sempre eseguibile entro timer pre-esecuzione | coerenza con architettura Parte II v2 |
+| Numero parametri liberi del cromosoma per filtri di mercato | 4 implicite (guardie) | 3 (volatilità EGARCH, liquidità volume, distanza target_1 in $\sigma$-units) — spread eliminata in quanto non addestrabile | riduzione spazio di ricerca, addestrabilità garantita |
+
+**Criterio di rollback per l'Iterazione 2**:
+
+4. Se in Parte V emerge che il timer pre-esecuzione produce in training un tasso di `pretrigger_timeout` superiore al 60% dei segnali emessi (segnali quasi sempre stantii prima del touch), va rivisto il dominio del parametro o la sua dipendenza dal regime, non l'architettura del cap 2gg post-trigger.
+5. Se la patch di riga 77 (executable_rate) genera ambiguità nelle metriche OOS, va aggiornata di nuovo coordinandosi con il calcolo concreto delle metriche in Parte V. La patch attuale è coerente con la struttura del lifecycle dichiarata in Parte II v2.
