@@ -101,3 +101,37 @@ Dopo ogni task completato crea reports/REPORT_CAP_XX.md con questa struttura:
 
 #### Criterio di rollback
 [condizione esplicita che giustifica tornare alla versione precedente]
+
+## Loop Development ↔ Review — protocollo obbligatorio
+
+Il completamento di un task non è "ho prodotto i file e fatto commit".
+Il completamento di un task è "Review ha emesso verdetto PASS e Planner ha approvato il passaggio al task successivo".
+
+### Sequenza forzata
+1. Development produce l'output del task (capitolo o codice) e crea il REPORT_CAP_XX.md.
+2. Development scrive "TASK PRONTO PER REVIEW" e si ferma. Non apre task nuovi.
+3. Il Planner umano porta l'output al Review Agent.
+4. Review effettua audit ostile e produce reviews/CAP_XX_review.md con verdetto PASS / CONDITIONAL / FAIL.
+5. Se Review emette FAIL o CONDITIONAL:
+   - Il Planner riassegna il task a Development con i finding di Review allegati
+   - Development legge i finding in reviews/CAP_XX_review.md
+   - Development corregge tutti i problemi bloccanti e non bloccanti
+   - Development aggiorna il REPORT_CAP_XX.md aggiungendo una sezione "## Iterazione N — risposta ai finding di Review" con: cosa è stato modificato per ogni finding, misura prima/dopo, eventuali finding contestati con motivazione tecnica
+   - Development scrive di nuovo "TASK PRONTO PER REVIEW"
+6. Review effettua un SECONDO audit ostile sulla versione corretta. Può emettere nuovi finding non visti al primo giro. Il loop si ripete fino a verdetto PASS.
+7. Solo quando Review emette PASS, il Planner approva il passaggio al task successivo.
+8. Development non parte mai con un task nuovo finché il task precedente non ha ricevuto PASS e approvazione esplicita del Planner.
+
+### Regola di terminazione del loop
+Se Review e Development entrano in disaccordo dopo 3 iterazioni sullo stesso punto, il Planner interviene come arbitro. Né Development né Review possono decidere unilateralmente di chiudere il loop.
+
+### File coinvolti nel loop
+- tasks/ACTIVE_TASK.md: contiene il task corrente e, in caso di iterazione, una sezione "## Finding di Review da risolvere" copiata dal file di review
+- reviews/CAP_XX_review.md: ogni iterazione produce un nuovo blocco in append, non sovrascrive il precedente
+- reports/REPORT_CAP_XX.md: ogni iterazione aggiunge una sezione "Iterazione N — risposta ai finding"
+
+### Cosa Development NON fa mai
+- Non emette autonomamente verdetto sul proprio lavoro
+- Non chiude il task perché "ha sistemato tutto"
+- Non discute con Review nel commit message — le contestazioni vanno nel REPORT_CAP_XX.md, nella sezione apposita
+- Non salta il loop perché "sono cose minori"
