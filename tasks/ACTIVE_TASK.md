@@ -1,215 +1,153 @@
-# TASK ATTIVO: CAP-02 — Parte II del documento metodologico v2 (rework v3)
+# TASK ATTIVO: CAP-03 — Parte III del documento metodologico v2 (Layer quantitativo single-instrument)
 
-**Assegnato da**: Planner (Orchestratore)
-**Output atteso**: `docs/methodology_v2/CAP_02_parte_II.md` (versione v3)
-**Stato**: IN CORSO — rework v3 dopo decisione supervisore Q-05 (Opzione D raffinata) e finding aperti di Review v2
+**Assegnato da**: Planner
+**Output atteso**: `docs/methodology_v2/CAP_03_parte_III.md`
+**Stato**: IN ATTESA
 
 ## Obiettivo
 
-Scrivere la Parte II del documento metodologico v2: **Contratto del segnale FIB**. Questa parte risponde a: cosa è esattamente un segnale, in quali stati può trovarsi nel suo ciclo di vita, sotto quali condizioni viene emesso dal motore, come viene pubblicato all'operatore, come viene loggato per essere riprodotto deterministicamente in backtest e in review, e come viene tracciato il position lifecycle post-target_1 fuori scope dal motore ma in scope per il reporting.
+Scrivere la Parte III del documento metodologico v2: **Layer quantitativo single-instrument**. Questa parte risponde a: come si definiscono i rendimenti sul FIB a barre 1-min, quale modello di volatilita' condizionata alimenta le condizioni di emissione del segnale (Cap.8 di Parte II), come si classifica il regime intraday calmo/turbolento che condiziona il comportamento del GA, e quali feature il GA puo' usare per costruire le zone e calibrare i target senza violare la causalita' temporale.
 
-Non contiene la matematica del modello (volatilità EGARCH, survival, GA) → Parti III-V. Non contiene parametri numerici congelati → Parte V. Contiene il **contratto** che il motore deve onorare, che il GA ottimizza, e la **submacchina di tracking** che alimenta il reporting di calibrazione.
+Non contiene la geometria delle zone (Parte IV), ne' il cromosoma o la fitness (Parte V). Contiene i **blocchi quantitativi elementari** — rendimento, volatilita', regime, feature — che le Parti successive consumano come input. L'impatto diretto sul GA e': (1) il modello EGARCH alimenta la condizione di emissione $\tau_{vol}$ e la condizione di distanza $\tau_{dist}^{\sigma}$ (Cap.8 Parte II); (2) la classificazione del regime determina quali fold del walk-forward sono "calmo" e quali "turbolento", condizionando la metrica di stabilita' cross-regime della fitness; (3) le feature causali sono gli input al modello di survival (Parte IV) e al cromosoma (Parte V).
 
-La versione v3 incorpora la decisione del supervisore Q-05 (Opzione D raffinata: contratto del segnale separato dal position lifecycle) e chiude tutti i finding aperti della Review v2.
+## Eredita' obbligatoria da CAP-01 e CAP-02
 
-## Eredità obbligatoria da CAP-01
+### Da CAP-01 (Q-01..Q-04 chiuse)
 
-Tutte le decisioni del supervisore prese in CAP-01 (Q-01..Q-04 chiuse) + raffinamenti dell'Iterazione 2 di CAP-01 entrano come vincoli rigidi:
+1. **Sessione operativa**: 8:00-22:00 CET, finestra unica e continua. Ogni definizione di rendimento, volatilita', regime deve usare questa finestra come perimetro temporale (Q-01).
+2. **Storico**: FIB continuo 1-min, Portara/CQG, profondita' minima 5 anni. 1.050.000 osservazioni utili (250 gg x 840 min) — Cap.4 Parte I.
+3. **Movimento strutturale**: somma moduli swing fra pivot, ancorato al primo min/max post-apertura dalle 8:00 CET (Q-02). L'algoritmo di pivot detection e' materia di Cap.15 di questa Parte III.
+4. **Parametri GA provvisori**: 128/150/B=2000, congelati in Parte V (Q-03).
+5. **Tick FIB = 5 punti**: prezzi multipli di 5 in ogni formula e esempio.
 
-1. **Sessione operativa**: 8:00-22:00 CET, finestra unica e continua di negoziazione FIB (Q-01).
-2. **Banda di ingresso**: parametro libero del cromosoma con dominio discreto $b \in \{5, 10, 15, 20, 25, 30, 35, 40\}$ punti FIB (multipli di tick), $b_{min} = 5$ provvisorio.
-3. **Vincolo geometrico**: $d_{stop} > b$ obbligatorio; cromosomi che lo violano sono non validi.
-4. **Target**: target_1 e target_2 entrambi obbligatori, ancorati a livelli strutturali. **target_2 resta nel payload come informazione strutturale pubblicata** (decisione supervisore Q-05, Clausola 2).
-5. **Cap validità post-esecuzione**: $\leq 2$ giorni di trading **decorrenti dal raw touch** (non dall'emissione) — patch CAP-01 Iterazione 2 (commit `fc7531b`). Il GA può ottimizzare il timing di chiusura entro questo tetto.
-6. **Movimento strutturale**: definito dalla somma dei moduli degli swing tra pivot strutturali; ancoraggio al primo min/max identificato dopo l'apertura della sessione (Q-02).
-7. **Filtro emissione**: $\geq 80$ punti FIB su target_1, o rettangolo trade_range $\geq 80$ punti.
-8. **No execution**: il motore emette segnali, non ordini. Punto 1 dichiarazione di intenti.
-9. **Tick size FIB = 5 punti**: tutti i prezzi sono multipli di 5; la banda di ingresso è insieme discreto di livelli; ogni formula e ogni esempio deve rispettare la discretizzazione.
-10. **`executable_rate` ridefinita** (patch CAP-01 Iterazione 2): frazione di segnali emessi che raggiungono il raw touch entro il timer di attesa pre-esecuzione. Il raw touch è sempre eseguibile; le condizioni di mercato sono valutate prima dell'emissione, non come filtri post-trigger.
+### Da CAP-02 (Q-05 chiusa)
 
-Eredità Q-05 (decisione supervisore 2026-05-23, B-3 Review v2):
+6. **Condizione di volatilita' (Cap.8)**: $r_{1m}(t_{emission}) \leq \tau_{vol}(\hat{\sigma}(t_{emission}))$. Il modello EGARCH deve produrre $\hat{\sigma}(t)$ a frequenza 1-min con le proprieta' richieste da questa condizione. La Parte III definisce il modello; la soglia $\tau_{vol}$ e' parametro libero del cromosoma congelato in Parte V.
+7. **Condizione di distanza in sigma-units (Cap.8)**: $|\texttt{target\_1} - p_{ref}| / \hat{\sigma}(t_{emission}) \geq \tau_{dist}^{\sigma}$. Il $\hat{\sigma}$ usato e' quello prodotto dall'EGARCH di questa Parte III.
+8. **M-1 di CAP-01 / NB-3 di Review v1 CAP-02**: la regola di pivot detection deve produrre il primo candidato di sessione entro $N_{pivot}$ barre dall'apertura. $N_{pivot}$ e' valore provvisorio da congeleare in Parte V con misura empirica sullo storico. La Parte III definisce l'algoritmo; il vincolo quantitativo e' rinviato.
+9. **Determinismo bit-exact (Cap.10 Parte II)**: ogni modello (EGARCH, regime, feature) deve essere deterministico e riproducibile dato lo stesso storico e lo stesso seed. Nessuna componente stocastica non seedata.
+10. **Regola di fill virtuale**: Cap.7.3 di Parte II rinvia a Parte III la specifica della regola deterministica di fill virtuale per il backtest (N-6 di Review v1 CAP-02). La Parte III deve fissare questa regola nel capitolo pertinente (Cap.12 o Cap.15).
+11. **Position lifecycle (Cap.11 Parte II)**: la submacchina del position lifecycle calcola MFE e MAE post-target_1. Le definizioni di rendimento di Cap.12 devono essere coerenti con le grandezze consumate dalla submacchina.
 
-11. **State machine del segnale**: 1 non-terminale (`active`) + **6 terminali** (`target_1_hit`, `stopped`, `invalidated`, `missed_target`, `expired`, `revoked`). `target_2_hit` RIMOSSO dagli stati del segnale.
-12. **Separazione segnale vs position lifecycle**: il contratto del segnale è oggetto del motore (ottimizzato dal GA); il position lifecycle è oggetto del reporting (alimenta validazione GA fold-by-fold). I due lifecycle sono distinti per costruzione, in coerenza con baseline hard-locked Cap. 21.1 e 22.6.
+### M-promemoria censiti dalle Review precedenti
 
-Ogni capitolo deve citare l'eredità pertinente, non duplicare la motivazione.
+| M-ID | Origine | Contenuto | Pertinenza CAP-03 |
+|------|---------|-----------|-------------------|
+| M-1 | Review v3 CAP-01 | Primo pivot post-apertura: regola di pivot detection e latenza massima $N_{pivot}$ | **SI'** — Cap.15 (feature engineering causale). L'algoritmo di pivot detection va definito qui. Il vincolo $N_{pivot}$ come valore provvisorio va dichiarato, congelamento in Parte V. |
+| M-2 | Review v1 CAP-02 | Verifica empirica latenza Telegram ($L_{max}=30$s) | NO — carryover Appendice E |
+| M-4 | Review v4 CAP-01 | Tasso di rimpiazzo NSGA-II che giustifica baseline 12.800-25.600 min | NO — carryover Parte V (Cap.23) |
+| N-1 | Review v1 CAP-02 | Asimmetria tracking `stopped` vs `target_*_hit` (MFE post-stop) | NO — carryover Parte V (Cap.24 fitness) |
+| N-2 | Review v1 CAP-02 | Netto non registrato nel log di chiusura — cambio modello commissioni | NO — carryover Parte VII |
+| N-3 | Review v1 CAP-02 | `executable_rate` nomenclatura post-eliminazione guardie | NO — carryover Parte V/VI |
+| N-4 | Review v2 CAP-02 | Log chiusura: $\Delta t$ pre-trigger non esplicitato come campo | NO — carryover Parte V |
+| N-5 | Review v2 CAP-02 | Condizione volatilita' $\leq$ filtra solo coda alta (no coda bassa) | **SI'** — Cap.13 (EGARCH). Va almeno dichiarato se il modello produce informazione anche sulla coda bassa e se la Parte V puo' introdurre un floor. |
+| N-6 | Review v2 CAP-02 | Regola fill virtuale rinviata a Parte III | **SI'** — Cap.12 o Cap.15. Va fissata la regola deterministica. |
+| N-7 | Review v3 CAP-02 | CAP-01 riga 75 "guardie di esecuzione" residuo | **CHIUSO** — patch Iterazione 3 di CAP-01 applicata in questo ciclo. |
+| N-8 | Review v3 CAP-02 | CAP-01 Cap.5 "target 2 hit rate" semantica cambiata dopo Q-05 | **CHIUSO** — patch Iterazione 3 di CAP-01 applicata in questo ciclo. |
+| M-4 | Review v3 CAP-02 | Residuo patch CAP-01 riga 75 | **CHIUSO** — patch Iterazione 3 di CAP-01 applicata in questo ciclo. |
 
-## Capitoli da produrre (~11-12 pagine totali in italiano formale)
+## Capitoli da produrre (~8 pagine totali in italiano formale)
 
-### Capitolo 6 — Schema del segnale e invarianti (~2 pp)
-Definizione formale del payload del segnale come tupla strutturata, sul reticolo discreto del tick FIB:
-- `signal_id`: identificatore univoco
-- `timestamp_emission`: istante di emissione (precisione minuto)
-- `direction`: long | short
-- `entry_zone`: insieme discreto $\{p_{ref}-b, p_{ref}-b+5, \ldots, p_{ref}+b\}$ con $b \in \{5, ..., 40\}$
-- `target_1`, `target_2`: prezzi strutturali multipli di 5 (long: $\texttt{target\_1} > p_{ref}$, $\texttt{target\_2} > \texttt{target\_1}$; short simmetrico)
-- `stop_loss`: prezzo strutturale multiplo di 5, $d_{stop} > b$
-- `setup_class`: directional | trade_range
-- $\Delta t_{cromosoma}$ post-trigger: intero in minuti di trading nel dominio $\{1, \ldots, 1680\}$
+### Capitolo 12 — Definizioni di rendimento e scala temporale (~1.5 pp)
 
-**Nota esplicita obbligatoria** (decisione Q-05 Clausola 2): "target_2 è informazione strutturale pubblicata, non variabile di lifecycle del segnale; il suo eventuale raggiungimento è evento del position lifecycle, fuori scope dal motore (vedi Cap.11)".
+Definire formalmente:
+- Rendimento logaritmico 1-min: $r_t = \ln(p_t / p_{t-1})$ dove $p_t$ e' il prezzo di chiusura della barra 1-min $t$.
+- Chiarire il trattamento del primo rendimento della sessione ($t=1$ delle 8:00 CET): base di calcolo = close della barra precedente (21:59 del giorno precedente per sessioni consecutive; handling gap overnight/weekend).
+- Aggregazione a scale temporali superiori (5-min, 15-min, 60-min) per le feature di Cap.15: metodo additivo dei log-return. Specificare se le barre aggregate sono prodotte da sampling dei close ogni $k$ barre o da OHLC compositi.
+- Trattamento del gap di sessione: la prima barra 1-min delle 8:00 puo' contenere un gap rispetto al close delle 22:00 del giorno precedente. Dichiarare come il rendimento della prima barra viene trattato nel modello EGARCH (incluso nella serie? escluso e sostituito? winsorizzato?).
+- **Regola deterministica di fill virtuale per il backtest** (carryover N-6 di Review v2 CAP-02): quando il raw touch avviene su una barra 1-min il cui intervallo high-low contiene piu' livelli della entry zone, specificare a quale prezzo il fill virtuale viene assegnato. Regola proposta: fill al livello discreto della zona piu' sfavorevole per l'operatore (bordo superiore per long, bordo inferiore per short — worst-case conservativo). Questa regola e' deterministica e coerente con il vincolo di replay bit-exact di Cap.10. Motivazione: evita di gonfiare le performance in backtest con fill favorevoli non garantiti dall'OHLC.
 
-Due regole strutturali del contratto:
+Vincolo: tutte le definizioni devono rispettare il tick FIB = 5 punti dove applicabile (prezzi strutturali, zone, target).
 
-**Payload immutabile** — una volta emesso, il `signal_id` non subisce modifiche al payload.
+### Capitolo 13 — Modello di volatilita' condizionata (~2.5 pp)
 
-**Sostituzione e segnale unico attivo** — quando il motore valuta che le condizioni di mercato richiedono di rivedere il segnale, emette un nuovo `signal_id`; il segnale precedente viene revocato. A ogni istante $|\mathcal{A}(t)| \leq 1$, coerente col vincolo "1 contratto alla volta" (punto 7 dichiarazione) e con la revisione continua del segnale (punto 6).
+Specificare il modello EGARCH(1,1) single-instrument sul FIB 1-min:
+- Equazione della media: $r_t = \mu + \epsilon_t$, con $\epsilon_t = \sigma_t z_t$, $z_t \sim D(0,1)$.
+- Equazione della varianza: $\ln(\sigma_t^2) = \omega + \alpha (|z_{t-1}| - E[|z_{t-1}|]) + \gamma z_{t-1} + \beta \ln(\sigma_{t-1}^2)$.
+- Scelta della distribuzione $D$: Student-$t$ o GED. Non fissare la scelta definitiva: dichiarare che la distribuzione e' selezionata in Parte V via AIC/BIC sulla finestra di calibrazione.
+- Calibrazione: metodo MLE, finestra di calibrazione rolling o expanding. Specificare che la lunghezza della finestra di calibrazione e' parametro del modello, non del cromosoma (il GA non la ottimizza). Valore di lavoro provvisorio: 1 anno rolling di barre 1-min (~210.000 osservazioni). Congelamento in Parte V.
+- Diagnostica obbligatoria dei residui standardizzati $z_t = \epsilon_t / \sigma_t$: test di Ljung-Box su $z_t^2$, QQ-plot, ACF dei quadrati. Criterio di accettazione: p-value Ljung-Box > 0.05 su lag 10 e 20 dei quadrati. Rinvio a Parte V per la procedura di accettazione formale nel walk-forward.
+- Output del modello: $\hat{\sigma}_t$ a frequenza 1-min, consumato da Cap.8 Parte II (condizione di volatilita' e condizione di distanza in sigma-units) e da Cap.14 (regime) e Cap.15 (feature).
+- Trattamento del gap di sessione nella ricorsione EGARCH: come si inizializza $\sigma_t$ alla prima barra delle 8:00? Due opzioni da dichiarare (ripresa dal valore delle 22:00 vs re-inizializzazione a varianza incondizionata). Scelta definitiva rinviata a Parte V con evidenza empirica.
+- **Osservazione N-5** (coda bassa della volatilita'): il modello EGARCH produce $\hat{\sigma}_t$ sia per valori anomalmente alti che anomalmente bassi. Dichiarare esplicitamente che la Parte V puo' introdurre un floor sulla condizione di emissione ($r_{1m} \geq \tau_{vol,low}$) se la misura empirica mostra che barre a range eccessivamente basso precedono sistematicamente eventi avversi. La Parte III non fissa questa soglia ma produce l'informazione necessaria.
 
-### Capitolo 7 — Stati del segnale e state machine (~2 pp)
+### Capitolo 14 — Stato di regime intraday (~2 pp)
 
-Stato unico non-terminale: `active`.
+Classificazione binaria del regime di mercato nella sessione corrente:
+- Due stati: **calmo** e **turbolento**. La classificazione e' deterministica e calcolata in tempo reale (no look-ahead).
+- Input: $\hat{\sigma}_t$ dall'EGARCH di Cap.13, eventualmente integrato con volume e/o range delle barre recenti.
+- Metodo: soglia derivata da quantili rolling della distribuzione di $\hat{\sigma}_t$ su una finestra storica. Specificare: quale quantile (es. mediana, 75esimo, 90esimo), quale finestra rolling (es. 20 sessioni), e come si gestisce il warm-up all'inizio dello storico.
+- **Persistenza minima**: il regime non cambia a ogni barra 1-min; una volta dichiarato (calmo o turbolento), persiste per almeno $T_{persist}$ barre prima di poter transire allo stato opposto. $T_{persist}$ e' parametro del modello (non del cromosoma), valore di lavoro provvisorio da congeleare in Parte V.
+- Impatto sul GA: il regime determina (a) quale valore di $\tau_{vol}$ la condizione di emissione di Cap.8 confronta con $r_{1m}$ (la soglia puo' dipendere dal regime via il cromosoma); (b) la suddivisione dei fold del walk-forward in "fold calmo" e "fold turbolento" per la metrica di stabilita' cross-regime della fitness (Parte V, Cap.24); (c) la condizionalita' delle metriche di lifecycle di Cap.5 Parte I ("target hit rate ed executable rate stabili e comparabili fra regime calmo e turbolento").
+- Dichiarare esplicitamente che la classificazione non e' una feature del cromosoma ma uno stato del contesto: il cromosoma puo' avere parametri condizionali al regime (es. $\tau_{vol,calmo}$ e $\tau_{vol,turbolento}$), ma la classificazione stessa non e' ottimizzabile dal GA. Questo evita che il GA manipoli la definizione di regime per gonfiare le metriche.
 
-Stati terminali (6, decisione Q-05 Clausola 1):
-- `target_1_hit`: dopo il raw touch della entry zone, il prezzo ha raggiunto target_1. Stato terminale di successo del segnale. **Il contratto del segnale si chiude qui**: il post-target_1 è oggetto del position lifecycle (Cap.11), non transizione di stato del segnale.
-- `stopped`: dopo il raw touch, il prezzo ha raggiunto stop_loss prima di target_1.
-- `invalidated`: prima del raw touch, condizione di invalidazione strutturale (Parte IV, Cap.15); fra cui esplicitamente $p(t) \leq \texttt{stop\_loss}$ per long, simmetrico per short.
-- `missed_target`: prima del raw touch, il prezzo ha raggiunto target_1. Metrica riferita esplicitamente a target_1 (chiusura Q-03 di CAP-01).
-- `expired`: scaduto il timer post-trigger (2gg trading dal raw touch) oppure scaduto il timer pre-trigger di attesa (se introdotto come stato terminale dedicato — vedi finding NB-7 da risolvere sotto).
-- `revoked`: superseduto dall'emissione di un nuovo `signal_id`.
+### Capitolo 15 — Feature engineering causale (~2 pp)
 
-**Trigger di esecuzione come evento, non come stato.** Al raw touch della entry zone, il motore produce un evento `trigger_event` notificato all'operatore. Questo evento non è uno stato del segnale: il segnale resta `active` finché un evento successivo non lo porta in uno stato terminale. **Il raw touch è sempre eseguibile**: non esistono guardie o filtri post-emissione che blocchino il trigger. Le condizioni di mercato sono valutate prima dell'emissione (Cap.8), non al raw touch.
-
-**Nota esplicita obbligatoria** (decisione Q-05 Clausola 1): "Il raggiungimento eventuale di target_2 dopo target_1 NON è una transizione di stato del segnale ma un evento del position lifecycle (Cap.11). Il segnale termina definitivamente in `target_1_hit`".
-
-Timer post-trigger: 2 giorni di trading **dal raw touch** (eredità CAP-01 Iterazione 2). Granularità: intero in minuti di trading, dominio $\{1, \ldots, 1680\}$. Esempio numerico per emissione vicino alla chiusura di sessione: counter in minuti di trading che scavalca interruzioni notturne e weekend.
-
-Inclusione di **M-1** (carryover CAP-01): identificazione real-time del primo pivot strutturale post-apertura va trattata a livello di interfaccia (cosa il motore osserva, con che cadenza). L'algoritmo di pivot detection è rinviato a Parte III (Cap 14). Il vincolo metodologico: la regola di pivot detection di Parte III non deve produrre primo candidato con latenza tale da rendere inattiva la finestra iniziale 8:00-22:00. Quantificazione di $N_{pivot}$ (massimo barre dall'apertura per il primo candidato) rinviata a Parte V con misura empirica sullo storico.
-
-### Capitolo 8 — Condizioni di emissione del segnale (~2 pp)
-
-Le tre condizioni di emissione applicate dal motore **prima** dell'emissione del segnale (no filtri post-trigger):
-
-1. **Condizione di volatilità**: range della barra 1-min $r_{1m}(t_{emission}) \leq \tau_{vol}(\hat{\sigma}(t_{emission}))$, con $\tau_{vol}$ funzione di soglia parametrizzata dal cromosoma, alimentata dal modello EGARCH di Parte III.
-2. **Condizione di liquidità**: volume del minuto $v_{1m}(t_{emission}) \geq \tau_{liq}$, con $\tau_{liq}$ parametro libero del cromosoma.
-3. **Condizione di distanza strutturale dal target_1 in unità di volatilità** (decisione supervisore NB-10 Review v2, opzione β):
-
-$$\frac{|\texttt{target\_1} - p_{ref}|}{\hat{\sigma}(t_{emission})} \geq \tau_{dist}^{\sigma}$$
-
-con $\tau_{dist}^{\sigma}$ parametro libero del cromosoma (numero puro, sigma-units). Il filtro 80pt CAP-01 resta come vincolo assoluto a valle: per setup directional $|\texttt{target\_1} - p_{ref}| \geq 80$ pt; per setup trade_range $|\texttt{target\_1} - \texttt{stop\_loss}| \geq 80$ pt. Il GA può richiedere distanze maggiori in sigma-units se la volatilità è alta; il filtro 80pt non è allentabile dal cromosoma.
-
-L'emissione avviene se e solo se le tre condizioni sono simultaneamente soddisfatte. Soglie congelate in Parte V. Modello di volatilità in Parte III. Le condizioni si applicano uniformemente in tutta la sessione 8:00-22:00 CET, senza fasi speciali (chiarimento supervisore M-3 di Review v4 di CAP-01: ritirata, FIB negozia in modo continuo).
-
-**Spread bid-ask ELIMINATO come condizione**: lo storico Portara/CQG FIB 1-min non contiene book/spread; una condizione su spread non sarebbe addestrabile dal GA senza acquisti aggiuntivi di dati esplicitamente esclusi in CAP-01.
-
-### Capitolo 9 — Politica di pubblicazione su Telegram (~2 pp)
-Formato concreto del messaggio Telegram leggibile in mobilità:
-- struttura del messaggio (campi obbligatori e ordine: signal_id, direction, setup_class, entry_zone, target_1, target_2, stop_loss, timestamp_emission)
-- latenza massima ammissibile dall'emissione interna alla ricezione sul cellulare ($L_{max} = 30$ s provvisorio, congelato in Parte V)
-- politica anti-duplicato: un `signal_id` viene pubblicato una sola volta
-- politica per nuovo segnale: emesso come messaggio separato con nuovo `signal_id`, NON come modifica/edit del messaggio precedente (coerente con immutabilità Cap.6)
-- notifica `trigger_event` al raw touch come messaggio separato (no edit), riferito al `signal_id`
-- gestione errori di pubblicazione (timeout API Telegram, retry policy con $n_{retry}=3$ provvisorio)
-
-Schema esatto delle stringhe del messaggio rinviato all'Appendice E.
-
-### Capitolo 10 — Replay e riproducibilità del lifecycle (~2 pp)
-Definizione del formato dei log per ricostruire deterministicamente il lifecycle:
-- log di emissione (snapshot completo del payload + snapshot delle 3 condizioni di emissione + feature al momento dell'emissione + esito pubblicazione Telegram)
-- log delle transizioni di stato della state machine del segnale (timestamp, stato precedente, stato nuovo, prezzo trigger, causa strutturata; il `trigger_event` registrato come evento associato non come transizione)
-- log di chiusura del segnale (stato terminale + statistiche aggregate: rendimento lordo per segnali eseguiti, MAE, MFE post-trigger, durata totale e post-trigger in minuti di trading)
-
-Requisito di determinismo formale: $\forall H, \forall B: \texttt{replay}(H, B) = \texttt{replay}(H, B)$ bit-exact. Seed di qualunque componente casuale è parte del bundle congelato.
-
-### Capitolo 11 — Position lifecycle e tracking out-of-scope dal motore (~1-2 pp) **[NUOVO, decisione Q-05 Clausola 3]**
-
-Definizione della submacchina di tracking del position lifecycle, **distinta dal lifecycle del segnale**, che gira in parallelo al replay del segnale e traccia gli eventi post-target_1 come oggetto di reporting per la validazione del GA.
-
-**Vincoli architetturali obbligatori**:
-
-- **OUT-OF-SCOPE dal motore**: execution policy, scaling-out automatico, trailing stop, dynamic sizing, qualsiasi decisione operativa post-target_1. La gestione della posizione oltre target_1 è dell'operatore manuale (punto 8 della dichiarazione di intenti).
-- **IN-SCOPE per reporting e validazione**: la submacchina produce metriche che alimentano i report fold-by-fold del walk-forward in Parte V/Cap.23:
-  - hit-rate condizionale di target_2 dato target_1 ($\pi_{t_2 \mid t_1}$)
-  - distribuzioni di MFE (maximum favourable excursion) e MAE (maximum adverse excursion) post-target_1
-  - eventi di stop dopo target_1 (retracement che riporta il prezzo a stop_loss)
-  - distribuzione dei tempi di permanenza fra target_1 e evento terminale del position lifecycle
-- **Indipendenza dal segnale**: la submacchina NON modifica lo stato del segnale; il segnale è terminato in `target_1_hit` prima ancora che la submacchina inizi a tracciare. Le metriche prodotte sono input al GA come obiettivi/vincoli di Parte V, non come variabili decisionali nel cromosoma.
-
-**Citazioni testuali obbligatorie del baseline hard-locked**:
-- Cap. 21.1 di `docs/reference/ENGINE_ALGO_INTEGRATO_HARD_LOCKED.pdf` (lifecycle della posizione vs lifecycle del contratto di segnale come sottosistemi distinti)
-- Cap. 22.6 di `docs/reference/ENGINE_ALGO_INTEGRATO_HARD_LOCKED.pdf` (submacchina della posizione come boundary esplicito)
-
-**Stati della submacchina position lifecycle** (proposta, da formalizzare in dettaglio):
-- evento di ingresso: il segnale ha raggiunto `target_1_hit`
-- stati interni di tracking (eventi registrati nel log della submacchina): `target_2_reached`, `stop_after_target_1`, `retracement_to_breakeven`, `position_close_event`
-- stato terminale: chiusura della posizione (manuale dell'operatore in real-time; convenzione di simulazione in backtest)
-
-**Impatto sul GA**: la submacchina alimenta metriche di calibrazione che entrano nella fitness multi-obiettivo del GA come obiettivi di qualità informativa del livello target_2 e di robustezza strutturale del setup. Lo space search del cromosoma NON viene esteso: nessuna policy decisionale post-target_1 entra nel cromosoma.
-
-## Finding di Review v2 da risolvere (carryover obbligatorio)
-
-Oltre alla decisione Q-05 (B-3), il rework v3 deve chiudere i seguenti finding ancora aperti dalla Review v2 di Parte II v2 (commit `c4d41bf`, file `reviews/CAP_02_review.md`):
-
-- **NB-7 — Timer pre-trigger di attesa al raw touch**: il segnale può restare in `active` indefinitamente senza raw touch. Sotto decisione Q-05, dopo target_1_hit il segnale termina, ma il problema della fase di attesa pre-trigger resta. Soluzione approvata: timer dedicato $T_{touch}^{max}$ come parametro libero del cromosoma, espresso in minuti di trading, dominio $\{5, 6, \ldots, 480\}$ (cardinalità 476, floor 5 min, tetto 8h trading). Dipendenza funzionale dal regime e dalla distanza prezzo corrente ↔ $p_{ref}$ rinviata a Parte III/IV. Allo scadere del timer senza raw touch, il segnale transita in stato terminale `expired` (assorbimento nel terminale esistente, no nuovo stato — coerente con il vincolo 6 terminali della decisione Q-05). La distinzione fra "expired per timer pre-trigger" e "expired per timer post-trigger" viene registrata nel log delle transizioni come campo causale, non come stato dedicato.
-
-- **NB-8 — Edge case raw touch su barra di emissione o gap di apertura**: la Parte II v3 deve trattare esplicitamente almeno tre casi: (a) la barra 1-min di emissione contiene già un prezzo che cade dentro l'`entry_zone` (raw touch immediato al momento dell'emissione?); (b) il prezzo apre con gap alla riapertura della sessione successiva con valore già dentro o oltre la zona; (c) il prezzo apre con gap che salta completamente la zona (es. long con zona $[40990, 41010]$ e apertura a 40970, sotto la zona). Per ciascun caso il documento deve specificare il comportamento della state machine (raw touch riconosciuto? convenzione del prezzo di trigger?).
-
-- **NB-9 — Transizione `target_1_hit → revoked` mancante**: sotto decisione Q-05 (target_1_hit veramente terminale), questo finding si **chiude da solo**: nessuna transizione esce da target_1_hit, quindi non c'è bisogno di una transizione verso revoked. Il documento deve solo esplicitarlo per evitare ambiguità.
-
-- **NB-10 — $\tau_{dist}$ in sigma-units (opzione β confermata)**: vedi Cap.8 sopra.
+Definire il set di feature che il modello consuma come input, con il vincolo fondamentale di causalita' temporale (no look-ahead):
+- **Vincolo di causalita'**: ogni feature $x_t$ usata per una decisione al tempo $t$ (emissione, valutazione del cromosoma, classificazione del regime) deve essere calcolata esclusivamente con informazione disponibile a $t-1$ o precedenti. La barra 1-min $t$ contribuisce a $x_t$ solo dopo la sua chiusura. Formalizzare il vincolo come $x_t \in \mathcal{F}_{t-1}$ dove $\mathcal{F}_{t-1}$ e' la filtrazione fino alla chiusura della barra $t-1$.
+- **Categorie di feature**:
+  - Feature di prezzo: rendimenti a varie scale (1-min, 5-min, 15-min, 60-min — da Cap.12), momentum, mean-reversion.
+  - Feature di volume: volume cumulato nella sessione, rapporto volume corrente / volume medio storico per lo stesso minuto della sessione.
+  - Feature di volatilita': $\hat{\sigma}_t$ dall'EGARCH, realized volatility su finestre rolling di $k$ barre, rapporto $\hat{\sigma}_t / \bar{\sigma}$ (volatilita' corrente vs media storica).
+  - Feature di struttura: distanza dal pivot strutturale piu' recente, numero di pivot identificati nella sessione corrente, posizione del prezzo rispetto alla zona di entry del segnale attivo (se presente).
+- **Algoritmo di pivot detection** (carryover M-1): definire la regola operativa per identificare i pivot strutturali intraday. L'algoritmo deve essere deterministico e causale. Specificare: criterio di conferma del pivot (es. retracement minimo di $\delta_{pivot}$ punti dopo l'estremo), latenza di conferma in barre. Dichiarare il vincolo $N_{pivot}$: la regola deve produrre il primo candidato di sessione entro $N_{pivot}$ barre dall'apertura delle 8:00. Valore di lavoro provvisorio $N_{pivot}$ da misurare empiricamente sullo storico e congeleare in Parte V. Il Planner registra che un valore provvisorio ragionevole potrebbe essere $N_{pivot} = 30$ (mezz'ora dall'apertura, proposta della Review v1 CAP-02 NB-3), ma il documento non lo deve fissare come definitivo: dichiara il parametro e rinvia.
+- **Normalizzazione robusta**: ogni feature deve essere normalizzata per essere consumabile dal modello di survival (Parte IV) e dal cromosoma (Parte V). Metodo: z-score rolling con mediana e MAD (median absolute deviation) su finestra storica (non media/deviazione standard, per robustezza a outlier). Lunghezza finestra rolling: parametro del modello, valore di lavoro provvisorio da congeleare in Parte V.
+- **Dimensionalita' e selezione**: dichiarare il numero massimo di feature candidate. Non selezionare le feature in questa sede: la selezione e' materia del cromosoma (Parte V) o del wrapper di validazione (Parte VII). La Parte III definisce il catalogo delle feature ammissibili, non il sottoinsieme usato.
 
 ## Acceptance criteria — tutti devono essere soddisfatti per PASS in Review
 
-- [ ] I 6 capitoli (Cap 6-10 + Cap 11) sono presenti, completi, nell'ordine corretto
-- [ ] Tutte le 12 eredità (8 di CAP-01 + 4 raffinamenti Iterazione 2 e Q-05) sono citate esplicitamente almeno una volta nei capitoli pertinenti
-- [ ] Cap 6: il payload è specificato come tupla con tutti i campi e i loro vincoli, incluso target_2 obbligatorio
-- [ ] Cap 6: nota esplicita "target_2 è informazione strutturale pubblicata, non variabile di lifecycle del segnale; il suo eventuale raggiungimento è evento del position lifecycle"
-- [ ] Cap 6: entry_zone definita come insieme discreto sul reticolo del tick FIB (multipli di 5), banda $b \in \{5, 10, 15, 20, 25, 30, 35, 40\}$
-- [ ] Cap 6: payload immutabile e regola di sostituzione (revoca + nuovo signal_id, segnale unico attivo) dichiarate esplicitamente
-- [ ] **Cap 7: state machine ha 1 solo stato non-terminale (`active`) e 6 stati terminali: `target_1_hit`, `stopped`, `invalidated`, `missed_target`, `expired`, `revoked`. target_2_hit RIMOSSO.**
-- [ ] Cap 7: transizioni esplicite (tabella) con condizioni di trigger per ciascuna
-- [ ] Cap 7: nota esplicita "il raggiungimento eventuale di target_2 dopo target_1 NON è una transizione di stato del segnale ma un evento del position lifecycle"
-- [ ] Cap 7: `invalidated` esplicita il sotto-caso "stop_loss attraversato pre-touch" (B-1 Review v1)
-- [ ] Cap 7: `trigger_event` dichiarato come evento, raw touch sempre eseguibile, nessun filtro post-emissione
-- [ ] Cap 7: timer post-trigger 2gg trading decorrente dal raw touch, $\Delta t_{cromosoma}$ intero in minuti dominio $\{1, \ldots, 1680\}$, esempio caso emissione 21:55
-- [ ] Cap 7: timer pre-trigger $T_{touch}^{max}$ con dominio $\{5, \ldots, 480\}$ minuti di trading, scadenza assorbita in `expired` con causa "pretrigger_timeout" nel log (NB-7)
-- [ ] Cap 7: edge case raw touch trattati (barra di emissione, gap di apertura inside zone, gap oltre zona) (NB-8)
-- [ ] Cap 7: M-1 trattato a livello di interfaccia con rinvio a Parte V per $N_{pivot}$
-- [ ] Cap 8: 3 condizioni di emissione pre-emissione (volatilità, liquidità, distanza target_1 in sigma-units), spread eliminata con motivazione esplicita (no storico book)
-- [ ] Cap 8: $\tau_{dist}^{\sigma}$ come sigma-units, filtro 80pt CAP-01 come vincolo assoluto a valle (NB-10)
-- [ ] Cap 8: rinvio a Parte V per soglie congelate, a Parte III per modello volatilità
-- [ ] Cap 8: nessuna assunzione di fasi speciali nella sessione 8:00-22:00 (M-3 ritirato)
-- [ ] Cap 9: politica anti-duplicato e "nuovo messaggio per nuovo signal_id" coerenti con immutabilità Cap 6 (mai edit del messaggio precedente)
-- [ ] Cap 9: notifica `trigger_event` come messaggio separato
-- [ ] Cap 10: log di emissione include snapshot delle 3 condizioni di emissione (non più 4 guardie)
-- [ ] Cap 10: log delle transizioni registra $t_{exec}$ del raw touch come riferimento del timer post-trigger
-- [ ] Cap 10: requisito di determinismo bit-exact dichiarato come vincolo formale
-- [ ] **Cap 11 (nuovo): definisce la submacchina position lifecycle come oggetto distinto dal lifecycle del segnale**
-- [ ] **Cap 11: dichiarazione esplicita di OUT-OF-SCOPE dal motore (execution policy, scaling-out, trailing stop, dynamic sizing)**
-- [ ] **Cap 11: dichiarazione esplicita di IN-SCOPE per reporting (metriche $\pi_{t_2 \mid t_1}$, MFE, MAE, eventi post-target_1)**
-- [ ] **Cap 11: la submacchina NON modifica lo stato del segnale (separazione formale)**
-- [ ] **Cap 11: citazioni testuali del baseline hard-locked Cap. 21.1 e 22.6 (`docs/reference/ENGINE_ALGO_INTEGRATO_HARD_LOCKED.pdf`)**
-- [ ] **Cap 11: dichiarazione che lo space search del cromosoma del GA NON viene esteso (nessuna policy decisionale post-target_1 nel cromosoma)**
-- [ ] Registro tecnico italiano formale (no linguaggio divulgativo)
-- [ ] Formule e notazione in LaTeX inline e display dove serve
-- [ ] Niente moltiplicazioni misleading o numeri inventati; valori provvisori dichiarati come tali con rinvio a Parte V
-- [ ] Tick FIB = 5pt rispettato in ogni esempio numerico (prezzi e bande multipli di 5)
-- [ ] Coerenza con CAP-01 v2 (post-patch Iterazione 2 commit `fc7531b`): cap 2gg dal raw touch, executable_rate ridefinita
-- [ ] Il REPORT_CAP_02.md include una sezione "Iterazione 3 — risposta ai finding di Review v2 + decisione supervisore Q-05" con misura prima/dopo
+- [ ] I 4 capitoli (Cap 12-15) sono presenti, completi, nell'ordine corretto
+- [ ] Tutte le 11 eredita' (5 di CAP-01 + 6 di CAP-02) sono citate esplicitamente almeno una volta nei capitoli pertinenti
+- [ ] Cap 12: rendimento log 1-min definito formalmente con $r_t = \ln(p_t / p_{t-1})$
+- [ ] Cap 12: trattamento esplicito del gap di sessione (prima barra 8:00 vs close 22:00 giorno precedente)
+- [ ] Cap 12: aggregazione a scale temporali superiori con metodo dichiarato
+- [ ] Cap 12: regola deterministica di fill virtuale per il backtest fissata (carryover N-6), coerente con replay bit-exact di Cap.10 Parte II
+- [ ] Cap 13: equazioni EGARCH(1,1) complete (media + varianza log) con notazione
+- [ ] Cap 13: distribuzione $D$ dichiarata come scelta aperta (Student-$t$ o GED) con criterio AIC/BIC rinviato a Parte V
+- [ ] Cap 13: calibrazione MLE con finestra rolling, lunghezza come parametro del modello (non del cromosoma), valore di lavoro provvisorio dichiarato
+- [ ] Cap 13: diagnostica residui standardizzati con Ljung-Box su $z_t^2$, criterio di accettazione esplicito
+- [ ] Cap 13: output $\hat{\sigma}_t$ a frequenza 1-min, consumatori dichiarati (Cap.8 Parte II, Cap.14, Cap.15)
+- [ ] Cap 13: trattamento inizializzazione $\sigma_t$ alla prima barra della sessione dichiarato come scelta aperta con rinvio a Parte V
+- [ ] Cap 13: osservazione N-5 (coda bassa volatilita') trattata esplicitamente — la Parte V puo' introdurre un floor
+- [ ] Cap 14: classificazione binaria calmo/turbolento deterministica, no look-ahead
+- [ ] Cap 14: metodo basato su quantili rolling di $\hat{\sigma}_t$, finestra e quantile come parametri del modello
+- [ ] Cap 14: persistenza minima $T_{persist}$ dichiarata come parametro del modello con valore di lavoro provvisorio
+- [ ] Cap 14: impatto sul GA dichiarato (condizionalita' di $\tau_{vol}$, suddivisione fold walk-forward, stabilita' cross-regime)
+- [ ] Cap 14: la classificazione del regime non e' feature ottimizzabile dal GA — dichiarato esplicitamente
+- [ ] Cap 15: vincolo di causalita' temporale formalizzato ($x_t \in \mathcal{F}_{t-1}$)
+- [ ] Cap 15: categorie di feature elencate (prezzo, volume, volatilita', struttura) con almeno un esempio per categoria
+- [ ] Cap 15: algoritmo di pivot detection definito (criterio di conferma, latenza, determinismo, causalita') — carryover M-1
+- [ ] Cap 15: vincolo $N_{pivot}$ dichiarato come parametro provvisorio con rinvio a Parte V per misura empirica
+- [ ] Cap 15: normalizzazione robusta con z-score rolling (mediana + MAD), lunghezza finestra come parametro del modello
+- [ ] Cap 15: numero massimo di feature candidate dichiarato; selezione rinviata a Parte V/VII
+- [ ] Tick FIB = 5pt rispettato in ogni esempio numerico dove applicabile
+- [ ] Determinismo: ogni modello e regola e' deterministico e riproducibile (coerenza Cap.10 Parte II)
+- [ ] Nessun parametro fissato definitivamente: tutti i valori numerici sono provvisori e rinviati a Parte V
+- [ ] Registro tecnico italiano formale, formule in LaTeX inline e display
+- [ ] Il REPORT_CAP_03.md include la sezione "Misura prima/dopo" con impatto sul comportamento del GA
 
-## Out-of-scope — Development NON include queste cose in CAP-02
+## Out-of-scope — Development NON include queste cose in CAP-03
 
-- Formule EGARCH, modello survival, feature engineering causale → Parti III-IV
-- Operatori GA, fitness multi-obiettivo, walk-forward → Parte V (incluso $\pi_{t_2 \mid t_1}$ come funzione obiettivo nella fitness)
-- Algoritmo concreto di pivot detection → Parte III (Cap 14); quantificazione $N_{pivot}$ → Parte V con misura empirica
-- Setup tecnico API Directa, Telegram, Portara → Appendici C-E
-- Parametri numerici congelati delle soglie e dei timer → Parte V
-- **Execution policy della posizione post-target_1** (decisione Q-05 Clausola 3): scaling-out automatico, trailing stop, dynamic sizing, take profit anticipato, qualsiasi gestione attiva → la posizione post-target_1 è gestita manualmente dall'operatore (punto 8 dichiarazione di intenti). Il Cap 11 definisce solo il tracking per reporting, non la policy di gestione.
-- Modello di first passage time per la dipendenza di $T_{touch}^{max}$ da regime e distanza → Parte III/IV
-- Forma funzionale di $\tau_{vol}(\hat{\sigma})$ → Parte III, Cap.12
+- **Geometria delle zone di entry, target strutturali, stop strutturali** → Parte IV (Cap.16-18). La Parte III definisce le feature che alimentano la geometria, non la geometria stessa.
+- **Modello di survival** → Parte IV (Cap.19). La Parte III produce $\hat{\sigma}_t$ e le feature che il survival consuma.
+- **Cromosoma, operatori GA, fitness multi-obiettivo** → Parte V. I parametri del modello EGARCH e della classificazione del regime sono parametri del modello, non del cromosoma.
+- **Soglie congelate** ($\tau_{vol}$, $\tau_{dist}^{\sigma}$, $T_{persist}$, lunghezza finestra calibrazione, $N_{pivot}$, etc.) → Parte V. La Parte III dichiara i parametri e i loro domini, non li congela.
+- **Walk-forward, DSR, PBO** → Parti V e VII.
+- **Selezione delle feature** (quale sottoinsieme usare) → Parte V (cromosoma) o Parte VII (wrapper di validazione).
+- **Tasso di rimpiazzo NSGA-II** (M-4) → Parte V.
+- **Verifica empirica latenza Telegram** (M-2) → Appendice E.
+- **Position lifecycle tracking concreto** (Cap.11 Parte II) → le definizioni di rendimento di Cap.12 devono essere coerenti con la submacchina ma non la definiscono.
 
 ## Done when
 
-Il documento risponde senza ambiguità a queste domande:
-1. Cosa contiene esattamente un segnale emesso dal motore? (Cap 6)
-2. Quali stati può attraversare il segnale e con quali transizioni? (Cap 7, 6 terminali)
-3. Sotto quali condizioni il motore decide di emettere un segnale? (Cap 8, 3 condizioni pre-emissione)
-4. Come arriva il segnale al cellulare dell'operatore? (Cap 9)
-5. Come si ricostruisce deterministicamente il lifecycle del segnale? (Cap 10)
-6. Come si traccia il position lifecycle post-target_1 senza che il motore lo gestisca? (Cap 11)
-7. Perché target_2 è informazione strutturale del payload ma non variabile di lifecycle del segnale? (Cap 6 + Cap 11)
+Il documento risponde senza ambiguita' a queste domande:
+1. Come si calcola il rendimento del FIB a barre 1-min, e come si gestisce il gap di sessione nella serie? (Cap 12)
+2. Come si stima la volatilita' condizionata $\hat{\sigma}_t$ del FIB a frequenza 1-min, e quali sono le proprieta' diagnostiche richieste? (Cap 13)
+3. In che stato di regime (calmo/turbolento) si trova il mercato FIB in un dato minuto della sessione, e come la classificazione impatta il GA? (Cap 14)
+4. Quali feature il GA puo' consumare, e come si garantisce che nessuna feature violi la causalita' temporale? (Cap 15)
+5. Come si identifica il primo pivot strutturale della sessione, e qual e' la latenza massima accettabile? (Cap 15)
+6. A quale prezzo il backtest registra il fill virtuale quando la barra 1-min attraversa piu' livelli della zona? (Cap 12)
 
 ## Pipeline attesa
 
-Development v3 → Review v3 audit ostile con classificazione GA → punto di controllo supervisore se CONDITIONAL/FAIL → fix → ... → PASS.
-
-Promemoria operativo per Development: la decisione Q-05 implementa l'Opzione D raffinata del baseline hard-locked. Il Cap 11 è capitolo NUOVO che non esisteva in Parte II v1/v2; va scritto ex-novo con citazioni testuali del baseline Cap. 21.1 e 22.6. Non improvvisare: le citazioni vanno verificate sul PDF di riferimento.
+Development v1 → Review v1 audit ostile con classificazione GA → punto di controllo supervisore se CONDITIONAL/FAIL → fix → ... → PASS
