@@ -140,3 +140,27 @@ Simmetrica per pivot low.
 **M-promemoria per Parte V**: implementare la classificazione di regime in parallelo con media e mediana, e il test di stabilità del punto C-7.3.
 
 **Stato**: chiusa. Esecuzione in `ACTIVE_TASK.md` aggiornato per CAP-03 rework v4.
+
+---
+
+## M-5 — Benchmark window EGARCH per Parte V (da Q-06 / C-4.3) — CARRYOVER
+
+**Origine**: Q-06 / C-4.3 (decisione supervisore 2026-05-24, rework v4 CAP-03).
+
+**Contenuto**: in Parte V, implementare il benchmark comparativo rolling vs expanding vs EWMA del modello EGARCH su dati FIB 1-min OOS, con test Inoue-Rossi (2011) "Out-of-sample forecast model evaluation and selection", *Review of Economic Studies*. Criterio di rollback automatico: se rolling $W = 210.000$ non domina almeno una alternativa su metrica OOS congelata (log-likelihood OOS, Brier sulla calibrazione $\sigma^2$, MSE), il parametro $W$ va ricalibrato o la finestra rolling scartata a favore della finestra dominante.
+
+**Pertinenza**: Cap. di window selection del walk-forward in Parte V (probabilmente Cap.25 secondo l'indice attuale).
+
+**Stato**: aperto, carryover per Parte V.
+
+---
+
+## M-6 — Classificazione regime media vs mediana per Parte V (da Q-09 / C-7.3) — CARRYOVER
+
+**Origine**: Q-09 / C-7.3 (decisione supervisore 2026-05-24, rework v4 CAP-03).
+
+**Contenuto**: in Parte V, implementare la classificazione di regime in parallelo con media e mediana di $\hat{\sigma}_t$ sulla sessione. Se la classificazione cambia significativamente fra media e mediana su una frazione rilevante di sessioni OOS (soglia da definire in Parte V), va investigato come segnale di sessioni con picchi anomali di volatilità; protocollo di gestione da specificare in Parte V (es. scartare le sessioni anomale dal training, flaggarle nel report).
+
+**Pertinenza**: Cap. di gestione regimi nel walk-forward in Parte V (Cap.25 o Cap.26 secondo l'indice attuale).
+
+**Stato**: aperto, carryover per Parte V.

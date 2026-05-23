@@ -202,3 +202,29 @@ Nessuna. Tutti i punti del task sono stati indirizzati con materiale interno all
 7. Se la state machine ridotta a 6 terminali (senza `target_2_hit`) si rivela insufficiente in Parte V perché il GA non riesce a calcolare `target_2_hit_rate` come metrica fold-by-fold senza uno stato dedicato nel segnale, si rivaluta l'opzione di registrare `target_2_reached` come campo del log di chiusura `target_1_hit` (campo booleano `target_2_reached_after_t1`). Questa revisione è puntuale su Cap.10.4 e non richiede nuovi stati nella state machine.
 8. Se il dominio $\{5, \ldots, 480\}$ minuti di $T_{touch}^{max}$ si rivela subottimale (troppo stretto o troppo largo) sulla base delle distribuzioni empiriche dei tempi di primo tocco sullo storico FIB, il dominio va ricalibrato in Parte V. La revisione è puntuale su Cap.6.1 e Cap.7.5, senza impatto sull'architettura del contratto.
 9. Se le citazioni del baseline (Cap. 21.1 e 22.6) vengono aggiornate in una versione successiva del documento `ENGINE_ALGO_INTEGRATO_HARD_LOCKED.pdf`, le citazioni di Cap.11.1 devono essere ricontrollate e aggiornate contestualmente. Il riferimento al file e alle sezioni è tracciato esplicitamente.
+
+---
+
+## Iterazione 4 — mini-patch Cap.8.2 cross-ref Cap.13
+
+**Origine**: NB-3 di Review v1 CAP-03 ha identificato due errori in Cap.8.2 Parte II: (a) il riferimento "Parte III Cap.12" era errato (il modello EGARCH e in Cap.13, non Cap.12); (b) le formule delle condizioni di emissione usavano sigma_hat in unita di log-return anziche sigma_hat_pt in punti FIB, rendendo il rapporto non adimensionale.
+
+### Modifiche applicate
+
+| Posizione | Prima | Dopo |
+|-----------|-------|------|
+| Cap.8.2, formula condizione volatilita, testo esplicativo | "...sigma_hat(t_emission) e la stima di volatilita... (Parte III, Cap.12)..." | "...sigma_hat_pt(t_emission) e la stima di volatilita convertita in punti FIB secondo sigma_hat_pt = sigma_hat * p_t (Parte III, Cap.13)..." |
+| Cap.8.2, formula condizione distanza, numeratore e denominatore | "|target_1 - p_ref| / sigma_hat(t_emission)" | "|target_1 - p_ref| / sigma_hat_pt(t_emission)" |
+| Cap.8.2, formula condizione distanza, testo esplicativo | "...sigma_hat(t_emission) e la stima... (Parte III, Cap.12)..." | "...sigma_hat_pt(t_emission) e la stima convertita in punti FIB... (Parte III, Cap.13)..." |
+| Cap.8.3, riga finale | "...formule del modello di volatilita che alimentano sigma_hat sono in Parte III, Cap.12" | "...formule del modello di volatilita che alimentano sigma_hat_pt e la conversione in punti FIB sono in Parte III, Cap.13" |
+
+### Misura prima/dopo
+
+| Metrica | Prima | Dopo | Delta |
+|---------|-------|------|-------|
+| Cross-ref corretto (Cap.12 vs Cap.13) | Errato (Cap.12) | Corretto (Cap.13) | Bug di riferimento chiuso |
+| Rapporto in condizione distanza adimensionale | No (sigma in log-return vs target in punti) | Si (sigma_pt in punti FIB vs target in punti) | Implementabilita univoca garantita |
+
+### Criterio di rollback
+Non applicabile: la correzione e fattuale (il modello EGARCH e effettivamente in Cap.13, non Cap.12) e la conversione sigma_hat_pt e richiesta per la coerenza dimensionale. Non vi e ambiguita metodologica.
+

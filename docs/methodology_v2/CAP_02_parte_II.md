@@ -188,7 +188,7 @@ Le condizioni di emissione qui formalizzate sono pertanto calcolabili dal motore
 
 $$r_{1m}(t_{emission}) \leq \tau_{vol}\big(\hat{\sigma}(t_{emission})\big)$$
 
-dove $\hat{\sigma}(t_{emission})$ è la stima di volatilità condizionata fornita dal modello EGARCH al tempo dell'emissione (Parte III, Cap.12) e $\tau_{vol}(\cdot)$ è una funzione di soglia parametrizzata dal cromosoma del GA. Il senso operativo della condizione è impedire al motore di emettere segnali in barre di volatilità anomala, in cui il prezzo strutturale di riferimento è instabile e il payload del segnale rischia di essere immediatamente superseduto dalla regola di sostituzione. La forma esplicita di $\tau_{vol}$ è in Parte III.
+dove $\hat{\sigma}_{\text{pt}}(t_{emission})$ è la stima di volatilità condizionata fornita dal modello EGARCH al tempo dell'emissione, **convertita in punti FIB** secondo la definizione $\hat{\sigma}_{\text{pt}}(t) = \hat{\sigma}(t) \cdot p_t$ (Parte III, Cap.13), e $\tau_{vol}(\cdot)$ è una funzione di soglia parametrizzata dal cromosoma del GA. Il senso operativo della condizione è impedire al motore di emettere segnali in barre di volatilità anomala, in cui il prezzo strutturale di riferimento è instabile e il payload del segnale rischia di essere immediatamente superseduto dalla regola di sostituzione. La forma esplicita di $\tau_{vol}$ è in Parte III.
 
 **Condizione di liquidità.** Il volume della barra 1-min al momento della valutazione di emissione deve essere superiore o uguale a una soglia $\tau_{liq}$. Sia $v_{1m}(t)$ il volume contrattato sulla barra 1-min al tempo $t$. La condizione è soddisfatta se
 
@@ -198,9 +198,9 @@ Il senso operativo della condizione è impedire al motore di emettere segnali qu
 
 **Condizione di distanza strutturale in sigma-units (NB-10, opzione $\beta$ confermata).** La distanza fra il prezzo strutturale di riferimento del segnale candidato e il target_1 strutturale, espressa in sigma-units rispetto alla volatilità condizionata corrente, deve essere superiore o uguale a una soglia $\tau_{dist}^{\sigma}$. La condizione è
 
-$$\frac{|\texttt{target\_1} - p_{ref}|}{\hat{\sigma}(t_{emission})} \geq \tau_{dist}^{\sigma}$$
+$$\frac{|\texttt{target\_1} - p_{ref}|}{\hat{\sigma}_{\text{pt}}(t_{emission})} \geq \tau_{dist}^{\sigma}$$
 
-dove $\hat{\sigma}(t_{emission})$ è la stima di volatilità condizionata fornita dal modello EGARCH (Parte III, Cap.12) e $\tau_{dist}^{\sigma}$ è un numero puro (sigma-units), parametro libero del cromosoma del GA. Il senso operativo della condizione è il seguente: distanze in punti FIB assoluti non sono confrontabili tra regimi di volatilità diversi — 80 punti sono una distanza moderata in regime turbolento, molto ampia in regime calmo. Esprimere la condizione in sigma-units consente al GA di tarare la distanza minima coerentemente con il regime in corso. La soglia $\tau_{dist}^{\sigma}$ ha dominio strettamente positivo e nessun floor inferiore assoluto in unità di sigma: il GA è libero di ottimizzarla nell'intero intervallo positivo, congelato in Parte V.
+dove $\hat{\sigma}_{\text{pt}}(t_{emission})$ è la stima di volatilità condizionata fornita dal modello EGARCH, **convertita in punti FIB** secondo $\hat{\sigma}_{\text{pt}}(t) = \hat{\sigma}(t) \cdot p_t$ (Parte III, Cap.13), e $\tau_{dist}^{\sigma}$ è un numero puro (sigma-units FIB), parametro libero del cromosoma del GA. Il senso operativo della condizione è il seguente: distanze in punti FIB assoluti non sono confrontabili tra regimi di volatilità diversi — 80 punti sono una distanza moderata in regime turbolento, molto ampia in regime calmo. Esprimere la condizione in sigma-units consente al GA di tarare la distanza minima coerentemente con il regime in corso. La soglia $\tau_{dist}^{\sigma}$ ha dominio strettamente positivo e nessun floor inferiore assoluto in unità di sigma: il GA è libero di ottimizzarla nell'intero intervallo positivo, congelato in Parte V.
 
 Il filtro 80 punti CAP-01 resta come vincolo assoluto a valle e non è sostituito dalla condizione in sigma-units: per setup directional $|\texttt{target\_1} - p_{ref}| \geq 80$ pt; per setup trade_range $|\texttt{target\_1} - \texttt{stop\_loss}| \geq 80$ pt. L'emissione richiede il soddisfacimento simultaneo di entrambi: la condizione in sigma-units come leva ottimizzabile del GA, il filtro 80pt come vincolo assoluto non allentabile. In regime di alta volatilità ($\hat{\sigma}$ elevato) il GA può richiedere distanze maggiori in sigma-units pur rispettando il floor di 80 pt in punti assoluti; in regime di bassa volatilità, i due vincoli possono coincidere o la condizione sigma-units può essere quella più stringente. In nessun caso il cromosoma può allentare il floor di 80 pt.
 
@@ -214,7 +214,7 @@ $$E_{vol}(t_{emission}) \land E_{liq}(t_{emission}) \land E_{dist}^{\sigma}(t_{e
 
 Se almeno una delle condizioni non è soddisfatta, il segnale candidato non viene emesso: nessun `signal_id` viene generato, nessuna pubblicazione Telegram avviene, nessun log di emissione viene scritto. Il motore continua a valutare le condizioni alle barre 1-min successive.
 
-Le soglie $\tau_{vol}(\cdot)$, $\tau_{liq}$, $\tau_{dist}^{\sigma}$ sono parametri liberi del cromosoma del GA, ottimizzati dal motore genetico e congelati in Parte V. Le formule del modello di volatilità che alimentano $\hat{\sigma}$ sono in Parte III, Cap.12.
+Le soglie $\tau_{vol}(\cdot)$, $\tau_{liq}$, $\tau_{dist}^{\sigma}$ sono parametri liberi del cromosoma del GA, ottimizzati dal motore genetico e congelati in Parte V. Le formule del modello di volatilità che alimentano $\hat{\sigma}_{\text{pt}}$ e la conversione in punti FIB sono in Parte III, Cap.13.
 
 ### 8.4 Assenza di filtri post-emissione e di fasi speciali nella sessione 8:00-22:00 CET
 

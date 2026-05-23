@@ -95,19 +95,33 @@ I parametri del modello sono $(\mu, \omega, \alpha, \gamma, \beta)$:
 
 Il termine $\mathbb{E}[|z_{t-1}|]$ dipende dalla distribuzione $D$ scelta (descritto in Cap.13.2). L'equazione della varianza è formulata in forma logaritmica: ciò garantisce $\sigma_t^2 > 0$ per qualsiasi valore dei parametri, eliminando i vincoli di non-negatività presenti nel GARCH standard.
 
-La stima di volatilità prodotta dal modello è $\hat{\sigma}_t$ — la radice quadrata della varianza condizionata $\hat{\sigma}_t^2 = \exp(\widehat{\ln(\sigma_t^2)})$, espressa nelle stesse unità del rendimento log e disponibile a frequenza 1-min. Questa grandezza è il **principale output del Cap.13** e viene consumata da:
+La stima di volatilità prodotta dal modello è $\hat{\sigma}_t$ — la radice quadrata della varianza condizionata $\hat{\sigma}_t^2 = \exp(\widehat{\ln(\sigma_t^2)})$, espressa nelle stesse unità del rendimento logaritmico (adimensionale, ordine $10^{-4}$) e disponibile a frequenza 1-min.
 
-1. **Cap.8 Parte II — condizione di volatilità**: $r_{1m}(t_{emission}) \leq \tau_{vol}(\hat{\sigma}(t_{emission}))$, dove la soglia $\tau_{vol}$ è funzione parametrica di $\hat{\sigma}(t)$ ottimizzata dal cromosoma.
-2. **Cap.8 Parte II — condizione di distanza in sigma-units**: $|\texttt{target\_1} - p_{ref}| / \hat{\sigma}(t_{emission}) \geq \tau_{dist}^{\sigma}$, dove il denominatore è la stima corrente del modello EGARCH.
-3. **Cap.14** — classificazione del regime intraday: il confronto di $\hat{\sigma}_t$ con il suo quantile rolling determina lo stato calmo/turbolento.
-4. **Cap.15** — feature engineering: $\hat{\sigma}_t$ entra come feature di volatilità e come denominatore per normalizzazioni di grandezze in sigma-units.
+**Conversione in punti FIB.** Poiché le condizioni di emissione di Cap.8 della Parte II operano su grandezze espresse in punti FIB (range della barra $r_{1m}(t)$ in punti, distanza $|\texttt{target\_1} - p_{ref}|$ in punti), la stima EGARCH deve essere convertita nelle stesse unità prima di essere usata come denominatore o come argomento della funzione di soglia. La conversione è:
+
+$$\hat{\sigma}_{\text{pt}}(t) = \hat{\sigma}(t) \cdot p_t$$
+
+dove $\hat{\sigma}(t)$ è la stima EGARCH in unità di log-return e $p_t$ è il prezzo corrente del FIB espresso in punti indice (multiplo di 5, per il tick size dello strumento). La grandezza $\hat{\sigma}_{\text{pt}}(t)$ è espressa in punti FIB e ha ordine di grandezza comparabile con le distanze strutturali tipiche del FIB (10–100 punti). Questa conversione rende adimensionali i rapporti $r_{1m}(t)/\hat{\sigma}_{\text{pt}}(t)$ e $|\texttt{target\_1} - p_{ref}|/\hat{\sigma}_{\text{pt}}(t)$ — entrambi numeri puri espressi in unità di sigma FIB.
+
+**Nota**: nei capitoli successivi la notazione $\hat{\sigma}(t)$ indica la stima EGARCH in log-return, mentre $\hat{\sigma}_{\text{pt}}(t)$ indica la stima convertita in punti FIB. Le condizioni di emissione usano sempre $\hat{\sigma}_{\text{pt}}(t)$.
+
+Questa grandezza è il **principale output del Cap.13** e viene consumata da:
+
+1. **Cap.8 Parte II — condizione di volatilità**: $r_{1m}(t_{emission}) \leq \tau_{vol}(\hat{\sigma}_{\text{pt}}(t_{emission}))$, dove la soglia $\tau_{vol}$ è funzione parametrica di $\hat{\sigma}_{\text{pt}}(t)$ ottimizzata dal cromosoma, con argomento e soglia entrambi in punti FIB.
+2. **Cap.8 Parte II — condizione di distanza in sigma-units**: $|\texttt{target\_1} - p_{ref}| / \hat{\sigma}_{\text{pt}}(t_{emission}) \geq \tau_{dist}^{\sigma}$, dove il denominatore è la stima EGARCH in punti FIB — il rapporto risultante è un numero puro (sigma-units FIB).
+3. **Cap.14** — classificazione del regime intraday: il confronto di $\hat{\sigma}_t$ con il suo quantile rolling determina lo stato calmo/turbolento (la classificazione di regime usa $\hat{\sigma}(t)$ o $\hat{\sigma}_{\text{pt}}(t)$ indifferentemente, poiché il prezzo $p_t$ è un fattore di scala positivo costante nel breve periodo).
+4. **Cap.15** — feature engineering: $\hat{\sigma}_t$ entra come feature di volatilità e come denominatore per normalizzazioni di grandezze in sigma-units (con la conversione $\hat{\sigma}_{\text{pt}}$ dove il denominatore è in punti FIB).
 
 ### 13.2 Distribuzione dell'innovazione standardizzata
 
 La distribuzione $D$ dell'innovazione $z_t$ non viene fissata definitivamente in questa sede. Le due candidate sono:
 
 - **Student-$t$ con $\nu$ gradi di libertà** ($\nu > 2$): $z_t \sim t_\nu(0,1)$ standardizzata. Per questa distribuzione $\mathbb{E}[|z|] = 2\sqrt{\nu-2}\,\Gamma\!\left(\frac{\nu+1}{2}\right) / \big[(\nu-1)\Gamma\!\left(\frac{\nu}{2}\right)\sqrt{\pi}\big]$, con $\nu$ stimato congiuntamente agli altri parametri via MLE. La Student-$t$ è la scelta di default provvisoria: produce code più pesanti rispetto alla Normale, coerenti con l'osservazione empirica di eccesso di curtosi nei rendimenti intraday dei futures su indice.
-- **GED (Generalized Error Distribution) con parametro di forma $\kappa$**: $z_t \sim \text{GED}(\kappa)$ standardizzata. Per questa distribuzione $\mathbb{E}[|z|] = 2^{1/\kappa}\Gamma(2/\kappa)/\Gamma(1/\kappa)$. La GED è una candidata alternativa che generalizza la Normale ($\kappa=2$) verso code più pesanti ($\kappa < 2$) o più leggere ($\kappa > 2$).
+- **GED (Generalized Error Distribution) con parametro di forma $\kappa$**: $z_t \sim \text{GED}(\kappa)$ standardizzata. Per una GED standardizzata a varianza unitaria, il fattore di scala è $c = \left[\Gamma(1/\kappa) / \big(2^{2/\kappa}\,\Gamma(3/\kappa)\big)\right]^{1/2}$ e il valore atteso del modulo dell'innovazione è:
+
+  $$\mathbb{E}[|z|] = \frac{c \cdot 2^{1/\kappa}\,\Gamma(2/\kappa)}{\Gamma(1/\kappa)}$$
+
+  Verifica dei casi limite: per $\kappa = 2$ (Normale) si ottiene $\mathbb{E}[|z|] = \sqrt{2/\pi} \approx 0{,}7979$; per $\kappa = 1$ (Laplace) si ottiene $\mathbb{E}[|z|] = 1/\sqrt{2} \approx 0{,}7071$. Entrambi i valori sono coerenti con la letteratura (Nelson 1991; Zhu e Galbraith 2010). La GED è una candidata alternativa che generalizza la Normale ($\kappa=2$) verso code più pesanti ($\kappa < 2$) o più leggere ($\kappa > 2$).
 
 La selezione definitiva tra Student-$t$ e GED avviene in **Parte V** mediante i criteri AIC e BIC calcolati sulla finestra di calibrazione di riferimento. Il criterio AIC premia il fit sul campione, il BIC introduce una penalità più severa per la complessità del modello. Il confronto è tra due modelli con diverso numero di parametri (il grado di libertà $\nu$ per la Student-$t$, il parametro di forma $\kappa$ per la GED); la scelta definitiva è quella che produce il minor AIC/BIC sulla finestra di calibrazione, salva la diagnostica dei residui (Cap.13.4). In ogni capitolo e formula successiva, la notazione $D(0,1)$ si intende come la distribuzione selezionata via AIC/BIC in Parte V.
 
@@ -119,9 +133,13 @@ $$\ell(\theta) = \sum_{t=1}^{T} \ln f_D\!\left(\frac{r_t - \mu}{\sigma_t}; \thet
 
 rispetto al vettore di parametri $\theta = (\mu, \omega, \alpha, \gamma, \beta, \nu\text{ o }\kappa)$, dove $f_D$ è la densità di $D$ valutata sull'innovazione standardizzata $z_t = (r_t - \mu)/\sigma_t$.
 
-**Finestra di calibrazione.** La stima è condotta su una finestra di tipo **rolling** (non expanding): al tempo $t$ il modello è stimato sulla finestra $[t - W + 1, t]$ di $W$ barre 1-min precedenti. La scelta della finestra rolling rispetto all'expanding è motivata dall'obiettivo di adattamento ai regimi di volatilità correnti: una finestra expanding assegnerebbe peso eccessivo a periodi storici lontani, riducendo la reattività del modello ai cambiamenti strutturali del mercato. La lunghezza $W$ della finestra è un **parametro del modello**, non del cromosoma: il GA non ottimizza $W$. Il valore di lavoro provvisorio è $W = 210.000$ barre 1-min, equivalente a circa 1 anno di trading (250 sessioni $\times$ 840 barre), congelato in Parte V sulla base dell'analisi empirica del trade-off tra adattabilità e stabilità della stima.
+**Finestra di calibrazione — divergenza dichiarata dal baseline hard-locked.** Il baseline metodologico di riferimento (`ENGINE_ALGO_INTEGRATO_HARD_LOCKED.pdf`) adotta di default una finestra **expanding** (expanding window) con $T_{roll} = 1500$ barre come punto di partenza. Per la presente applicazione al FIB 1-min si adotta invece una finestra di tipo **rolling** (non expanding), con motivazione esplicita di divergenza.
 
-La ricalibratura avviene a ogni nuova sessione: il modello è ri-stimato all'apertura della sessione (8:00 CET) incorporando le barre della sessione appena conclusa. Non si ricalibra barra per barra durante la sessione corrente: i parametri stimati a inizio sessione restano fissi per l'intera sessione. Questa scelta è motivata dal costo computazionale della MLE su 210.000 osservazioni (non compatibile con la ricalibratura minuto-per-minuto sull'hardware disponibile descritto in CAP-01, Cap.3) e dal fatto che la struttura dei parametri EGARCH non cambia in modo significativo su scala intraday. La ricorrenza è parametro del modello, rinviata a verifica empirica in Parte V.
+La ragione dell'inapplicabilità del baseline al contesto FIB 1-min è duplice: (i) 1500 barre 1-min corrispondono a circa 1,8 giorni di trading — una finestra del tutto insufficiente per stimare in modo stabile un modello EGARCH(1,1) con distribuzione Student-$t$ (5 parametri: $\mu, \omega, \alpha, \gamma, \beta, \nu$), che richiede un campione di almeno alcune centinaia di sessioni per evitare degenerazioni della MLE; (ii) la finestra expanding accumula peso su periodi storici lontani, riducendo la reattività del modello ai cambiamenti strutturali del mercato FIB — problema ben documentato per strumenti ad alta variabilità intraday. A supporto teorico della scelta rolling in presenza di structural breaks parametrici si cita: **Pesaran e Timmermann (2007)** "Selection of estimation window in the presence of breaks", *Journal of Econometrics* 137(1), 134–161, che dimostrano come la finestra rolling domina l'expanding quando la probabilità di breaks parametrici è non trascurabile.
+
+La stima è quindi condotta su una finestra rolling $[t - W + 1, t]$ di $W$ barre 1-min. La lunghezza $W$ della finestra è un **parametro del modello**, non del cromosoma: il GA non ottimizza $W$. Il valore di lavoro provvisorio è $W = 210.000$ barre 1-min, equivalente a circa 1 anno di trading (250 sessioni $\times$ 840 barre), congelato in Parte V sulla base dell'analisi empirica del trade-off tra adattabilità e stabilità della stima. Un M-promemoria per Parte V (M-5) richiede un benchmark comparativo rolling vs expanding vs EWMA con test Inoue-Rossi (2011) e criterio di rollback automatico se rolling $W = 210.000$ non domina almeno un'alternativa su metrica OOS congelata.
+
+**Cadenza di ricalibratura.** La ricalibratura avviene **fold-per-fold del walk-forward** (non giornalmente): all'inizio di ogni fold OOS nella procedura di walk-forward di Parte V, il modello EGARCH viene ri-stimato sulla finestra rolling di $W$ barre precedenti al fold corrente, in coerenza con Cap. 14.3 del baseline hard-locked. Questa cadenza di ricalibratura è motivata dalla coerenza metodologica con la procedura di validazione: ri-stimare il modello a ogni sessione durante il walk-forward introdurrebbe una discrepanza tra la frequenza di ricalibrazione in training e quella usata in OOS. I parametri stimati all'inizio del fold restano fissi per tutta la durata del fold. Questa scelta è anche motivata dal costo computazionale della MLE su 210.000 osservazioni (non compatibile con la ricalibratura minuto-per-minuto sull'hardware disponibile descritto in CAP-01, Cap.3). La ricorrenza fold-per-fold è parametro del modello, rinviata a verifica empirica in Parte V.
 
 **Inizializzazione e seed.** Il seed del generatore pseudo-casuale utilizzato per l'inizializzazione dell'ottimizzatore MLE è parte del bundle di calibrazione (insieme ai parametri stimati $\hat{\theta}$) e viene registrato nel log di calibrazione. Questo garantisce la riproducibilità bit-exact dell'intera stima, in coerenza con il vincolo di determinismo di Cap.10 della Parte II.
 
@@ -179,7 +197,15 @@ La classificazione è **deterministica e calcolata in tempo reale**: il regime a
 
 Il regime è classificato sulla base del confronto tra $\hat{\sigma}_t$ e il suo quantile rolling calcolato su una finestra storica di sessioni passate.
 
-**Definizione formale.** Sia $\hat{\sigma}_{s,\bar{t}}$ la stima di volatilità condizionata dell'ultima barra della sessione $s$ (o, equivalentemente, la media di $\hat{\sigma}_{s,t}$ su un sottocampione di barre della sessione $s$; la scelta esatta è parametro del modello). Sia $Q_p(\hat{\sigma} \mid \mathcal{W}_t)$ il quantile di livello $p$ della distribuzione di $\hat{\sigma}$ calcolata sulla finestra rolling $\mathcal{W}_t$ delle $N_{reg}$ sessioni più recenti precedenti alla sessione corrente. La classificazione è:
+**Statistica di sessione — baseline normativo e benchmark di robustezza.** La statistica riassuntiva di $\hat{\sigma}$ per la sessione $s$, usata come input per la classificazione di regime, è definita come la **media aritmetica** delle stime EGARCH su tutte le barre della sessione:
+
+$$\bar{\sigma}_s = \frac{1}{N_s} \sum_{t \in s} \hat{\sigma}_{s,t} \quad \text{con } N_s = 840$$
+
+dove la somma è estesa a tutte le $N_s = 840$ barre 1-min della sessione operativa 8:00-22:00 CET. Questo è il **baseline normativo** per la classificazione di regime. Il riferimento teorico per l'uso della media come statistica di aggregazione della volatilità di sessione è: **Corsi (2009)** "A Simple Approximate Long-Memory Model of Realized Volatility", *Journal of Financial Econometrics* 7(2), 174–196, che utilizza aggregazioni temporali della volatilità realizzata (componente giornaliera, settimanale, mensile) per costruire il modello HAR-RV.
+
+Come **benchmark di robustezza**, nei report di sessione prodotti dal motore viene riportato in parallelo il valore $\text{med}_t(\hat{\sigma}_{s,t})$ — la mediana delle stime EGARCH sulla sessione. La mediana è meno sensibile a picchi anomali di volatilità (spike intraday) rispetto alla media. Se in validazione OOS la classificazione di regime cambia significativamente fra media e mediana su una frazione rilevante di sessioni, ciò va interpretato come segnale di sessioni con picchi anomali; il trattamento di questo caso è materia di un M-promemoria per Parte V (M-6). La soglia di "cambiamento significativo" è parametro del modello da definire in Parte V.
+
+**Definizione formale.** Sia $\hat{\sigma}_{s,\bar{t}} = \bar{\sigma}_s$ la statistica di sessione calcolata come sopra. Sia $Q_p(\hat{\sigma} \mid \mathcal{W}_t)$ il quantile di livello $p$ della distribuzione di $\hat{\sigma}$ calcolata sulla finestra rolling $\mathcal{W}_t$ delle $N_{reg}$ sessioni più recenti precedenti alla sessione corrente. La classificazione è:
 
 $$R_t = \begin{cases} \text{turbolento} & \text{se } \hat{\sigma}_t > Q_p\!\big(\hat{\sigma} \mid \mathcal{W}_t\big) \\ \text{calmo} & \text{altrimenti} \end{cases}$$
 
@@ -240,7 +266,19 @@ Le feature di prezzo catturano la dinamica recente del rendimento a diverse scal
 - **Rendimento logaritmico 1-min corrente**: $x_t^{(r,1)} = r_{t-1}$ (il log-return della barra appena chiusa, $\in \mathcal{F}_{t-1}$).
 - **Rendimento cumulato su finestra rolling**: $x_t^{(r,k)} = \sum_{j=1}^{k} r_{t-j}$ per $k \in \{5, 15, 60\}$ barre 1-min, equivalente al log-return a scala $k$ della barra composita più recente completamente chiusa.
 - **Momentum logaritmico**: $x_t^{(\text{mom},k)} = \text{sign}\!\left(\sum_{j=1}^{k} r_{t-j}\right) \cdot \left|\sum_{j=1}^{k} r_{t-j}\right|$ — in pratica il rendimento cumulato firmato, per la direzione e la forza del trend recente.
-- **Media mobile esponenziale dei rendimenti**: $x_t^{(\text{ema},\lambda)} = (1-\lambda)\sum_{j=1}^{\infty} \lambda^j r_{t-j}$ con $\lambda$ parametro del modello (valore provvisorio $\lambda = 0{,}94$, congelato in Parte V). L'EMA dei rendimenti cattura il trend smussato.
+- **Media mobile esponenziale dei rendimenti**: la formula corretta della EMA troncata al warm-up è
+
+  $$x_t^{(\text{ema},\lambda)} = (1-\lambda) \sum_{j=0}^{n_t - 1} \lambda^j \, r_{t-j}$$
+
+  dove la sommatoria parte da $j = 0$ (incluso il rendimento della barra più recente $r_{t}$, disponibile in $\mathcal{F}_{t-1}$ in quanto chiusa) e $n_t$ è il numero di barre disponibili dall'inizio del warm-up di sessione. La somma dei pesi è $(1 - \lambda^{n_t})$, che converge a 1 solo asintoticamente per $n_t \to \infty$. Nelle prime barre della sessione, con $n_t$ piccolo, la EMA è normalizzata implicitamente dalla somma dei pesi effettivi.
+
+  Il parametro $\lambda$ è parametro del modello (valore provvisorio $\lambda = 0{,}94$, congelato in Parte V). L'EMA dei rendimenti cattura il trend smussato.
+
+  **Reset cross-session.** La EMA viene resettata all'apertura di ogni sessione (8:00 CET): la sommatoria riparte da $n_t = 1$ alla prima barra utile della nuova sessione, senza trasportare osservazioni della sessione precedente. Questa scelta elimina la contaminazione cross-sessione che si produrrebbe con una somma infinita non interrotta. Le prime $T_{warmup,\text{EMA}}$ barre della sessione sono marcate come `unusable` ed escluse dal training del GA (non entrano nei fold del walk-forward come dati valutabili). Il criterio per $T_{warmup,\text{EMA}}$ è che il peso delle osservazioni pre-warm-up sia inferiore all'1%:
+
+  $$T_{warmup,\text{EMA}} \geq \frac{\ln(0{,}01)}{\ln(\lambda)}$$
+
+  Per $\lambda = 0{,}94$: $T_{warmup,\text{EMA}} \geq \ln(0{,}01)/\ln(0{,}94) \approx 74$ barre (74 minuti di trading). Il valore $T_{warmup,\text{EMA}} = 74$ è il **default operativo provvisorio** congelato in Parte V. Il riferimento metodologico per il reset cross-session in contesti con sessione operativa netta è: **Engle e Sokalska (2012)** "Forecasting intraday volatility in the US equity market. Multiplicative component GARCH", *Journal of Financial Econometrics* 10(1), 54–83, che motivano esplicitamente il reset delle componenti intraday all'apertura di ogni sessione per evitare la contaminazione overnight.
 
 Esempio numerico (tick FIB = 5pt): se $p_{t-1} = 27.500$ e $p_{t-2} = 27.480$, allora $r_{t-1} = \ln(27500/27480) \approx 7{,}28 \times 10^{-4}$; i prezzi sono multipli di 5 come richiesto.
 
@@ -274,15 +312,23 @@ Le feature di struttura catturano la geometria del prezzo rispetto ai livelli st
 
 Il **pivot strutturale** è un livello di prezzo locale che il motore utilizza come ancora per la geometria del segnale (Parte IV) e come input per le feature di struttura di Cap.15.2.4. L'algoritmo deve essere deterministico e causale: un pivot al tempo $t$ è identificabile solo dopo che la sua natura di estremo locale è stata **confermata** da barre successive, senza utilizzo di dati futuri. La conferma introduce una **latenza**: il pivot a $t$ viene confermato al tempo $t + n_c$, dove $n_c$ è il numero di barre di conferma.
 
-**Algoritmo frattale con conferma.** Il pivot di tipo high (massimo locale) alla barra $t$ è confermato se:
+**Algoritmo frattale con conferma — quattro condizioni.** Il pivot di tipo high (massimo locale) alla barra $t$ è confermato alla chiusura della barra $t + n_c$ se e solo se valgono simultaneamente tutte e quattro le condizioni seguenti:
 
-$$\text{high}_{t} > \max\!\big(\text{high}_{t-n_c}, \ldots, \text{high}_{t-1}\big) \quad \text{e} \quad \text{high}_{t} > \max\!\big(\text{high}_{t+1}, \ldots, \text{high}_{t+n_c}\big)$$
+1. $\text{high}_t > \text{high}_{t-i}$ per ogni $i \in [1, n_c]$ — il massimo di $t$ supera tutti i massimi delle $n_c$ barre precedenti;
+2. $\text{high}_t > \text{high}_{t+j}$ per ogni $j \in [1, n_c]$ — il massimo di $t$ supera tutti i massimi delle $n_c$ barre successive;
+3. $\min\!\big(\text{low}_{t+1}, \ldots, \text{low}_{t+n_c}\big) \leq \text{high}_t - \delta_{pivot}$ — il prezzo si è allontanato dal massimo di almeno $\delta_{pivot}$ punti FIB nelle barre di conferma (filtro di retracement, vedi sotto);
+4. la finestra temporale $[t - n_c,\, t + n_c]$ rientra interamente nella sessione operativa 8:00-22:00 CET corrente — il pivot non può estendersi su più sessioni (coerenza con il reset cross-session di Cap.15.2.1).
 
-Analogamente, il pivot di tipo low (minimo locale) alla barra $t$ è confermato se:
+Analogamente, il pivot di tipo low (minimo locale) alla barra $t$ è confermato alla chiusura della barra $t + n_c$ se e solo se:
 
-$$\text{low}_{t} < \min\!\big(\text{low}_{t-n_c}, \ldots, \text{low}_{t-1}\big) \quad \text{e} \quad \text{low}_{t} < \min\!\big(\text{low}_{t+1}, \ldots, \text{low}_{t+n_c}\big)$$
+1. $\text{low}_t < \text{low}_{t-i}$ per ogni $i \in [1, n_c]$;
+2. $\text{low}_t < \text{low}_{t+j}$ per ogni $j \in [1, n_c]$;
+3. $\max\!\big(\text{high}_{t+1}, \ldots, \text{high}_{t+n_c}\big) \geq \text{low}_t + \delta_{pivot}$;
+4. la finestra temporale $[t - n_c,\, t + n_c]$ rientra interamente nella sessione operativa 8:00-22:00 CET corrente.
 
-Il parametro $n_c$ (numero di barre a sinistra e a destra richieste per la conferma) è un **parametro del modello**, non del cromosoma. Il valore di lavoro provvisorio è $n_c = 3$ barre (conferma su 3 barre a sinistra e 3 a destra dell'estremo locale), congelato in Parte V. La conferma del pivot avviene al tempo $t + n_c$: è solo a quel momento che il pivot a $t$ diventa disponibile come feature (il vincolo di causalità $x_{t+n_c} \in \mathcal{F}_{t+n_c-1}$ è rispettato perché high e low delle barre fino a $t+n_c-1$ sono tutti noti).
+Il parametro $n_c$ (numero di barre a sinistra e a destra richieste per la conferma) è un **parametro del modello**, non del cromosoma. Il valore di lavoro provvisorio è $n_c = 3$ barre (conferma su 3 barre a sinistra e 3 a destra dell'estremo locale), congelato in Parte V.
+
+**Disponibilità temporale come feature — correzione look-ahead.** La conferma del pivot a $t$ richiede di osservare $\text{high}_{t+n_c}$ (o $\text{low}_{t+n_c}$), il quale è disponibile solo dopo la chiusura della barra $t + n_c$, ossia appartiene a $\mathcal{F}_{t+n_c}$ (non a $\mathcal{F}_{t+n_c-1}$). Di conseguenza, il pivot a $t$ **diventa disponibile come feature alla barra $t + n_c + 1$**, non alla barra $t + n_c$. Il vincolo di causalità è quindi: il pivot confermato alla barra $t$ entra in $\mathcal{F}_{t+n_c+1}$ ed è utilizzabile solo dalla barra $t + n_c + 1$ in poi.
 
 **Primo pivot post-apertura e vincolo $N_{pivot}$.** Il primo pivot della sessione è il primo massimo locale o minimo locale che viene confermato dopo l'apertura delle 8:00 CET. Poiché la conferma richiede $n_c$ barre adiacenti, il primo pivot confermato non può essere identificato prima della barra $n_c + 1$ della sessione (ovvero almeno 4 barre dopo l'apertura con $n_c = 3$). Il vincolo operativo ereditato da CAP-01 (M-1) è che il primo pivot deve essere identificabile entro $N_{pivot}$ barre dall'apertura. Si definisce:
 
@@ -290,9 +336,9 @@ $$N_{pivot} = \min\!\big\{t : \text{esiste almeno un pivot confermato in} [8:00,
 
 Il valore di $N_{pivot}$ dipende dalla geometria del prezzo nella prima parte della sessione e non è fissabile a priori senza evidenza empirica. Il valore di lavoro provvisorio è $N_{pivot} = 30$ barre (mezz'ora di trading, proposta dalla Review v1 CAP-02 come ordine di grandezza ragionevole, confermata dal Planner come valore di lavoro non definitivo), da verificare empiricamente sullo storico Portara/CQG e congelare in Parte V con misura della distribuzione effettiva della latenza del primo pivot nelle 1.050.000 barre storiche disponibili.
 
-**Soglia di retracement minimo.** Per evitare di confermare micro-oscillazioni di un tick (5 punti FIB) come pivot strutturali, si applica un filtro di retracement minimo: un estremo locale è candidato a pivot solo se il prezzo si è allontanato da esso di almeno $\delta_{pivot}$ punti FIB prima che la barra di conferma si chiuda. Il parametro $\delta_{pivot}$ è un **parametro del modello**, valore di lavoro provvisorio $\delta_{pivot} = 10$ punti FIB (2 tick), congelato in Parte V.
+**Soglia di retracement minimo.** La condizione 3 nelle quattro condizioni sopra costituisce il filtro di retracement minimo. Essa richiede che il prezzo si sia allontanato dal massimo (o minimo) candidato di almeno $\delta_{pivot}$ punti FIB, misurato sul minimo dei low (o massimo degli high) delle barre di conferma $[t+1, t+n_c]$. La valutazione è quindi esplicita: per pivot high, si controlla che $\min(\text{low}_{t+1}, \ldots, \text{low}_{t+n_c}) \leq \text{high}_t - \delta_{pivot}$. Il parametro $\delta_{pivot}$ è un **parametro del modello**, valore di lavoro provvisorio $\delta_{pivot} = 10$ punti FIB (2 tick FIB), congelato in Parte V.
 
-Esempio numerico: se $\text{high}_{t} = 27.500$, $\text{high}_{t-1} = \text{high}_{t-2} = \text{high}_{t-3} = 27.480$, $\text{high}_{t+1} = 27.490$, $\text{high}_{t+2} = 27.485$, $\text{high}_{t+3} = 27.475$, allora la barra $t$ è confermata come pivot high al tempo $t+3$. Il retracement dal massimo $27.500$ alla barra $t+3$ è $27.500 - 27.475 = 25$ punti $> \delta_{pivot} = 10$ pt: il filtro è soddisfatto.
+Esempio numerico (con $n_c = 3$, $\delta_{pivot} = 10$ pt, prezzi multipli di 5 FIB): sia $\text{high}_{t} = 27.500$, $\text{high}_{t-1} = \text{high}_{t-2} = \text{high}_{t-3} = 27.480$ (condizione 1 verificata), $\text{high}_{t+1} = 27.490$, $\text{high}_{t+2} = 27.485$, $\text{high}_{t+3} = 27.475$ (condizione 2 verificata). Il retracement minimo nelle barre di conferma è $\min(\text{low}_{t+1}, \text{low}_{t+2}, \text{low}_{t+3})$; se questo minimo è $\leq 27.490 = 27.500 - 10$, la condizione 3 è verificata. Supponendo che tutta la finestra $[t-3, t+3]$ sia nella sessione 8:00-22:00 CET, la condizione 4 è verificata. La conferma avviene alla chiusura della barra $t+3$; il pivot entra come feature disponibile dalla barra $t+4 = t + n_c + 1$.
 
 **Determinismo.** L'algoritmo è deterministico: dato lo storico OHLC e i parametri $(n_c, \delta_{pivot})$, la sequenza dei pivot confermati è univocamente determinata. Non vi è alcuna componente stocastica.
 
