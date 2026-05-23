@@ -1,8 +1,8 @@
 # TASK ATTIVO: CAP-03 — Parte III del documento metodologico v2 (Layer quantitativo single-instrument)
 
-**Assegnato da**: Planner
-**Output atteso**: `docs/methodology_v2/CAP_03_parte_III.md`
-**Stato**: IN ATTESA
+**Assegnato da**: Planner / Orchestratore (rework v4 post-Review v1 CONDITIONAL e decisioni supervisore 2026-05-24)
+**Output atteso**: `docs/methodology_v2/CAP_03_parte_III.md` (versione v4)
+**Stato**: IN CORSO — rework v4 con 3 BUG REALI + 1 BUG REALE riclassificato (C-5.1) + 3 MIGLIORA PERFORMANCE approvati dal supervisore
 
 ## Obiettivo
 
@@ -151,3 +151,108 @@ Il documento risponde senza ambiguita' a queste domande:
 ## Pipeline attesa
 
 Development v1 → Review v1 audit ostile con classificazione GA → punto di controllo supervisore se CONDITIONAL/FAIL → fix → ... → PASS
+
+---
+
+## Finding di Review v1 da risolvere (rework v4)
+
+Review v1 di CAP-03 (commit `916f3d4`) ha emesso verdetto **CONDITIONAL** con 3 BUG REALI + 4 MIGLIORA PERFORMANCE + 4 NEUTRO. Il supervisore (decisioni 2026-05-24, vedi Q-06..Q-09 in `tasks/QUESTIONS.md`) ha approvato **tutti e 4 i MIGLIORA PERFORMANCE per fix in Developer v4**, riclassificando inoltre C-5.1 da MIGLIORA PERFORMANCE a **BUG REALE**.
+
+### BUG REALI obbligatori (sempre a Developer)
+
+#### **NB-1** — Look-ahead off-by-one nella pivot detection (Cap.15.3)
+**Problema**: la condizione di conferma del pivot richiede $\text{high}_{t+n_c}$ che è disponibile solo a $t+n_c$ (chiusura della barra), quindi la feature è in $\mathcal{F}_{t+n_c}$, non $\mathcal{F}_{t+n_c-1}$. Il pivot confermato a $t$ è feature disponibile a $t+n_c+1$, non $t+n_c$.
+
+**Fix v4**: riformulare in Cap.15.3 con timestamp esatto di disponibilità della feature: "il pivot a $t$ è confermato dopo la chiusura di $t+n_c$ ed entra come feature disponibile dalla barra $t + n_c + 1$ in poi". Aggiornare l'esempio numerico coerentemente.
+
+#### **NB-2** — Formula $E[|z|]$ per GED errata (Cap.13.2)
+**Problema**: la formula $E[|z|] = 2^{1/\kappa}\,\Gamma(2/\kappa)/\Gamma(1/\kappa)$ è corretta solo per $\kappa = 2$ (Normale). Per $\kappa = 1$ (Laplace) restituisce 2.0 anziché 0.707 atteso. Distorce $\hat{\sigma}$ se il GA seleziona GED.
+
+**Fix v4**: in Cap.13.2 sostituire con la formula corretta che include il fattore di scala $c = [\Gamma(1/\kappa)/(2^{2/\kappa}\Gamma(3/\kappa))]^{1/2}$:
+$$E[|z|] = \frac{c \cdot 2^{1/\kappa}\,\Gamma(2/\kappa)}{\Gamma(1/\kappa)}$$
+Verificare i casi limite ($\kappa=2$ deve dare $\sqrt{2/\pi} \approx 0{,}7979$; $\kappa=1$ deve dare $1/\sqrt{2} \approx 0{,}7071$).
+
+#### **NB-3** — Unità di misura di $\hat{\sigma}$ non riconciliate con Cap.8 Parte II (Cap.13.1 + Cap.8.2 Parte II)
+**Problema**: $\hat{\sigma}$ è in unità di log-return (ordine $10^{-4}$). Il range $r_{1m}$ è in punti FIB (ordine 10-100). La condizione $|target_1 - p_{ref}|/\hat{\sigma}$ produce rapporto non adimensionale. Inoltre il riferimento "Parte III Cap.12" in Cap.8 Parte II è errato (corretto: Cap.13).
+
+**Fix v4**: in Cap.13.1 introdurre **conversione esplicita** della stima di volatilità in punti FIB:
+$$\hat{\sigma}_{\text{pt}}(t) = \hat{\sigma}(t) \cdot p_t$$
+dove $\hat{\sigma}(t)$ è la stima EGARCH in log-return e $p_t$ è il prezzo corrente (in punti FIB). La condizione di Cap.8 va riformulata usando $\hat{\sigma}_{\text{pt}}(t)$. Aggiornare anche il riferimento errato in Cap.8.2 Parte II da "Cap.12" a "Cap.13" (mini-patch CAP-02).
+
+#### **C-5.1 (riclassificato BUG REALE da MIGLIORA PERF)** — Bug formula EMA (Cap.15.2.1)
+**Problema**: la formula $(1-\lambda)\sum_{j=1}^{\infty}\lambda^j r_{t-j}$ ha un fattore $\lambda$ in più rispetto alla forma standard EMA.
+
+**Fix v4** (Q-07): formula corretta
+$$x_t^{(\text{ema},\lambda)} = (1-\lambda) \sum_{j=0}^{n_t - 1} \lambda^j r_{t-j}$$
+con sommatoria che parte da $j=0$ e considera la somma dei pesi $(1-\lambda^{n_t})$ durante il warm-up.
+
+### MIGLIORA PERFORMANCE approvati dal supervisore
+
+#### **NB-4 / Q-06** — Rolling vs expanding window EGARCH (Cap.13.3): decisione **β-rigorosa**
+
+- **C-4.1**: mantenere rolling $W = 210.000$ in CAP-03 come baseline FIB, **con dichiarazione esplicita di divergenza dal baseline hard-locked**. Giustificazione testuale che cita:
+  - (i) inapplicabilità letterale di $T_{roll} = 1500$ del baseline perché calibrato per daily (1500 barre 1-min = 1.8 giorni, insufficienti per stimare EGARCH(1,1) Student-$t$);
+  - (ii) **Pesaran-Timmermann (2007)** "Selection of estimation window in the presence of breaks" come riferimento teorico per rolling in presenza di structural breaks parametrici.
+- **C-4.2**: cambiare cadenza di ricalibrazione da "all'apertura di ogni sessione" a **"fold-per-fold del walk-forward"**, coerente con Cap. 14.3 del baseline. Aggiornare Cap.13.3 di conseguenza.
+- **C-4.3**: aggiungere acceptance criterion per Parte V (M-promemoria sotto): benchmark comparativo rolling vs expanding vs EWMA su FIB con test **Inoue-Rossi (2011)**, e criterio di rollback automatico se rolling $W = 210.000$ non domina almeno una alternativa su metrica OOS congelata (log-likelihood OOS, Brier sulla calibrazione $\sigma^2$, MSE).
+
+#### **NB-5 / Q-07 / C-5.2** — Cross-session reset EMA (Cap.15.2.1)
+
+- **Reset EMA all'apertura di ogni sessione 8:00 CET**. Le prime $T_{warmup,\text{EMA}}$ barre della sessione sono marcate come `unusable` ed escluse dal training del GA.
+- Default operativo provvisorio:
+  $$T_{warmup,\text{EMA}} \geq \frac{\ln(0{,}01)}{\ln(\lambda)}$$
+  che per $\lambda = 0{,}94$ dà $T_{warmup,\text{EMA}} \geq 74$ barre = 74 minuti. Congelato in Parte V.
+- **Citazione testuale obbligatoria** nel Cap.15.2.1: **Engle-Sokalska (2012)** "Forecasting intraday volatility in the US equity market", *Journal of Financial Econometrics*, come riferimento metodologico per reset cross-session in equity con sessione netta.
+
+#### **NB-6 / Q-08** — Formalizzazione esplicita pivot detection (Cap.15.3)
+
+Pivot high a $t$ confermato a $t + n_c$ se e solo se valgono **tutte e quattro le condizioni**:
+
+1. $\text{high}_t > \text{high}_{t-i}$ per ogni $i \in [1, n_c]$
+2. $\text{high}_t > \text{high}_{t+j}$ per ogni $j \in [1, n_c]$
+3. $\min(\text{low}_{t+1}, \ldots, \text{low}_{t+n_c}) \leq \text{high}_t - \delta_{pivot}$
+4. La finestra temporale $[t - n_c, t + n_c]$ rientra interamente nella sessione operativa 8:00-22:00 corrente (coerenza con C-5.2: reset cross-session)
+
+Simmetrica per pivot low. Confermare $n_c = 3$ come valore provvisorio congelato in Parte V (era già dichiarato in Parte III v1).
+
+#### **NB-7 / Q-09** — Statistica di sessione di $\hat{\sigma}$ per regime (Cap.14.2)
+
+- **C-7.1**: baseline normativo
+  $$\bar{\sigma}_s = \frac{1}{N_s} \sum_{t \in s} \hat{\sigma}_{s,t} \quad \text{con } N_s = 840$$
+- **C-7.2**: benchmark di robustezza riportato nei report di sessione: $\text{med}_t(\hat{\sigma}_{s,t})$.
+- **C-7.3**: acceptance criterion per Parte V (M-promemoria sotto): se in validation OOS la classificazione di regime cambia significativamente fra media e mediana, va investigato come segnale di sessioni con picchi anomali.
+- **Citazione testuale obbligatoria** nel Cap.14.2: **Corsi (2009)** "A Simple Approximate Long-Memory Model of Realized Volatility", *Journal of Financial Econometrics*.
+
+### M-promemoria per Parte V (nuovi, da Q-06 e Q-09)
+
+| M-ID | Origine | Contenuto | Pertinenza CAP-05 (Parte V) |
+|------|---------|-----------|------------------------------|
+| **M-5** | Q-06 / C-4.3 | Benchmark comparativo rolling vs expanding vs EWMA su FIB con test Inoue-Rossi (2011); criterio di rollback automatico | SÌ — Cap. di window selection del walk-forward (probabilmente Cap.25 secondo indice attuale) |
+| **M-6** | Q-09 / C-7.3 | Classificazione di regime in parallelo media e mediana; test di stabilità con soglia da definire | SÌ — Cap. di gestione regimi nel walk-forward (Cap.25 o Cap.26) |
+
+### Vincoli aggiuntivi per il rework v4
+
+- **Standard "no implicit" del baseline hard-locked (Cap. 5.6)**: ogni grado di libertà va chiuso. Niente formule ambigue, niente default impliciti, niente comportamenti border-case non specificati.
+- **Citazioni testuali agli articoli** (Pesaran-Timmermann 2007, Engle-Sokalska 2012, Corsi 2009, Inoue-Rossi 2011) entrano **nel testo del capitolo dove pertinenti** (Cap.13.3, Cap.15.2.1, Cap.14.2; Inoue-Rossi è citato come riferimento per il futuro acceptance criterion di Parte V). **NON nelle bibliografie finali**: la gestione bibliografica è pertinenza dell'indice generale.
+- **Mini-patch CAP-02 Cap.8.2**: correggere il riferimento "Parte III Cap.12" in "Parte III Cap.13" (segnalato da NB-3). È modifica chirurgica di 1 parola, va eseguita nello stesso commit del rework CAP-03 v4 con nota in REPORT_CAP_02.md "Iterazione 4 — correzione cross-ref Cap.8.2 da Cap.12 a Cap.13".
+
+### Acceptance criteria aggiuntivi per la v4
+
+- [ ] **AC-v4-1**: NB-1 chiuso: nel testo di Cap.15.3 la disponibilità del pivot confermato è esplicita come "feature disponibile a $t + n_c + 1$"
+- [ ] **AC-v4-2**: NB-2 chiuso: formula $E[|z|]$ per GED corretta con fattore di scala $c$, verifica numerica $\kappa=2$ e $\kappa=1$
+- [ ] **AC-v4-3**: NB-3 chiuso: $\hat{\sigma}_{\text{pt}}(t) = \hat{\sigma}(t) \cdot p_t$ introdotta in Cap.13.1; Cap.8.2 Parte II aggiornato per usare $\hat{\sigma}_{\text{pt}}$
+- [ ] **AC-v4-4**: C-5.1 chiuso: formula EMA corretta con $j$ da 0 a $n_t - 1$
+- [ ] **AC-v4-5**: Q-06/C-4.1 implementata: divergenza rolling vs expanding dichiarata esplicitamente; citazione Pesaran-Timmermann (2007) testuale
+- [ ] **AC-v4-6**: Q-06/C-4.2 implementata: cadenza ricalibrazione "fold-per-fold del walk-forward"
+- [ ] **AC-v4-7**: Q-07/C-5.2 implementata: reset EMA cross-session; $T_{warmup,\text{EMA}} \geq \ln(0{,}01)/\ln(\lambda) = 74$ barre per $\lambda=0{,}94$; citazione Engle-Sokalska (2012) testuale
+- [ ] **AC-v4-8**: Q-08 implementata: 4 condizioni esplicite per pivot detection, simmetria long/short, condizione di sessione
+- [ ] **AC-v4-9**: Q-09 implementata: $\bar{\sigma}_s$ come baseline, mediana come benchmark di robustezza; citazione Corsi (2009) testuale
+- [ ] **AC-v4-10**: M-5 e M-6 dichiarati come carryover per Parte V nel REPORT_CAP_03 e in QUESTIONS.md
+- [ ] **AC-v4-11**: REPORT_CAP_03.md include sezione "Iterazione 4 — risposta ai finding di Review v1 + decisioni supervisore Q-06..Q-09"
+- [ ] **AC-v4-12**: REPORT_CAP_02.md include sezione "Iterazione 4 — mini-patch Cap.8.2 cross-ref Cap.13"
+- [ ] **AC-v4-13**: tutti i 29 AC originali restano soddisfatti dopo le modifiche
+- [ ] **AC-v4-14**: niente bibliografia generale aggiunta al documento (le citazioni Pesaran-Timmermann, Engle-Sokalska, Corsi, Inoue-Rossi sono inline nel testo dei capitoli, non in bibliografia finale)
+
+### Pipeline rework v4
+
+Development v4 (chiusura 3 BUG + 1 BUG riclassificato + 3 MIGLIORA PERF + mini-patch Cap.8.2) → Review v2 di CAP-03 → ... → PASS.

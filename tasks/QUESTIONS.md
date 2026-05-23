@@ -63,3 +63,80 @@
 - Rispetto alle altre opzioni: search space invariato, minor rischio di overfitting (DSR/PBO più robusti), maggiore parsimonia parametrica.
 
 **Stato**: chiusa. Esecuzione in `ACTIVE_TASK.md` aggiornato per CAP-02 rework v3.
+
+---
+
+## Q-06 — Finestra di stima EGARCH: rolling vs expanding (CAP-03, NB-4 Review v1) — CHIUSA
+
+**Contesto**: Review v1 di CAP-03 ha segnalato che la scelta di rolling $W = 210.000$ barre 1-min divergeva dal baseline hard-locked (expanding) senza dichiarazione esplicita. Il baseline è metodologico generale; la nostra applicazione è single-instrument intraday su FIB e ha requisiti specifici di adattamento ai regimi correnti.
+
+**Decisione del supervisore (2026-05-24)**: **β-rigorosa, tre clausole**.
+
+- **C-4.1**: Adottare rolling $W = 210.000$ in CAP-03 come baseline FIB, con dichiarazione esplicita di divergenza dal baseline hard-locked. La giustificazione testuale deve citare:
+  - (i) inapplicabilità letterale di $T_{roll} = 1500$ del baseline perché calibrato per daily, non per 1-min: 1500 barre 1-min sono 1.8 giorni, insufficienti per stimare EGARCH(1,1) Student-$t$;
+  - (ii) **Pesaran-Timmermann (2007)** "Selection of estimation window in the presence of breaks" come riferimento teorico che giustifica rolling in presenza di structural breaks parametrici.
+- **C-4.2**: Cambiare cadenza di ricalibrazione da "all'apertura di ogni sessione" (giornaliera) a **"fold-per-fold del walk-forward"**, coerente con Cap. 14.3 del baseline.
+- **C-4.3**: Aggiungere acceptance criterion per Parte V: benchmark comparativo rolling vs expanding vs EWMA su FIB con test **Inoue-Rossi (2011)**, e criterio di rollback automatico se rolling $W = 210.000$ non domina almeno una alternativa su metrica OOS congelata (log-likelihood OOS, Brier sulla calibrazione $\sigma^2$, MSE).
+
+**M-promemoria per Parte V**: implementare il benchmark del punto C-4.3.
+
+**Stato**: chiusa. Esecuzione in `ACTIVE_TASK.md` aggiornato per CAP-03 rework v4.
+
+---
+
+## Q-07 — EMA dei rendimenti: formula matematica + cross-session (CAP-03, NB-5 Review v1) — CHIUSA
+
+**Contesto**: Review v1 di CAP-03 ha segnalato due problemi distinti sulla feature EMA dei rendimenti in Cap.15.2.1: (i) la formula $(1-\lambda)\sum_{j=1}^{\infty} \lambda^j r_{t-j}$ ha un fattore $\lambda$ in più rispetto alla forma standard EMA; (ii) la somma infinita attraversa il bordo di sessione senza trattamento esplicito del gap overnight.
+
+**Decisione del supervisore (2026-05-24)**: **due fix separati**.
+
+- **C-5.1** (riclassificato come **BUG REALE**, non più MIGLIORA PERFORMANCE): bug formula matematica. La formula corretta è
+  $$x_t^{(\text{ema},\lambda)} = (1-\lambda) \sum_{j=0}^{n_t - 1} \lambda^j r_{t-j}$$
+  con sommatoria che parte da $j=0$ (non $j=1$). La somma dei pesi durante warm-up è $(1-\lambda^{n_t})$, che non è 1 finché $n_t$ è finito.
+- **C-5.2** (MIGLIORA PERFORMANCE): cross-session behavior. **Reset EMA all'apertura di ogni sessione 8:00 CET**. Le prime $T_{warmup,\text{EMA}}$ barre della sessione sono marcate come `unusable` ed escluse dal training del GA. Default operativo provvisorio:
+  $$T_{warmup,\text{EMA}} \geq \frac{\ln(0{,}01)}{\ln(\lambda)}$$
+  così che il peso di osservazioni pre-warmup sia $< 1\%$. Per $\lambda = 0{,}94$ questo dà $T_{warmup,\text{EMA}} \geq 74$ barre = 74 minuti. Congelato in Parte V.
+
+**Citazione testuale obbligatoria** nel Cap.15.2.1 e nel rationale: **Engle-Sokalska (2012)** "Forecasting intraday volatility in the US equity market", *Journal of Financial Econometrics*, come riferimento metodologico per reset cross-session in equity con sessione netta.
+
+**Stato**: chiusa. Esecuzione in `ACTIVE_TASK.md` aggiornato per CAP-03 rework v4.
+
+---
+
+## Q-08 — Soglia retracement nella pivot detection (CAP-03, NB-6 Review v1) — CHIUSA
+
+**Contesto**: Review v1 di CAP-03 ha segnalato che in Cap.15.3 la soglia di retracement $\delta_{pivot}$ era formulata in modo ambiguo: non specificava su quale barra si valutasse il retracement né su quale grandezza di prezzo (high, low, close), e mancava una disequazione esplicita.
+
+**Decisione del supervisore (2026-05-24)**: **formalizzazione esplicita opzione (a) con condizione di sessione**.
+
+Pivot high a $t$ confermato a $t + n_c$ se e solo se valgono tutte e quattro le condizioni:
+
+1. $\text{high}_t > \text{high}_{t-i}$ per ogni $i \in [1, n_c]$
+2. $\text{high}_t > \text{high}_{t+j}$ per ogni $j \in [1, n_c]$
+3. $\min(\text{low}_{t+1}, \ldots, \text{low}_{t+n_c}) \leq \text{high}_t - \delta_{pivot}$
+4. La finestra temporale $[t - n_c, t + n_c]$ rientra interamente nella sessione operativa 8:00-22:00 corrente (coerenza con C-5.2: reset cross-session).
+
+Simmetrica per pivot low.
+
+**Verificare** che $n_c$ sia specificato in CAP-03 o in capitoli precedenti. Se non specificato, aggiungere il valore provvisorio in Cap. 15.3 con rinvio a Parte V. (Nota Orchestratore: in Parte III v1 il valore $n_c = 3$ era già dichiarato in Cap.15.3, da preservare nella v4 con conferma "provvisorio congelato in Parte V".)
+
+**Stato**: chiusa. Esecuzione in `ACTIVE_TASK.md` aggiornato per CAP-03 rework v4.
+
+---
+
+## Q-09 — Statistica di sessione di $\hat{\sigma}$ per la classificazione di regime (CAP-03, NB-7 Review v1) — CHIUSA
+
+**Contesto**: Review v1 di CAP-03 ha segnalato che in Cap.14.2 la scelta fra "ultima barra della sessione" o "media di un sottocampione di barre" come $\hat{\sigma}_{s,\bar{t}}$ per la classificazione del regime non aveva un valore provvisorio di default.
+
+**Decisione del supervisore (2026-05-24)**: **media come default normativo + mediana come benchmark di robustezza**.
+
+- **C-7.1**: Baseline operativo
+  $$\bar{\sigma}_s = \frac{1}{N_s} \sum_{t \in s} \hat{\sigma}_{s,t} \quad \text{con } N_s = 840$$
+- **C-7.2**: Benchmark di robustezza riportato nei report di sessione: $\text{med}_t(\hat{\sigma}_{s,t})$ (mediana delle stime sulla sessione).
+- **C-7.3**: Acceptance criterion per Parte V: se in validation OOS la classificazione di regime cambia significativamente fra media e mediana (soglia da definire in Parte V), va investigato come segnale di sessioni con picchi anomali.
+
+**Citazione testuale obbligatoria** nel Cap.14.2 e nel rationale: **Corsi (2009)** "A Simple Approximate Long-Memory Model of Realized Volatility", *Journal of Financial Econometrics*, come riferimento per uso di medie come statistica di aggregazione di sessione.
+
+**M-promemoria per Parte V**: implementare la classificazione di regime in parallelo con media e mediana, e il test di stabilità del punto C-7.3.
+
+**Stato**: chiusa. Esecuzione in `ACTIVE_TASK.md` aggiornato per CAP-03 rework v4.
