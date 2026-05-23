@@ -93,3 +93,30 @@ Nessuna. Q-01, Q-02, Q-03, Q-04 tutte chiuse dal supervisore.
 
 4. Se in Parte V emerge che il timer pre-esecuzione produce in training un tasso di `pretrigger_timeout` superiore al 60% dei segnali emessi (segnali quasi sempre stantii prima del touch), va rivisto il dominio del parametro o la sua dipendenza dal regime, non l'architettura del cap 2gg post-trigger.
 5. Se la patch di riga 77 (executable_rate) genera ambiguità nelle metriche OOS, va aggiornata di nuovo coordinandosi con il calcolo concreto delle metriche in Parte V. La patch attuale è coerente con la struttura del lifecycle dichiarata in Parte II v2.
+
+---
+
+## Iterazione 3 — Patch chirurgica post-PASS CAP-02 v3 (chiusura residui corpus-level)
+
+**Origine**: Review v3 di CAP-02 (commit `e070fa9`) ha emesso PASS con due osservazioni NEUTRO (N-7, N-8) e un promemoria (M-4) riferiti a residui testuali in CAP-01 resi incoerenti dalla decisione Q-05 (Opzione D raffinata: separazione contratto del segnale vs position lifecycle, target_2_hit rimosso dagli stati del segnale, sostituzione delle "guardie di esecuzione" con "condizioni di emissione" pre-emissione). Patch applicata dal Planner come Iterazione 3, prima della partenza di CAP-03, per evitare incoerenza corpus-level.
+
+**Modifiche apportate**:
+
+| Riga (post-patch) | Cosa cambia | Finding chiuso |
+|------|-------------|---------|
+| 75 (Cap.5) | "modellati invece nelle **guardie di esecuzione** della Parte II" → "modellati invece nelle **condizioni di emissione** della Parte II (Cap.8)" | N-7 / M-4 |
+| 77 (Cap.5) | "target 2 hit rate, definita analogamente sul target 2" → riformulata come metrica del position lifecycle (Cap.11 Parte II), non più della state machine del segnale; chiarimento esplicito post-Q-05 | N-8 |
+
+**Perché non è una rottura del PASS Review v4 di CAP-01**: la formulazione originale di CAP-01 era coerente con l'architettura Parte II v1 (guardie post-trigger come filtri al raw touch + target_2_hit come stato terminale). Dopo Q-05 (Opzione D raffinata, decisione supervisore 2026-05-23) l'architettura Parte II è cambiata: la patch riallinea CAP-01 alla nuova architettura senza modificare alcun valore numerico, vincolo strutturale, o filosofia di Parte I. È una correzione di tracciabilità cross-parte, non una modifica di sostanza.
+
+**Misura prima/dopo Iterazione 3**:
+
+| Metrica corpus | Prima | Dopo | Delta |
+|----------------|-------|------|-------|
+| Coerenza terminologica CAP-01 ↔ CAP-02 v3 | 2 residui ("guardie di esecuzione", "target 2 hit rate") | 0 residui | corpus internamente coerente |
+| Finding aperti post-PASS CAP-02 | 2 N + 1 M (su CAP-01) | 0 N + 0 M (chiusi) | rework CAP-01 chiuso |
+
+**Finding chiusi**: N-7, N-8, M-4 (tutti di Review v3 CAP-02). Riferiti a CAP-01 e ora risolti.
+
+**Criterio di rollback Iterazione 3**:
+6. Se in Parte V (Cap.24 fitness) o nel position lifecycle (Cap.11 Parte II) emergerà che la metrica `target_2_hit_rate` come "metrica del position lifecycle" non è calcolabile coerentemente con il replay deterministico (Cap.10 Parte II), la formulazione di riga 77 va aggiornata di nuovo. La patch attuale è coerente con la decisione Q-05.
