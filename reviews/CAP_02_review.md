@@ -537,3 +537,82 @@ Il dominio effettivo della leva del cromosoma è quindi $\tau_{dist} \in (80, \t
 
 **Raccomandazione**: rework Cap.7 per B-3 (opzione A: 2 non-terminali); patch CAP-01 per B-4 in tag atomico `[FIX-CARRYOVER]`; NB chirurgici. PASS atteso al ciclo v3.
 
+
+
+---
+
+## Review v3 — Re-audit ostile dopo decisione Q-05 (Opzione D raffinata)
+
+**Verdetto**: **PASS**
+
+Motivazione sintetica: la riscrittura v3 implementa correttamente e completamente la decisione del supervisore Q-05 (Opzione D raffinata, tre clausole); chiude tutti i finding aperti di Review v2 (B-3, B-4, NB-7, NB-8, NB-9, NB-10); aggiunge il Cap.11 come capitolo nuovo con citazioni testuali del baseline hard-locked **verificate letteralmente** contro il PDF (pagine 56 e 60 di 115). I 33 acceptance criteria sono tutti soddisfatti. Non emergono bug reali (B) dalla terza iterazione. Due osservazioni neutre (N) e un carryover (M) sono registrati per le Parti successive.
+
+---
+
+## Verifica di chiusura dei finding di Review v2
+
+| ID v2 | Esito | Posizione | Note |
+|-------|-------|-----------|------|
+| **B-3** `target_1_hit` non-terminale | **CHIUSO** | Cap.7.1, Cap.7.2: nessuna transizione uscente. `target_2_hit` rimosso. | Q-05 OK |
+| **B-4** incoerenza CAP-01 | **CHIUSO** | Commit `fc7531b` patcha righe 13,77. | Residuo riga 75 — M-4 |
+| **NB-7** timer pre-trigger | **CHIUSO** | Cap.6.1, Cap.7.5, Cap.7.1 `pretrigger_timeout` | OK |
+| **NB-8** edge case raw touch | **CHIUSO** | Cap.7.3 tre sottocasi | OK |
+| **NB-9** transizione post-target_1 | **CHIUSO** | Cap.7.1 nota + Cap.6.3 solo `active` | Q-05 |
+| **NB-10** spazio nullo GA | **CHIUSO** | Cap.8.2 sigma-units + 80pt a valle | OK |
+| **N-4,N-5,N-6** | Chiusi o carryover | — | OK |
+| **M-3** patch CAP-01 | **PARZIALE** | Riga 75 da patchare — M-4 | Trasferito |
+
+Tutti i finding B e NB di Review v2 sono chiusi.
+
+---
+
+## Verifica Q-05 (9 punti): tutti **OK**
+
+1. 6 stati terminali: OK (Cap.7.1). 2. `target_2_hit` rimosso: OK. 3. Nota Q-05 Clausola 2: OK (Cap.6.1 riga 37). 4. Cap.11 esiste: OK. 5. Citazioni baseline **verificate lettera per lettera** (PDF pp.56,60): OK. 6. OUT-OF-SCOPE: OK (Cap.11.2). 7. IN-SCOPE reporting: OK. 8. No modifica stato: OK (Cap.11.3). 9. Search space non esteso: OK (Cap.11.4).
+
+---
+
+## Verifica 33 AC: **33/33 soddisfatti**
+
+Tutti i capitoli presenti (6-11), tutte le 12 eredita citate, payload verificato, state machine conforme Q-05, condizioni emissione corrette, log deterministico, Cap.11 con citazioni baseline, registro formale, LaTeX, tick FIB=5pt.
+
+---
+
+## Verifica 12 eredita CAP-01: **12/12 soddisfatti**
+
+---
+
+## Nuovi finding v3
+
+### N-7 — CAP-01 riga 75 "guardie di esecuzione" residuo non patchato
+Non impatta GA. Carryover fix CAP-01.
+
+### N-8 — CAP-01 Cap.5 "target 2 hit rate" semantica cambiata dopo Q-05
+Nomenclatura, non impatta implementazione. Carryover.
+
+### M-4 — Residuo patch CAP-01 riga 75 (una riga)
+Carryover fix CAP-01.
+
+---
+
+## Secondo giro ostile: nessun problema reale trovato
+
+Assunzioni implicite: nessuna. Invarianti: tutte preservate. Parametri: tutti con dominio. GA impliciti: nessuno. FIB N=1: OK. Leakage temporale: nessuno.
+
+---
+
+## Classificazione per il supervisore
+
+| # | Problema | Classificazione | A Development? |
+|---|----------|-----------------|----------------|
+| N-7 | CAP-01 riga 75 residuo | NEUTRO | NO |
+| N-8 | CAP-01 target 2 hit rate | NEUTRO | NO |
+| M-4 | Patch CAP-01 riga 75 | PROMEMORIA | NO |
+
+**Conteggio v3**: B = 0, NB = 0, N = 2, M = 1.
+
+---
+
+## Sintesi finale (< 200 parole)
+
+**Verdetto v3**: **PASS**. Q-05 implementata: 6 terminali, `target_2_hit` rimosso, `target_2` informazione strutturale, Cap.11 con submacchina indipendente. Citazioni baseline (Cap.21.1 p.56, Cap.22.6 p.60) **verificate lettera per lettera** sul PDF. Finding Review v2 tutti chiusi. 33/33 AC soddisfatti. 12/12 eredita rispettate. Due N corpus-level in CAP-01, un M per patch riga 75. Raccomandazione: procedere a CAP-03.
