@@ -228,3 +228,30 @@ Nessuna. Tutti i punti del task sono stati indirizzati con materiale interno all
 ### Criterio di rollback
 Non applicabile: la correzione e fattuale (il modello EGARCH e effettivamente in Cap.13, non Cap.12) e la conversione sigma_hat_pt e richiesta per la coerenza dimensionale. Non vi e ambiguita metodologica.
 
+---
+
+## Iterazione 5 — fix Review v3 (NB-3 formula $\hat{\sigma}_{pt}$, NB-1/NB-2 cross-reference)
+
+**Origine**: Review v3 ha emesso verdetto CONDITIONAL con 3 finding approvati dal supervisore. I fix sono chirurgici: 1-2 simboli o parole per finding.
+
+### Modifiche applicate
+
+| Finding | Posizione | Prima | Dopo |
+|---------|-----------|-------|------|
+| **NB-3** (BUG: formula display condizione volatilità usa $\hat{\sigma}$ invece di $\hat{\sigma}_{\text{pt}}$) | Cap.8.2, formula display `$$r_{1m}(t_{emission}) \leq \tau_{vol}(\ldots)$$` | `\hat{\sigma}(t_{emission})` come argomento di $\tau_{vol}$ | `\hat{\sigma}_{\text{pt}}(t_{emission})` come argomento di $\tau_{vol}$ |
+| **NB-1** (MIGLIORA PERF: cross-reference pivot detection errato "Cap.14" → "Cap.15") | Cap.7.6, frase di rinvio all'algoritmo di pivot detection | "materia di Parte III (Cap.14)" | "materia di Parte III (Cap.15)" |
+| **NB-2** (MIGLIORA PERF: cross-reference invalidazione strutturale "Parte IV (Cap.15)") | Cap.7.1 definizione `invalidated` | "demandata a Parte IV (Cap.15)" | "demandata a Parte IV" |
+| **NB-2** (MIGLIORA PERF: cross-reference invalidazione strutturale "Parte IV (Cap.15)") | Cap.7.2 tabella transizioni, riga `active → invalidated` | "(Parte IV, Cap.15)" | "(Parte IV)" |
+
+### Misura prima/dopo
+
+| Metrica | Prima | Dopo | Delta |
+|---------|-------|------|-------|
+| Coerenza dimensionale formula display condizione volatilità | Incoerente: $\hat{\sigma}$ (log-return, ordine $10^{-4}$) come argomento di $\tau_{vol}$ mentre $r_{1m}$ è in punti FIB | Coerente: $\hat{\sigma}_{\text{pt}}$ (volatilità in punti FIB) come argomento di $\tau_{vol}$ | Bug dimensionale chiuso; formula display allineata al testo esplicativo che già usava $\hat{\sigma}_{\text{pt}}$ |
+| Correttezza cross-reference pivot detection | Errato: Cap.14 = "Stato di regime intraday" | Corretto: Cap.15 = "Feature engineering causale" (contiene §15.3 pivot detection) | Riferimento punta al capitolo corretto |
+| Correttezza cross-reference invalidazione strutturale (Cap.7.1) | Errato: "Parte IV (Cap.15)" — Cap.15 è in Parte III | Corretto: "Parte IV" senza numero di capitolo (assegnato quando Parte IV sarà pianificata) | Eliminato riferimento a capitolo inesistente in Parte IV |
+| Correttezza cross-reference invalidazione strutturale (Cap.7.2) | Errato: "(Parte IV, Cap.15)" | Corretto: "(Parte IV)" | Coerenza con la correzione applicata in Cap.7.1 |
+
+### Criterio di rollback
+Non applicabile: tutti e tre i fix sono correzioni fattuali di simboli e numeri di capitolo errati. Non vi è ambiguità metodologica. Se il numero di capitolo della sezione su invalidazione strutturale in Parte IV verrà assegnato, il riferimento in Cap.7.1 e Cap.7.2 dovrà essere aggiornato aggiungendo il numero corretto (aggiornamento puntuale, non rollback).
+
