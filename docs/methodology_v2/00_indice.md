@@ -4,7 +4,7 @@ Documento specializzato per FIB N=1, derivato da ENGINE_ALGO_INTEGRATO_HARD_LOCK
 
 ---
 
-## Parte I — Ambito operativo e vincoli operatore (~7 pp)
+## Parte I — Ambito operativo e vincoli operatore (~7 pp) ✅ PASS Review v4 (con patch Iterazione 2 in commit fc7531b)
 
 - **Cap 1 — Obiettivo operativo** (~1.5 pp): definizione dello strumento (FIB su FTSE MIB, mercato IDEM), sessione operativa, target quantitativo (500 punti/giorno o 70% escursione intraday), vincolo "solo emissione, nessuna esecuzione".
 - **Cap 2 — Profilo operatore e vincoli operativi** (~1.5 pp): operatore retail non professionale MiFID II, operativita' mobile, 1 contratto alla volta, commissioni 5 euro/op, separazione segnale/gestione posizione, rollover.
@@ -12,13 +12,14 @@ Documento specializzato per FIB N=1, derivato da ENGINE_ALGO_INTEGRATO_HARD_LOCK
 - **Cap 4 — Compute budget e strategia cloud** (~1.5 pp): valutazione adeguatezza PC per ogni fase, stima training GA non fattibile in locale, strategia AWS spot c5.4xlarge per il training, costi e frequenza di retraining.
 - **Cap 5 — Definizione operativa del successo** (~1 pp): metrica primaria expected net return per segnale, metriche di lifecycle (executable/target-hit/invalidation), metriche di rischio (CVaR, drawdown), metriche anti-overfitting (DSR, PBO), filtro emissione minimo 80 punti.
 
-## Parte II — Contratto del segnale FIB (~10 pp)
+## Parte II — Contratto del segnale FIB (~11-12 pp) — IN CORSO rework v3 (decisione Q-05)
 
-- **Cap 6 — Schema del segnale e invarianti** (~2 pp): payload del segnale (direzione, zona, target strutturale, stop strutturale, timestamp di emissione), invariante "no refresh" del segnale emesso.
-- **Cap 7 — Stati del segnale e state machine** (~2 pp): emitted, executable, executed, target_hit, invalidated, missed_target, expired; transizioni ammesse e timer di scadenza.
-- **Cap 8 — Guardie di esecuzione al touch** (~2 pp): condizioni di filtro al raw touch della entry zone (volatilita', spread, liquidita', distanza dal target).
-- **Cap 9 — Politica di pubblicazione su Telegram** (~2 pp): formato messaggio, latenza ammissibile, gestione duplicati e correzioni.
-- **Cap 10 — Replay e riproducibilita' del lifecycle** (~2 pp): formato dei log, ricostruzione deterministica del lifecycle a partire dallo storico tick/1-min.
+- **Cap 6 — Schema del segnale e invarianti** (~2 pp): payload del segnale (direzione, banda discreta sul tick FIB, target_1 e target_2 strutturali — target_2 come informazione strutturale pubblicata, non variabile di lifecycle —, stop strutturale, timestamp_emission, expiry post-trigger, setup_class), invariante di payload immutabile, regola di sostituzione con segnale unico attivo.
+- **Cap 7 — Stati del segnale e state machine** (~2 pp): 1 non-terminale (`active`) + 6 terminali (`target_1_hit`, `stopped`, `invalidated`, `missed_target`, `expired`, `revoked`); `trigger_event` come evento, raw touch sempre eseguibile; timer pre-trigger $T_{touch}^{max}$ e timer post-trigger $\Delta t_{cromosoma}$ con esempi numerici; edge case raw touch.
+- **Cap 8 — Condizioni di emissione del segnale** (~2 pp): 3 condizioni pre-emissione (volatilità EGARCH, liquidità volume, distanza target_1 in sigma-units $\tau_{dist}^{\sigma}$), spread eliminata. Filtri post-emissione esclusi: una volta emesso, il raw touch è sempre eseguibile.
+- **Cap 9 — Politica di pubblicazione su Telegram** (~2 pp): formato messaggio, latenza ammissibile, gestione anti-duplicato, nuovo messaggio per nuovo signal_id, notifica `trigger_event` separata.
+- **Cap 10 — Replay e riproducibilità del lifecycle** (~2 pp): formato dei log (emissione, transizioni, chiusura), determinismo bit-exact dichiarato come vincolo formale.
+- **Cap 11 — Position lifecycle e tracking out-of-scope dal motore** (~1-2 pp) [NUOVO, decisione Q-05]: submacchina distinta dal lifecycle del segnale, traccia eventi post-target_1 ($\pi_{t_2 \mid t_1}$, MFE, MAE, stop post-target_1) per reporting GA; OUT-OF-SCOPE execution policy, IN-SCOPE solo metriche di calibrazione; citazioni testuali baseline hard-locked Cap. 21.1 e 22.6.
 
 ## Parte III — Layer quantitativo single-instrument (~8 pp)
 
