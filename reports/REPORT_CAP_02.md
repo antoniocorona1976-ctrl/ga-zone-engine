@@ -117,3 +117,88 @@ Nessuna. Tutti i punti del task sono stati indirizzati con materiale interno all
 
 5. Se in Parte V emerge che la condizione di distanza dal target_1 come parametro libero del cromosoma di emissione è ridondante con il vincolo geometrico di Parte IV (target/stop strutturalmente coerenti con $\hat{\sigma}$), la condizione va eliminata da Cap.8 e demandata a Parte IV. La revisione è puntuale su Cap.8.2 (terza condizione) e su Cap.8.3 (rimozione del termine corrispondente dalla congiunzione logica), non richiede riscrittura della Parte II.
 6. Se in misura empirica sullo storico FIB risulta che la condizione di liquidità con soglia $\tau_{liq}$ libera converge sistematicamente a valori prossimi a zero (il GA disattiva di fatto la condizione), la condizione va eliminata da Cap.8 e demandata a Parte V come scelta meta-cromosoma. Revisione puntuale.
+
+---
+
+## Iterazione 3 — Risposta ai finding di Review v2 + decisione supervisore Q-05
+
+**Origine**: Review v2 ha emesso verdetto CONDITIONAL (B-3, B-4, NB-7, NB-8, NB-9, NB-10). La decisione del supervisore Q-05 (Opzione D raffinata, 2026-05-23) ha chiuso B-3 scegliendo la separazione segnale vs position lifecycle come soluzione architetturale, in luogo delle opzioni A/C/E valutate nel report di Review v2. B-4 era stato già chiuso dalla patch CAP-01 Iterazione 2 (commit `fc7531b`). I finding NB-7, NB-8, NB-9, NB-10 sono stati risolti chirurgicamente.
+
+### Risposta per finding
+
+| Finding | Azione applicata | Posizione in Parte II v3 |
+|---------|-----------------|--------------------------|
+| **B-3** (`target_1_hit` non-terminale formalmente) | Decisione Q-05 Clausola 1: `target_1_hit` reso veramente terminale, `target_2_hit` rimosso dalla state machine. La state machine ha 1 non-terminale + 6 terminali. | Cap.7.1 (stati), Cap.7.2 (tabella transizioni senza righe uscenti da `target_1_hit`), nota esplicita in Cap.7.1 e Cap.7.2. |
+| **B-4** (incoerenza retroattiva CAP-01 vs Parte II v2) | Chiuso in commit `fc7531b` (patch CAP-01 Iterazione 2). La Parte II v3 è coerente con CAP-01 post-patch: cap 2gg dal raw touch, `executable_rate` ridefinita, nessun riferimento a "guardie di esecuzione". | Cap.6.1 ($\Delta t_{cromosoma}$ dal raw touch), Cap.8 (3 condizioni pre-emissione, no guardie). |
+| **NB-7** (timer pre-trigger assente) | Introdotto $T_{touch}^{max} \in \{5, \ldots, 480\}$ minuti di trading come parametro libero del cromosoma. Scadenza assorbita nello stato terminale `expired` con causa `pretrigger_timeout` nel log (campo causale strutturato). | Cap.6.1 (campo $T_{touch}^{max}$ nel payload), Cap.7.1 (stato `expired` con due cause), Cap.7.2 (riga transizione `active → expired` con causa duplice), Cap.7.5 (sezione dedicata). |
+| **NB-8** (edge case raw touch) | Trattati esplicitamente tre casi: (a) barra di emissione — raw touch valutato da $t_{emission}+1$; (b) gap overnight inside zone — raw touch sulla barra di apertura, fill al livello della zona più vicino all'open; (c) gap che allontana il prezzo dalla zona senza superarla — segnale resta `active`. | Cap.7.3 (sezione "Edge case del raw touch", tre sottoparagrafi etichettati (a), (b), (c)). |
+| **NB-9** (transizione `target_1_hit → revoked` mancante) | Chiuso da solo per costruzione: con Q-05 `target_1_hit` è veramente terminale e non ammette transizioni uscenti verso alcuno stato. Esplicitato nel testo con nota dedicata. | Cap.7.1 (nota "chiusura NB-9"), Cap.7.2 (nessuna riga uscente da `target_1_hit`), Cap.6.3 (sostituzione applicata solo a segnali `active`). |
+| **NB-10** ($\tau_{dist}$ con floor 80pt produce spazio nullo del GA) | Ridefinizione di $\tau_{dist}$ in sigma-units ($\tau_{dist}^{\sigma}$, numero puro). Il filtro 80pt resta come vincolo assoluto a valle, distinto dal parametro ottimizzabile. Nessun floor assoluto su $\tau_{dist}^{\sigma}$: il GA ha spazio pieno di ottimizzazione. | Cap.8.2 (terza condizione, formula in sigma-units), Cap.8.3 (congiunzione aggiornata con $E_{dist}^{\sigma}$ e $E_{80pt}$ separati). |
+| **Q-05 Clausola 3** (Cap.11 nuovo) | Scritto ex-novo. Definisce la submacchina di position lifecycle come oggetto distinto. Citazioni testuali del baseline hard-locked: Cap. 21.1 e Cap. 22.6 di `ENGINE_ALGO_INTEGRATO_HARD_LOCKED.pdf`, verificate sul PDF. | Cap.11 (sezioni 11.1-11.5). |
+
+### Decisioni rilevanti aggiuntive prese nell'Iterazione 3
+
+**D-8. Payload esteso con $\Delta t_{cromosoma}$ e $T_{touch}^{max}$ come campi espliciti.** Il payload della tupla $\mathcal{S}$ in Cap.6.1 ora include esplicitamente entrambi i timer come campi del cromosoma. In v2, $\Delta t_{cromosoma}$ era implicito nel campo `expiry`; la v3 separa il parametro ottimizzabile ($\Delta t_{cromosoma}$) dal valore calcolato (`expiry`), che non è più nel payload (viene calcolato al momento del raw touch e comunicato nella notifica del `trigger_event`). Il campo `expiry` viene rimosso dalla tupla del payload e dal messaggio Telegram, dove non era pubblicabile in anticipo (decorre dal raw touch non ancora avvenuto): già la v2 aveva questo problema, ora esplicitato e risolto.
+
+**D-9. Precisione sulla regola di sostituzione applicata solo ai segnali `active`.** Cap.6.3 precisa esplicitamente che la sostituzione si applica ai segnali in `active`; una volta transitato in qualunque stato terminale (incluso `target_1_hit`), il segnale non può essere revocato. Questo chiarisce la coerenza del vincolo $|\mathcal{A}(t)| \leq 1$: un segnale terminato non è "attivo" e non contribuisce al conteggio.
+
+**D-10. Citazioni testuali del baseline verificate sul PDF.** Le citazioni di Cap. 21.1 e 22.6 del baseline `ENGINE_ALGO_INTEGRATO_HARD_LOCKED.pdf` sono state verificate per estratto diretto dal PDF usando `pdfplumber`. Il testo citato in Cap.11.1 è letterale e corrisponde esattamente al testo estratto (pagine 56 e 60 del PDF a 115 pagine totali). In particolare: (a) Cap. 21.1 pagina 56: "Il lifecycle della posizione oltre il fill è un sottosistema distinto e non va confuso con il lifecycle del contratto di segnale"; (b) Cap. 22.6 pagina 60: "La gestione fine dei partial fill viene trattata come submacchina della posizione e dunque come boundary del presente documento. [...] Il modo più semplice di rispettare il boundary è trattare il primo partial fill come passaggio del segnale in EXECUTED, spostando la gestione quantitativa della posizione in un sottosistema distinto."
+
+**D-11. Adattamento delle citazioni al perimetro retail.** Le citazioni del baseline (Cap. 21.1, 22.6) fanno riferimento a un sistema con esecuzione automatica di ordini (fill, ORDER_WORKING, EXECUTED, partial fill). Nel presente motore il "fill" corrisponde al raw touch della entry zone (l'operatore esegue manualmente). L'adattamento è dichiarato esplicitamente in Cap.11.1: il boundary si applica con `target_1_hit` nel ruolo di `EXECUTED` del baseline. Questa riformulazione è fedele al principio metodologico ("sottosistemi distinti") e rispetta il perimetro retail ("no execution automatica").
+
+### Misura prima/dopo dell'Iterazione 3
+
+| Metrica del comportamento GA | v2 (post-Review v2) | v3 (Iterazione 3) | Delta |
+|---|---|---|---|
+| Stati terminali della state machine | 7 (`target_1_hit`, `target_2_hit`, `stopped`, `invalidated`, `missed_target`, `expired`, `revoked`) | 6 (`target_1_hit`, `stopped`, `invalidated`, `missed_target`, `expired`, `revoked`) — `target_2_hit` rimosso | -1 stato ambiguo; state machine formalmente consistente senza transizioni uscenti da terminali |
+| Ambiguità formale `target_1_hit` | Terminale con transizione uscente verso `target_2_hit` (contraddizione formale, B-3) | Rigorosamente terminale, nessuna transizione uscente | Bug bloccante chiuso; ranking cromosomi non più influenzato da transizioni non specificate |
+| Rischio strategia degenere "attesa indefinita" pre-trigger | Presente: segnale `active` senza timer pre-trigger | Eliminato: $T_{touch}^{max} \in \{5, \ldots, 480\}$ minuti di trading, scadenza in `expired` con causa `pretrigger_timeout` | +1 parametro del cromosoma; eliminazione del bias "emetti raramente, attendi sempre" |
+| Spazio nullo del GA nella condizione di distanza | Intervallo $[0, 80]$ punti di $\tau_{dist}$ inattivo (mutazione GA senza variazione fitness) | Nessuno spazio nullo: $\tau_{dist}^{\sigma}$ in sigma-units, dominio pieno positivo, floor 80pt come vincolo separato | GA ha leva effettiva su tutta l'ottimizzazione della distanza; ridotto rischio di convergenza prematura |
+| Edge case raw touch coperti dal contratto | 0 (barra emissione, gap overnight, gap beyond-zone non specificati) | 3 (tutti trattati con regola esplicita e deterministica) | Determinismo del replay garantito anche per i casi limite più frequenti in trading notturno/opening |
+| Tracking post-target_1 | Assente nella Parte II; `target_2_hit` come stato del segnale | Submacchina distinta (Cap.11) con metriche $\pi_{t_2 \mid t_1}$, MFE, MAE, $f_{stop \mid t_1}$; OUT-OF-SCOPE dal motore | GA riceve feedback sulla qualità strutturale dei livelli target_2 senza espandere lo search space |
+| Citazioni baseline hard-locked | Assenti (Cap.11 non esisteva) | Presenti e verificate: Cap. 21.1 e 22.6 del baseline | Tracciabilità formale con il documento di riferimento |
+| Acceptance criteria soddisfatti | 14/14 con riserve su B-3, NB-7, NB-8, NB-9, NB-10 | 33/33 verificati puntualmente (vedi sezione "Acceptance criteria v3") | Tutti gli AC chiusi |
+
+### Acceptance criteria v3 — verifica puntuale
+
+| # | Criterio | Esito | Posizione |
+|---|----------|-------|-----------|
+| 1 | 6 capitoli (Cap 6-10 + Cap 11) presenti, completi, ordine corretto | OK | Sezioni `## Capitolo 6` … `## Capitolo 11` |
+| 2 | 12 eredità (8 CAP-01 + 4 raffinamenti Iter.2/Q-05) citate esplicitamente | OK | Introduzione Parte II (tutte 10 eredità dell'ACTIVE_TASK citate); Cap.6.1 (banda discreta, $d_{stop}>b$, target 1+2, tick 5pt, $\Delta t_{cromosoma}$, $T_{touch}^{max}$, executable_rate); Cap.7.3 (raw touch sempre eseguibile); Cap.8.4 (sessione 8-22, no fasi speciali) |
+| 3 | Cap 6: payload come tupla con tutti i campi e vincoli, target_2 obbligatorio | OK | Cap.6.1 (tupla con 10 campi inclusi $\Delta t_{cromosoma}$ e $T_{touch}^{max}$; target_2 obbligatorio con vincoli di ordinamento) |
+| 4 | Cap 6: nota esplicita "target_2 informazione strutturale pubblicata, non variabile di lifecycle" | OK | Cap.6.1, campo `target_1` e `target_2`, nota esplicita con riferimento a Q-05 Clausola 2 e Cap.11 |
+| 5 | Cap 6: entry_zone insieme discreto sul reticolo tick FIB (multipli di 5), $b \in \{5,…,40\}$ | OK | Cap.6.1, formula $\{p_{ref}-b, p_{ref}-b+5, \ldots, p_{ref}+b\}$, dominio $b \in \{5, 10, 15, 20, 25, 30, 35, 40\}$ |
+| 6 | Cap 6: payload immutabile e regola sostituzione | OK | Cap.6.2 (immutabilità), Cap.6.3 (sostituzione, $|\mathcal{A}(t)| \leq 1$, applicata solo a `active`) |
+| 7 | Cap 7: state machine 1 non-terminale + 6 terminali: `target_1_hit`, `stopped`, `invalidated`, `missed_target`, `expired`, `revoked`. `target_2_hit` RIMOSSO. | OK | Cap.7.1 (6 terminali elencati, `target_2_hit` assente), Cap.7.2 (tabella senza righe uscenti da terminali) |
+| 8 | Cap 7: transizioni esplicite (tabella) con condizioni di trigger | OK | Cap.7.2 (tabella completa) |
+| 9 | Cap 7: nota esplicita "target_2 dopo target_1 NON è transizione di stato del segnale ma evento del position lifecycle" | OK | Cap.7.1 (stato `target_1_hit`: "Il contratto del segnale si chiude definitivamente qui [...] Non è una transizione di stato del segnale ma un evento del position lifecycle (Cap.11)") |
+| 10 | Cap 7: `invalidated` esplicita sotto-caso "stop_loss attraversato pre-touch" | OK | Cap.7.1 (definizione `invalidated`: "fra le condizioni esplicitamente incluse [...] il superamento del livello `stop_loss` [...] per i segnali long, $p(t) \leq \texttt{stop\_loss}$ con $t < t_{touch}$; simmetricamente per gli short") |
+| 11 | Cap 7: `trigger_event` come evento, raw touch sempre eseguibile, nessun filtro post-emissione | OK | Cap.7.3 ("Il raw touch è sempre eseguibile: non esistono [...] guardie o filtri post-emissione che blocchino il trigger") |
+| 12 | Cap 7: timer post-trigger 2gg trading dal raw touch, $\Delta t_{cromosoma} \in \{1,\ldots,1680\}$, esempio 21:55 | OK | Cap.7.4 (formula, dominio, esempio lunedì 21:55 → mercoledì 21:55) |
+| 13 | Cap 7: timer pre-trigger $T_{touch}^{max} \in \{5,\ldots,480\}$, scadenza in `expired` con causa `pretrigger_timeout` | OK | Cap.7.5 (sezione dedicata), Cap.7.1 (stato `expired` con due cause), Cap.7.2 (transizione con causa duplice) |
+| 14 | Cap 7: edge case raw touch trattati (barra emissione, gap inside zone, gap oltre zona) | OK | Cap.7.3 ("Edge case del raw touch", casi (a), (b), (c)) |
+| 15 | Cap 7: M-1 trattato a livello di interfaccia con rinvio a Parte V per $N_{pivot}$ | OK | Cap.7.6 (contratto di osservazione, vincolo metodologico dichiarato, $N_{pivot}$ rinviato a Parte V) |
+| 16 | Cap 8: 3 condizioni di emissione pre-emissione (volatilità, liquidità, distanza in sigma-units), spread eliminata con motivazione | OK | Cap.8.1 (motivazione filosofica, spread eliminata con ragione esplicita: no storico book in Portara/CQG), Cap.8.2 (3 condizioni) |
+| 17 | Cap 8: $\tau_{dist}^{\sigma}$ in sigma-units, filtro 80pt come vincolo assoluto a valle | OK | Cap.8.2 (formula $|\texttt{target\_1} - p_{ref}| / \hat{\sigma} \geq \tau_{dist}^{\sigma}$), paragrafo successivo (filtro 80pt assoluto, non allentabile dal cromosoma) |
+| 18 | Cap 8: rinvio a Parte V per soglie congelate, a Parte III per modello volatilità | OK | Cap.8.2 (EGARCH → Parte III, Cap.12; soglie → Parte V), Cap.8.3 |
+| 19 | Cap 8: nessuna assunzione di fasi speciali nella sessione 8:00-22:00 | OK | Cap.8.4 (M-3 ritirato, FIB negozia in modo continuo) |
+| 20 | Cap 9: politica anti-duplicato e "nuovo messaggio per nuovo signal_id" (mai edit) | OK | Cap.9.4 (anti-duplicato), Cap.9.5 (nuovo messaggio separato, motivazione immutabilità) |
+| 21 | Cap 9: notifica `trigger_event` come messaggio separato | OK | Cap.9.5 (notifica come messaggio separato, con $t_{exec}$ e `expiry` calcolata) |
+| 22 | Cap 10: log di emissione include snapshot delle 3 condizioni di emissione | OK | Cap.10.2 (3 condizioni + filtro 80pt, con valori e soglie) |
+| 23 | Cap 10: log delle transizioni registra $t_{exec}$ del raw touch come riferimento timer post-trigger | OK | Cap.10.3 ("`trigger_event` [...] registrato nel log [...] in particolare l'istante $t_{exec}$ da cui decorre il timer post-trigger $\Delta t_{cromosoma}$") |
+| 24 | Cap 10: requisito di determinismo bit-exact dichiarato come vincolo formale | OK | Cap.10.1 (formula $\forall H, \forall B: \texttt{replay}(H, B) = \texttt{replay}(H, B)$ bit-exact) |
+| 25 | Cap 11: definisce submacchina position lifecycle come oggetto distinto dal lifecycle del segnale | OK | Cap.11.1 (separazione formale), Cap.11.3 (struttura della submacchina) |
+| 26 | Cap 11: OUT-OF-SCOPE dal motore (execution policy, scaling-out, trailing stop, dynamic sizing) | OK | Cap.11.2 (sezione "OUT-OF-SCOPE dal motore" con lista esplicita e riferimento punto 8 dichiarazione) |
+| 27 | Cap 11: IN-SCOPE per reporting (metriche $\pi_{t_2 \mid t_1}$, MFE, MAE, eventi post-target_1) | OK | Cap.11.2 (sezione "IN-SCOPE per reporting e validazione") |
+| 28 | Cap 11: submacchina NON modifica stato del segnale | OK | Cap.11.3 ("la submacchina non modifica lo stato del segnale in nessuna circostanza") |
+| 29 | Cap 11: citazioni testuali baseline Cap. 21.1 e 22.6 | OK | Cap.11.1 (citazioni letterali verificate sul PDF, con attribuzione esplicita alle sezioni e al file) |
+| 30 | Cap 11: search space del cromosoma GA non esteso | OK | Cap.11.4 ("Lo space search del cromosoma del GA non viene esteso. Nessuna policy decisionale post-target_1 entra nel cromosoma") |
+| 31 | Registro tecnico italiano formale | OK | Tutto il documento |
+| 32 | Formule e notazione LaTeX inline e display | OK | Cap.6.1, Cap.7.2, Cap.7.4, Cap.8.2, Cap.8.3, Cap.10.1 |
+| 33 | Tick FIB = 5pt rispettato in ogni esempio numerico | OK | Cap.6.1 (banda discreta multipli di 5), Cap.7.4 (esempio 21:55 in minuti), valori provvisori qualificati come tali |
+
+### Criterio di rollback aggiornato per l'Iterazione 3
+
+7. Se la state machine ridotta a 6 terminali (senza `target_2_hit`) si rivela insufficiente in Parte V perché il GA non riesce a calcolare `target_2_hit_rate` come metrica fold-by-fold senza uno stato dedicato nel segnale, si rivaluta l'opzione di registrare `target_2_reached` come campo del log di chiusura `target_1_hit` (campo booleano `target_2_reached_after_t1`). Questa revisione è puntuale su Cap.10.4 e non richiede nuovi stati nella state machine.
+8. Se il dominio $\{5, \ldots, 480\}$ minuti di $T_{touch}^{max}$ si rivela subottimale (troppo stretto o troppo largo) sulla base delle distribuzioni empiriche dei tempi di primo tocco sullo storico FIB, il dominio va ricalibrato in Parte V. La revisione è puntuale su Cap.6.1 e Cap.7.5, senza impatto sull'architettura del contratto.
+9. Se le citazioni del baseline (Cap. 21.1 e 22.6) vengono aggiornate in una versione successiva del documento `ENGINE_ALGO_INTEGRATO_HARD_LOCKED.pdf`, le citazioni di Cap.11.1 devono essere ricontrollate e aggiornate contestualmente. Il riferimento al file e alle sezioni è tracciato esplicitamente.
