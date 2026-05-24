@@ -255,3 +255,24 @@ Non applicabile: la correzione e fattuale (il modello EGARCH e effettivamente in
 ### Criterio di rollback
 Non applicabile: tutti e tre i fix sono correzioni fattuali di simboli e numeri di capitolo errati. Non vi è ambiguità metodologica. Se il numero di capitolo della sezione su invalidazione strutturale in Parte IV verrà assegnato, il riferimento in Cap.7.1 e Cap.7.2 dovrà essere aggiornato aggiungendo il numero corretto (aggiornamento puntuale, non rollback).
 
+---
+
+## Iterazione 5 (v5) — residuo formula condizione volatilita Cap.10.2
+
+**Origine**: NB-2 v2 di Review v2 CAP-03 (commit `6d959c6`). La mini-patch v4 (CAP-03 rework) e il successivo FIX-02 v3 (commit `0f6087c`) avevano corretto Cap.8.2 sostituendo $\hat{\sigma}$ con $\hat{\sigma}_{\text{pt}}$ nella formula display della condizione di volatilita e nel testo esplicativo. Rimaneva in Cap.10.2 (log di emissione, snapshot delle condizioni) il riferimento al simbolo non convertito: `$|\texttt{target\_1} - p_{ref}| / \hat{\sigma}$` e `$\tau_{vol}(\hat{\sigma}(t_{emission}))$`.
+
+### Modifica applicata
+
+| Posizione | Prima | Dopo |
+|-----------|-------|------|
+| Cap.10.2, bullet snapshot condizioni di emissione | `$\|\texttt{target\_1} - p_{ref}\| / \hat{\sigma}$` e `$\tau_{vol}(\hat{\sigma}(t_{emission}))$` | `$\|\texttt{target\_1} - p_{ref}\| / \hat{\sigma}_{\text{pt}}$` e `$\tau_{vol}(\hat{\sigma}_{\text{pt}}(t_{emission}))$` |
+
+### Misura prima/dopo
+
+| Metrica | Prima | Dopo | Delta |
+|---------|-------|------|-------|
+| Coerenza dimensionale log Cap.10.2 vs Cap.8.2 | Incoerente: Cap.10.2 usava $\hat{\sigma}$ (log-return), Cap.8.2 usava $\hat{\sigma}_{\text{pt}}$ (punti FIB) | Coerente: entrambi usano $\hat{\sigma}_{\text{pt}}$ (punti FIB) | Incoerenza testuale eliminata; log riproducibile con le stesse unita delle condizioni di emissione |
+
+### Criterio di rollback
+Non applicabile: la correzione e fattuale. Il log di emissione di Cap.10.2 deve usare gli stessi simboli e le stesse unita delle condizioni di emissione di Cap.8.2, per garantire la coerenza del replay deterministico (Cap.10.1). La sostituzione $\hat{\sigma} \to \hat{\sigma}_{\text{pt}}$ e imposta dalla coerenza dimensionale introdotta in Cap.13.1 di Parte III.
+

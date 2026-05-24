@@ -268,9 +268,9 @@ Le feature di prezzo catturano la dinamica recente del rendimento a diverse scal
 - **Momentum logaritmico**: $x_t^{(\text{mom},k)} = \text{sign}\!\left(\sum_{j=1}^{k} r_{t-j}\right) \cdot \left|\sum_{j=1}^{k} r_{t-j}\right|$ — in pratica il rendimento cumulato firmato, per la direzione e la forza del trend recente.
 - **Media mobile esponenziale dei rendimenti**: la formula corretta della EMA troncata al warm-up è
 
-  $$x_t^{(\text{ema},\lambda)} = (1-\lambda) \sum_{j=0}^{n_t - 1} \lambda^j \, r_{t-j}$$
+  $$x_t^{(\text{ema},\lambda)} = (1-\lambda) \sum_{j=0}^{n_t - 1} \lambda^j \, r_{t-1-j}$$
 
-  dove la sommatoria parte da $j = 0$ (incluso il rendimento della barra più recente $r_{t}$, disponibile in $\mathcal{F}_{t-1}$ in quanto chiusa) e $n_t$ è il numero di barre disponibili dall'inizio del warm-up di sessione. La somma dei pesi è $(1 - \lambda^{n_t})$, che converge a 1 solo asintoticamente per $n_t \to \infty$. Nelle prime barre della sessione, con $n_t$ piccolo, la EMA è normalizzata implicitamente dalla somma dei pesi effettivi.
+  dove la sommatoria parte da $j = 0$ con il rendimento più recente disponibile $r_{t-1}$ (la barra appena chiusa, $r_{t-1} \in \mathcal{F}_{t-1}$) e $n_t$ è il numero di barre disponibili dall'inizio del warm-up di sessione. La somma dei pesi è $(1 - \lambda^{n_t})$, che converge a 1 solo asintoticamente per $n_t \to \infty$. Nelle prime barre della sessione, con $n_t$ piccolo, la EMA è normalizzata implicitamente dalla somma dei pesi effettivi. Il termine $r_t$ (close della barra corrente ancora aperta) non compare nella formula: $r_t \in \mathcal{F}_t \setminus \mathcal{F}_{t-1}$ e non è disponibile al momento del calcolo della feature alla barra $t$.
 
   Il parametro $\lambda$ è parametro del modello (valore provvisorio $\lambda = 0{,}94$, congelato in Parte V). L'EMA dei rendimenti cattura il trend smussato.
 
@@ -303,7 +303,7 @@ Le feature di volatilità catturano il livello e la variazione della volatilità
 
 Le feature di struttura catturano la geometria del prezzo rispetto ai livelli strutturali identificati nella sessione:
 
-- **Distanza dal pivot più recente**: $x_t^{(\text{piv})} = (p_{t-1} - \hat{p}_{\text{pivot}}) / \hat{\sigma}_{t-1}$, espressa in sigma-units rispetto alla volatilità EGARCH corrente, dove $\hat{p}_{\text{pivot}}$ è il livello dell'ultimo pivot confermato (definito in Cap.15.3). La normalizzazione in sigma-units consente il confronto tra sessioni con diverso livello di volatilità.
+- **Distanza dal pivot più recente**: $x_t^{(\text{piv})} = (p_{t-1} - \hat{p}_{\text{pivot}}) / \hat{\sigma}_{\text{pt}, t-1}$, espressa in sigma-units rispetto alla volatilità EGARCH corrente convertita in punti FIB, dove $\hat{p}_{\text{pivot}}$ è il livello dell'ultimo pivot confermato (definito in Cap.15.3) e $\hat{\sigma}_{\text{pt}, t-1} = \hat{\sigma}_{t-1} \cdot p_{t-1}$ è la stima EGARCH in punti FIB (coerente con la definizione di Cap.13.1). Il numeratore $(p_{t-1} - \hat{p}_{\text{pivot}})$ è in punti FIB; il denominatore $\hat{\sigma}_{\text{pt}, t-1}$ è in punti FIB; il rapporto è adimensionale (sigma-units FIB). La normalizzazione in sigma-units consente il confronto tra sessioni con diverso livello di volatilità.
 - **Numero di pivot confermati nella sessione corrente**: $x_t^{(N_{\text{piv}})} = |\{\text{pivot confermati in} [8:00, t-1]\}|$ — un contatore intero che cresce durante la sessione man mano che i pivot vengono confermati dall'algoritmo di Cap.15.3.
 - **One-hot di regime**: $x_t^{(R)} = \mathbb{1}[R_{t-1} = \text{turbolento}] \in \{0, 1\}$ — indicatore binario che segnala il regime classificato dalla barra precedente.
 - **Durata del regime corrente**: $x_t^{(D_R)} = t - t_{R,\text{start}}$, dove $t_{R,\text{start}}$ è il tempo di inizio del regime corrente (l'istante in cui è diventata definitiva la transizione al regime corrente, dopo la persistenza minima $T_{persist}$). Questa feature cattura da quante barre il regime è stabile, informazione strutturalmente rilevante per la probabilità di persistenza futura.

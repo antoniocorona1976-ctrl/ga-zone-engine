@@ -295,7 +295,7 @@ Il determinismo del replay è la condizione necessaria perché le metriche di li
 In corrispondenza di ogni emissione di un nuovo segnale, il motore scrive un log di emissione contenente:
 
 - l'intero payload del segnale $\mathcal{S}$ (tutti i campi di Cap.6.1, fissati al momento dell'emissione), inclusi $\Delta t_{cromosoma}$ e $T_{touch}^{max}$
-- lo snapshot delle tre condizioni di emissione al momento $t_{emission}$: valori di $r_{1m}$, $v_{1m}$ e $|\texttt{target\_1} - p_{ref}| / \hat{\sigma}$, con le soglie correnti $\tau_{vol}(\hat{\sigma}(t_{emission}))$, $\tau_{liq}$, $\tau_{dist}^{\sigma}$ in vigore al momento (cromosoma frozen del bundle); esito del filtro 80pt per `setup_class`
+- lo snapshot delle tre condizioni di emissione al momento $t_{emission}$: valori di $r_{1m}$, $v_{1m}$ e $|\texttt{target\_1} - p_{ref}| / \hat{\sigma}_{\text{pt}}$, con le soglie correnti $\tau_{vol}(\hat{\sigma}_{\text{pt}}(t_{emission}))$, $\tau_{liq}$, $\tau_{dist}^{\sigma}$ in vigore al momento (cromosoma frozen del bundle); esito del filtro 80pt per `setup_class`
 - lo snapshot delle feature del modello al momento dell'emissione: $\hat{\sigma}(t_{emission})$, classificazione di regime, valore corrente delle feature causali utilizzate dal cromosoma per la decisione di emissione
 - il `signal_id` dell'eventuale segnale precedente revocato per sostituzione, se l'emissione è una sostituzione (Cap.6.3)
 - esito della pubblicazione Telegram: successo o fallimento, numero di tentativi, eventuale codice di errore (Cap.9.6)
