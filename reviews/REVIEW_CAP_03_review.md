@@ -223,3 +223,160 @@ Corsi (2009): inline, plausibile (J. Fin. Econometrics 7(2)). Nessuna falsificat
 ---
 ### Sintesi
 La v4 ha chiuso 8/9 finding di Review v1. Citazioni inline OK, non falsificate. Mini-patch CAP-02: cross-ref e distanza corretti, formula volatilita residua. Il fix C-5.1 ha introdotto regressione: r_t in EMA viola causalita (B-1). Fix: r_{t-1-j}. Verdetto CONDITIONAL: 1B, 2NB, 2N, 2M.
+
+---
+
+## Review v3 -- Re-audit ostile dopo rework v5 (chiusura B-1 + NB-1/NB-2 v2)
+
+**Verdetto**: PASS
+
+**Commit oggetto della review**: 2bf47ef
+**Data**: 2026-05-24
+**Iterazione**: v3 (terzo giro di review dopo rework v5)
+
+---
+
+### Stato dei finding di Review v2
+
+I 3 finding approvati dal supervisore (1 BUG REALE + 2 MIGLIORA PERFORMANCE) sono stati trattati dalla v5 con fix chirurgici. I 2 NEUTRO e 2 PROMEMORIA restano carryover come previsto.
+
+| Finding v2 | Stato v3 | Dettaglio |
+|------------|----------|-----------|
+| B-1 v2 (look-ahead EMA r_t) | **CHIUSO** | Cap.15.2.1 riga 271: formula r_{t-1-j}; testo riga 273 afferma r_{t-1} in F_{t-1} e r_t non in F_{t-1} |
+| NB-1 v2 (feature pivot sigma_hat vs sigma_hat_pt) | **CHIUSO** | Cap.15.2.4 riga 306: sigma_hat_pt al denominatore; chiarimento dimensionale esplicito |
+| NB-2 v2 (CAP-02 Cap.10.2 formula residua) | **CHIUSO** | Cap.10.2 riga 298: sigma_hat_pt e tau_vol(sigma_hat_pt) nel snapshot |
+| N-1 (Q_p sessione vs barra) | CARRYOVER Parte V | Non a Developer (NEUTRO) |
+| N-2 (p_t vs p_{t-1} in sigma_hat_pt) | CARRYOVER doc interna | Non a Developer (NEUTRO) |
+| M-1 (pivot bordo sessione) | CARRYOVER Parte VI | Non a Developer (PROMEMORIA) |
+| M-2 (cadenza production) | CARRYOVER Parte V/VI | Non a Developer (PROMEMORIA) |
+
+---
+
+### Verifica puntuale B-1 v2 -- Causalita EMA (Cap.15.2.1)
+
+**1. Formula.** La formula a riga 271 usa r_{t-1-j}. A j=0 il rendimento piu recente usato e r_{t-1}, MAI r_t. **OK**.
+
+**2. Dichiarazione causale.** Il testo a riga 273 afferma r_{t-1} in F_{t-1} e r_t in F_t \ F_{t-1}. **OK** -- entrambe le affermazioni sono esplicite.
+
+**3. Pesi.** (1-lambda) sum lambda^j = 1-lambda^{n_t}. Invariati rispetto a v4. **OK**.
+
+**4. Warm-up.** T_{warmup,EMA} = 74 per lambda=0,94: lambda^{74} approx 0,010. Peso residuo < 1%. Coerente. **OK**.
+
+**5. Verifica matematica prime 3 barre.**
+- t=1 (n_t=1): x_1 = (1-lambda) r_0. r_0 in F_0: **causale**.
+- t=2 (n_t=2): x_2 = (1-lambda)(r_1 + lambda r_0). r_1 in F_1 sottoinsieme F_{t-1=1}: **causale**.
+- t=3 (n_t=3): x_3 = (1-lambda)(r_2 + lambda r_1 + lambda^2 r_0). r_2 in F_2 sottoinsieme F_{t-1=2}: **causale**.
+
+In tutti i casi il rendimento piu recente e r_{t-1}, mai r_t. **B-1 v2 chiuso senza regressioni.**
+
+---
+
+### Verifica puntuale NB-1 v2 -- Feature distanza pivot (Cap.15.2.4)
+
+**6. Denominatore.** Riga 306: sigma_hat_{pt, t-1} presente. **OK**.
+
+**7. Analisi dimensionale.** Numeratore (p_{t-1} - p_pivot): punti FIB. Denominatore sigma_hat_{pt,t-1}: punti FIB. Rapporto: adimensionale. **OK**.
+
+**8. Chiarimento dimensionale esplicito.** Testo riga 306 dichiara esplicitamente numeratore e denominatore in punti FIB, rapporto adimensionale. **OK**.
+
+---
+
+### Verifica puntuale NB-2 v2 -- CAP-02 Cap.8.2 e Cap.10.2
+
+**9. Cap.10.2 riga 298.** Snapshot condizioni: sigma_hat_pt e tau_vol(sigma_hat_pt). **OK** -- coerente con Cap.8.2.
+
+**10. Cap.8.2 riga 189.** Formula display: tau_vol(sigma_hat_pt). **OK** -- gia corretto dal commit 0f6087c.
+
+**11. Coerenza Cap.8.2 / Cap.10.2 / Cap.13.1.** Tutte le condizioni di emissione usano sigma_hat_pt. **OK**.
+
+---
+### Verifica 7 AC v5
+
+| AC | Criterio | Esito |
+|----|----------|-------|
+| AC-v5-1 | B-1 v2 chiuso: EMA r_{t-1-j}; r_{t-1} in F_{t-1}, r_t non in F_{t-1} | **OK** |
+| AC-v5-2 | NB-1 v2 chiuso: Cap.15.2.4 sigma_hat_{pt, t-1} | **OK** |
+| AC-v5-3 | NB-2 v2 chiuso: CAP-02 Cap.10.2 sigma_hat_pt | **OK** |
+| AC-v5-4 | 14 AC v4 + 29 AC originali soddisfatti | **OK** |
+| AC-v5-5 | REPORT_CAP_03.md Iterazione 5 | **OK** |
+| AC-v5-6 | REPORT_CAP_02.md Iterazione 5 (v5) | **OK** |
+| AC-v5-7 | M-1 e M-2 v2 carryover dichiarati | **OK** |
+
+---
+
+### Verifica campionaria AC v4 post-v5
+
+| AC | Criterio | Esito post-v5 |
+|----|----------|---------------|
+| AC-v4-1 | NB-1: pivot disponibile a t + n_c + 1 | OK -- non toccato in v5 |
+| AC-v4-3 | NB-3: sigma_hat_pt in Cap.13.1; Cap.8.2 OK | OK -- ora anche Cap.10.2 chiuso |
+| AC-v4-4 | C-5.1: EMA j da 0 a n_t-1 | OK -- struttura conservata, solo indice r corretto |
+| AC-v4-7 | Q-07/C-5.2: reset EMA, T_warmup=74 | OK -- invariato |
+| AC-v4-13 | 29 AC originali restano soddisfatti | OK -- 29/29 |
+
+---
+
+### Verifica AC originali (29) -- sintesi post-v5
+
+Le 3 modifiche v5 sono chirurgiche. Nessuna rimozione di contenuto strutturale. Tutti 29 AC originali confermati: 29/29.
+
+---
+
+### Secondo giro ostile
+
+Domanda: sono sicuro di aver trovato tutti i problemi reali?
+
+1. **Altre feature che riferenziano la EMA.** Nessuna. La EMA e feature autonoma. La sostituzione r_t -> r_{t-1} non ha impatto su altre feature. **Nessun problema.**
+
+2. **sigma_hat_{pt, t-1} in Cap.15.2.4: p_{t-1} disponibile?** p_{t-1} in F_{t-1}. **OK** -- nessun look-ahead.
+
+3. **Residui sigma_hat senza _pt dove dovrebbe esserci.** Riga 178 (Cap.13.6) e riga 232 (Cap.14.4): tau_vol(sigma_hat(t)) in testo descrittivo. Formula normativa (Cap.8.2, Cap.13.1 riga 110) usa sigma_hat_pt. **NEUTRO** -- impatto GA nullo. CAP-02 riga 299: sigma_hat(t_emission) nello snapshot feature (grandezza modello, non condizione). **Corretto**.
+
+4. **Assunzioni implicite.** Nessuna nuova assunzione introdotta. Fix sostitutivi, non architetturali. **Nessun problema.**
+
+5. **Invarianti.** Causalita, determinismo, tick FIB 5pt, single-instrument N=1, sessione 8:00-22:00 -- tutte soddisfatte. **Nessun problema.**
+
+---
+
+### Problemi bloccanti (causano FAIL)
+
+Nessuno.
+
+---
+
+### Problemi non bloccanti (causano CONDITIONAL)
+
+Nessuno.
+
+---
+
+### Osservazioni minori
+
+- **N-3**: Cap.13.6 riga 178 e Cap.14.4 riga 232 citano la condizione di Cap.8 come tau_vol(sigma_hat(t)) anziche tau_vol(sigma_hat_pt(t)). Incoerenza notazionale nel testo descrittivo, non nella formula normativa. Impatto GA: nullo. Classificazione: NEUTRO. Carryover documentazione interna.
+
+---
+
+### Classificazione per il supervisore
+
+| # | Problema | Classificazione | Mandare a Development? |
+|---|----------|-----------------|------------------------|
+| N-3 | sigma_hat vs sigma_hat_pt in testo descrittivo (Cap.13.6, Cap.14.4) | NEUTRO | NO -- testo descrittivo, formula normativa corretta |
+
+---
+
+### Verifica mini-patch CAP-02 v5
+
+| Punto | Esito |
+|-------|-------|
+| Cap.8.2 formula display volatilita sigma_hat_pt | OK -- riga 189 |
+| Cap.8.2 formula display distanza sigma_hat_pt | OK -- riga 201 |
+| Cap.10.2 snapshot condizioni sigma_hat_pt | OK -- riga 298 |
+| Cap.10.2 snapshot feature sigma_hat (log-return) | OK -- riga 299 (intenzionale) |
+| REPORT_CAP_02 Iterazione 5 (v5) | OK |
+| Coerenza Cap.8.2 / Cap.10.2 / Cap.13.1 | OK |
+
+---
+
+### Sintesi
+
+La v5 ha chiuso tutti e 3 i finding approvati dal supervisore con fix chirurgici corretti: (1) formula EMA causale con r_{t-1-j} e dichiarazione esplicita r_t non in F_{t-1}; (2) denominatore feature pivot in sigma_hat_{pt, t-1} con analisi dimensionale esplicita; (3) snapshot log Cap.10.2 di CAP-02 con sigma_hat_pt coerente con Cap.8.2. Nessun nuovo BUG REALE. Nessun nuovo MIGLIORA PERFORMANCE. Una osservazione NEUTRO residua (notazione descrittiva in Cap.13.6 e Cap.14.4 -- impatto GA nullo). 50/50 AC soddisfatti (29 originali + 14 v4 + 7 v5). Verdetto **PASS**: CAP-03 chiuso.
