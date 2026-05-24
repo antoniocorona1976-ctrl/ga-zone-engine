@@ -1,0 +1,48 @@
+# CARRYOVER — M-promemoria fra capitoli del progetto ga-zone-engine
+
+Questo file e' il **veicolo di handoff** tra sessioni di capitoli diversi. Ogni Review che emette PROMEMORIA / M-promemoria / NEUTRO con rinvio esplicito a una Parte successiva deve essere registrata qui dall'Orchestratore della sessione del capitolo chiuso, come parte della checklist di chiusura (vedi [[feedback-sessione-per-capitolo]] condizione 6).
+
+L'Orchestratore della **nuova** sessione legge questo file come input obbligatorio prima di chiamare il Planner.
+
+**Formato riga**: `| M-ID | origine | contenuto | destinazione | stato |`
+
+- **M-ID**: identificatore univoco (M-1, M-2, ...). Crescente. Non riusato.
+- **origine**: `Review vY CAP-XX` (es. `Review v1 CAP-02`).
+- **contenuto**: descrizione sintetica del promemoria.
+- **destinazione**: capitolo / parte / appendice dove il promemoria va affrontato (es. `Parte V Cap.24`, `Appendice E`).
+- **stato**: `OPEN` (da affrontare) / `CLOSED` (gia' affrontato in un capitolo successivo, con riferimento al CAP che lo ha chiuso).
+
+---
+
+## M-promemoria attivi
+
+| M-ID | Origine | Contenuto | Destinazione | Stato |
+|------|---------|-----------|--------------|-------|
+| M-2  | Review v1 CAP-02 | Verifica empirica latenza Telegram ($L_{max}=30$s) | Appendice E | OPEN |
+| M-4  | Review v4 CAP-01 | Tasso di rimpiazzo NSGA-II che giustifica baseline 12.800-25.600 min | Parte V (Cap.23) | OPEN |
+| M-5  | Review v1 CAP-03 (Q-06 / C-4.3) | Benchmark comparativo rolling vs expanding vs EWMA su FIB con test Inoue-Rossi (2011); criterio di rollback automatico | Parte V (Cap.25 window selection del walk-forward) | OPEN |
+| M-6  | Review v1 CAP-03 (Q-09 / C-7.3) | Classificazione di regime in parallelo media e mediana; test di stabilita' con soglia da definire | Parte V (Cap.25-26 gestione regimi nel walk-forward) | OPEN |
+| M-1 v2 CAP-03 | Review v2 CAP-03 | Pivot all'inizio e alla fine della sessione non confermabili (conseguenza condizione 4 di Q-08) -- design corretto, va segnalato nel report | Parte VI | CLOSED-CAP-04 (trattato in Cap.16 ancoraggio zona) |
+| M-2 v2 CAP-03 | Review v2 CAP-03 | Cadenza ricalibrazione EGARCH in production non specificata | Parte V/VI | OPEN |
+| M-7  | Review v1 CAP-04 (O-5) | Censoring informativo nel modello Cox cause-specific: verifica del'assunzione (indipendenza censoring/evento) | Parte V (calibrazione/diagnostica survival) | OPEN |
+| M-8  | Developer CAP-04 | Verifica del censoring non-informativo nel survival | Parte V | OPEN |
+| M-9  | Developer CAP-04 | Benchmark Cox cause-specific vs Fine-Gray sub-distribution | Parte V | OPEN |
+| M-10 | Developer CAP-04 | Test Schoenfeld per assunzione hazard proporzionali | Parte V | OPEN |
+| M-11 | Developer CAP-04 | Dimensionalita' massima del vettore di feature $\tilde{\mathbf{x}}$ nel survival | Parte V | OPEN |
+| M-12 | Review v1 CAP-04 (O-3) + Developer | Flag `target_2_type` (synthetic/structural) e `stop_type` (structural/personal) — collocazione nel payload formale Cap.6.1 Parte II o solo nel log di emissione | Parte V (revisione payload) o mini-patch CAP-02 | OPEN |
+| M-13 | Review v1 CAP-04 (O-4) + Developer | Catalogo feature: 37 baseline (CAP-03) vs 38 per trade_range con $x^{(A_{range})}$ aggiuntiva — decisione formale | Parte V (cromosoma) | OPEN |
+| M-14 | Developer CAP-04 | Stratificazione del Cox per regime calmo/turbolento (interaction term o stratificazione formale) | Parte V | OPEN |
+| M-15 | Developer CAP-04 | Parametri di classificazione `trade_range` ($A_{range,min}=80$, $N_{osc}$, $n_{osc,min}$, soglie 4 condizioni) congelamento numerico | Parte V | OPEN |
+
+## Carryover pre-esistenti (storici, non ancora migrati a questo file)
+
+| Origine | Note |
+|---------|------|
+| Discrepanza 80pt Cap.5 Parte I vs Cap.6.1 Parte II | Review v1 CAP-04 (O-6) PROMEMORIA pre-esistente: Cap.5 dice $A_{range} \geq 80$pt, Cap.6.1 dice $|target_1 - stop_{loss}| \geq 80$pt. CAP-04 ha scelto la formulazione Cap.5. Decisione formale rinviata. |
+
+---
+
+**Convenzioni di update:**
+- Quando una nuova Review emette PROMEMORIA / M-promemoria, l'Orchestratore della sessione corrente aggiunge righe alla tabella prima di considerare la sessione chiusa.
+- Quando un capitolo successivo chiude un promemoria, lo stato passa a `CLOSED-CAP-YY` con riferimento al capitolo che lo ha chiuso. Mai eliminare la riga: lo storico serve.
+- I PROMEMORIA NEUTRO senza impatto sul GA possono essere registrati come `CLOSED-NEUTRO` se il supervisore decide che non vanno mai affrontati.

@@ -220,3 +220,107 @@ Il documento risponde senza ambiguita' a queste domande:
 ## Pipeline attesa
 
 Development v1 -> Review v1 audit ostile con classificazione GA -> punto di controllo supervisore se CONDITIONAL/FAIL -> fix -> ... -> PASS
+
+---
+
+## Finding di Review v1 da risolvere (rework v2)
+
+Review v1 di CAP-04 (commit `64a31aa` + `a1de0a8`) ha emesso verdetto **CONDITIONAL** con 2 BUG REALI + 2 NEUTRO + 4 PROMEMORIA. **Decisione supervisore 2026-05-24**: BUG REALI obbligatori (NB-1 + NB-2) + **tutti i PROMEMORIA approvati** (O-3, O-4, O-5, O-6). I 2 NEUTRO (O-1 cross-ref Cap.15.2.1; O-2 tie-break arrotondamento target_2 sintetico) restano carryover documentazione interna, NON vanno a Developer.
+
+Le decisioni di design per chiudere i PROMEMORIA sono state prese dall'Orchestratore (in assenza di Planner attivo in questa sessione, scope CAP-04 esteso a chiusura PROMEMORIA invece di rinvio a Parte V). Il Reviewer le auditera' come decisioni di design dichiarate; il supervisore puo' obiettare nel checkpoint.
+
+### BUG REALI obbligatori
+
+#### **NB-1** -- Contraddizione formula vs testo in selezione p_ref (Cap.16.1 righe 21-26)
+
+**Problema**: la formula a riga 21 dice $p_{ref} = \max_{p \in P_{low}(t)} p$ (criterio prezzo), il testo a riga 26 dice "si seleziona il piu' recente per timestamp di conferma" (criterio temporale). Due implementazioni divergenti producono $p_{ref}$ diversi.
+
+**Fix v2 -- decisione di design**: scegliere il **criterio temporale (pivot piu' recente per timestamp di conferma)** come unico criterio. Motivazione: il pivot piu' recente e' il piu' "vicino" al momento decisionale e quindi piu' reattivo al regime corrente; il pivot estremo in prezzo puo' essere distante temporalmente e non riflettere la struttura attuale.
+
+Modifiche concrete:
+- Riga 21 Cap.16.1: sostituire formula con $p_{ref}(t) = \text{level}(\text{argmax}_{p \in P_{low}(t)} \tau_{conf}(p))$ dove $\tau_{conf}(p)$ e' il timestamp di conferma del pivot $p$ (coerente con disponibilita' a $t + n_c + 1$, Cap.15.3 di CAP-03).
+- Riga 26: gia' corretta, lasciare invariata.
+- Esempio numerico (se presente in Cap.16.3): aggiornare con due pivot a 27.300 (conferma 10:15) e 27.250 (conferma 11:30) -> $p_{ref} = 27.250$ (criterio temporale).
+- Simmetrico per short.
+
+#### **NB-2** -- Termine "oscillazione" non definito formalmente (Cap.21.2 riga 443)
+
+**Problema**: la condizione 3 della classificazione trade_range richiede "oscillazioni $\geq n_{osc,min}$", ma "oscillazione" non ha definizione algoritmica. Viola il determinismo bit-exact.
+
+**Fix v2 -- decisione di design**: definire "oscillazione" come **crossing completo del range** sulla sequenza delle barre OHLC.
+
+Formulazione operativa da aggiungere a Cap.21.2 (dopo riga 443):
+
+> Una *oscillazione* del prezzo nel range $[p_{low,range}, p_{high,range}]$ e' una sequenza di due tocchi consecutivi di bordi opposti: la barra $t_a$ tocca un bordo (cioe' $\text{close}(t_a) \in [p_{bordo} - \epsilon, p_{bordo} + \epsilon]$ con $\epsilon$ = tolleranza di prossimita') e una barra successiva $t_b > t_a$ tocca l'altro bordo. Le due barre $t_a$ e $t_b$ definiscono UNA oscillazione. Una sequenza di tocchi del medesimo bordo non incrementa il conteggio. $\epsilon$ e' parametro provvisorio del modello (valore di lavoro: $\epsilon = 5$ pt = 1 tick FIB), congelato in Parte V.
+> Il conteggio $n_{osc}(t)$ a tempo $t$ considera tutte le oscillazioni completate nelle ultime $N_{osc}$ barre della sessione corrente. $N_{osc}$ e' parametro provvisorio (valore di lavoro provvisorio nell'ACTIVE_TASK), congelato in Parte V.
+
+L'algoritmo e' deterministico, causale (usa solo close fino a $t-1$), e produce conteggio bit-exact identico fra implementazioni.
+
+### PROMEMORIA approvati dal supervisore (chiusura in rework v2)
+
+#### **O-3 / M-12** -- Flag target_2_type e stop_type nel payload formale
+
+**Problema**: il Developer CAP-04 ha introdotto i flag `target_2_type` (synthetic/structural) e `stop_type` (structural/personal) ma non sono nel payload formale di Cap.6.1 di CAP-02. Domanda aperta: dove vanno?
+
+**Fix v2 -- decisione di design**: i flag entrano nel **payload formale** di Cap.6.1 Parte II come campi obbligatori del messaggio segnale. Il consumer Telegram deve conoscerli per gestire correttamente il behavior (es. target_2 sintetico = chiusura forzata vs strutturale = trail; stop strutturale vs personale = priorita' diversa nella gestione).
+
+Modifiche concrete:
+1. **Mini-patch CAP-02 Cap.6.1**: aggiungere al payload $S$ due nuovi campi:
+   - `target_2_type \in \{structural, synthetic\}`
+   - `stop_type \in \{structural, personal\}`
+   Aggiornare la definizione testuale di $S$ in Cap.6.1 e l'esempio di payload se presente.
+2. **Aggiornare Cap.17.4 di CAP-04** (target_2): esplicitare che il campo `target_2_type` del payload viene popolato in base alla selezione fra strutturale e sintetico.
+3. **Aggiornare Cap.18.1/18.3 di CAP-04** (stop): esplicitare che il campo `stop_type` del payload viene popolato in base alla derivazione strutturale o personale.
+4. **CARRYOVER.md**: stato M-12 -> `CLOSED-CAP-04`.
+
+#### **O-4 / M-13** -- Catalogo feature 37 vs 38 per trade_range
+
+**Problema**: $x^{(A_{range})}$ aggiunta in Cap.21.5 di CAP-04 portava il catalogo a 38, in incoerenza con CAP-03 (catalogo 37).
+
+**Fix v2 -- decisione di design**: il **catalogo globale resta 37 feature** (CAP-03 invariato). La feature $x^{(A_{range})}$ e' classificata come **feature condizionale** attiva solo nel regime trade_range, non aggiunta al catalogo principale.
+
+Modifiche concrete:
+1. **Cap.21.5 di CAP-04**: aggiungere all'inizio del paragrafo una dichiarazione esplicita: "Il modello survival per il regime trade_range usa un'estensione locale del catalogo causale con la feature condizionale $x^{(A_{range})} = A_{range} = p_{high,range} - p_{low,range}$, attiva solo quando lo stato di mercato e' classificato trade_range (Cap.14 di Parte III). Il catalogo globale del cromosoma per il regime directional resta a 37 feature (Cap.15 di CAP-03 invariato)."
+2. **CARRYOVER.md**: stato M-13 -> `CLOSED-CAP-04`.
+3. **Nessuna modifica a CAP-03** (catalogo invariato).
+
+#### **O-5 / M-7** -- Censoring informativo nel Cox cause-specific (Cap.19.4)
+
+**Problema**: il modello Cox cause-specific dichiara di assumere censoring non-informativo (i tempi di censoring sono indipendenti dai tempi di evento, condizionatamente alle covariate), ma l'assunzione non e' verificata in CAP-04.
+
+**Fix v2 -- formalizzazione**: aggiungere a Cap.19.4 una **dichiarazione esplicita** dell'assunzione + **acceptance criterion** che rinvia formalmente la verifica empirica a Parte V.
+
+Modifiche concrete:
+1. **Cap.19.4 di CAP-04**: aggiungere dopo la riga 355 una frase: "Il modello assume che il censoring (eventi `expired` per timeout di sessione, vedi Cap.20.4) sia non-informativo rispetto ai tempi di evento, condizionatamente alle covariate $\tilde{\mathbf{x}}_t$. L'assunzione e' plausibile a priori perche' il timeout di sessione e' fissato dall'orario di chiusura (22:00 CET) e non dalla dinamica del prezzo. La verifica empirica formale (test di Cox-Snell sui residui di censoring, plot di Schoenfeld stratificato per evento vs censoring) e' rinviata a Parte V, Cap.X di calibrazione/diagnostica survival."
+2. **CARRYOVER.md**: M-7 resta `OPEN` con destinazione Parte V (la verifica empirica resta Parte V; in CAP-04 solo dichiarazione formale).
+3. **REPORT_CAP_04**: AC della formalizzazione aggiunto.
+
+#### **O-6** -- Discrepanza 80pt fra Cap.5 PI e Cap.6.1 PII
+
+**Problema**: Cap.5 PI dice "$A_{range} \geq 80$ pt" (ampiezza del range); Cap.6.1 PII dice "$|target_1 - stop_{loss}| \geq 80$ pt" (distanza target-stop). Formulazioni diverse. CAP-04 ha adottato Cap.5 PI come riferimento.
+
+**Fix v2 -- mini-patch CAP-02**: la formulazione di Cap.5 PI ($A_{range} \geq 80$ pt) e' il riferimento normativo. Sincronizzare Cap.6.1 PII.
+
+Modifiche concrete:
+1. **Mini-patch CAP-02 Cap.6.1**: sostituire "$|target_1 - stop_{loss}| \geq 80$ pt" con "$A_{range} \geq 80$ pt" (oppure aggiungere chiarimento: "il vincolo dei 80 pt si applica all'ampiezza del range $A_{range}$, vedi Cap.5 di Parte I e Cap.21 di Parte IV per la definizione operativa di $A_{range}$").
+2. **REPORT_CAP_02.md**: aggiungere sezione "## Iterazione 4 -- sincronizzazione 80pt Cap.6.1 con Cap.5 PI".
+3. **CARRYOVER.md**: O-6 -> CHIUSO.
+
+### Acceptance criteria aggiuntivi per la v2
+
+- [ ] **AC-v2-1**: NB-1 chiuso. Cap.16.1 riga 21 ha formula con criterio temporale (argmax su timestamp di conferma). Riga 26 invariata. Esempio numerico aggiornato (se presente).
+- [ ] **AC-v2-2**: NB-2 chiuso. Cap.21.2 contiene definizione algoritmica esplicita di "oscillazione" (crossing completo del range) con tolleranza $\epsilon = 5$ pt provvisoria. Algoritmo deterministico + causale.
+- [ ] **AC-v2-3**: O-3 / M-12 chiuso. Payload $S$ Cap.6.1 di CAP-02 contiene i campi `target_2_type` e `stop_type`. Cap.17.4 e Cap.18.1/18.3 di CAP-04 fanno riferimento esplicito ai due campi del payload.
+- [ ] **AC-v2-4**: O-4 / M-13 chiuso. Cap.21.5 di CAP-04 dichiara $x^{(A_{range})}$ come feature condizionale al regime trade_range. Catalogo globale di Cap.15 CAP-03 invariato a 37 feature.
+- [ ] **AC-v2-5**: O-5 / M-7 formalizzato. Cap.19.4 contiene dichiarazione esplicita dell'assunzione di censoring non-informativo + rinvio formale a Parte V con metodi di verifica nominati (Cox-Snell, Schoenfeld stratificato).
+- [ ] **AC-v2-6**: O-6 chiuso. Mini-patch CAP-02 Cap.6.1: formulazione 80pt allineata a Cap.5 PI (`A_{range} \geq 80` pt). REPORT_CAP_02 ha sezione "Iterazione 4".
+- [ ] **AC-v2-7**: nessuna regressione su AC v1 originali (35 voci). Verifica esplicita nel REPORT con tabella prima/dopo dove rilevante.
+- [ ] **AC-v2-8**: `tasks/CARRYOVER.md` aggiornato: M-12, M-13, O-6 -> `CLOSED-CAP-04`; M-7 resta `OPEN` Parte V; gli M-8...M-15 dichiarati dal Developer in v1 restano `OPEN`.
+- [ ] **AC-v2-9**: REPORT_CAP_04.md include sezione "## Iterazione 2 -- risposta ai finding di Review v1 + decisioni PROMEMORIA" con: per ogni finding/PROMEMORIA, modifica applicata + misura prima/dopo + AC chiuso.
+- [ ] **AC-v2-10**: REPORT_CAP_02.md include sezione "## Iterazione 4 -- mini-patch Cap.6.1 (flag payload + sincronizzazione 80pt)".
+- [ ] **AC-v2-11**: 00_indice.md aggiornato per riflettere lo stato corrente di CAP-04 e CAP-02 (entrambi in revisione).
+- [ ] **AC-v2-12**: tutti i file modificati sono committati e pushati. Working tree pulito sui file di task (escluso `.claude/*` locali e file di scheduling).
+
+### Pipeline rework v2
+
+Development v2 (2 fix BUG REALI + 4 chiusure PROMEMORIA + mini-patch CAP-02) -> Review v2 di CAP-04 -> atteso PASS (con possibili nuove osservazioni minori sui mini-patch CAP-02).
