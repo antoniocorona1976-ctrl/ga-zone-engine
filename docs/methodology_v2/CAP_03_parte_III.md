@@ -205,7 +205,7 @@ dove la somma è estesa a tutte le $N_s = 840$ barre 1-min della sessione operat
 
 Come **benchmark di robustezza**, nei report di sessione prodotti dal motore viene riportato in parallelo il valore $\text{med}_t(\hat{\sigma}_{s,t})$ — la mediana delle stime EGARCH sulla sessione. La mediana è meno sensibile a picchi anomali di volatilità (spike intraday) rispetto alla media. Se in validazione OOS la classificazione di regime cambia significativamente fra media e mediana su una frazione rilevante di sessioni, ciò va interpretato come segnale di sessioni con picchi anomali; il trattamento di questo caso è materia di un M-promemoria per Parte V (M-6). La soglia di "cambiamento significativo" è parametro del modello da definire in Parte V.
 
-**Definizione formale.** Sia $\hat{\sigma}_{s,\bar{t}} = \bar{\sigma}_s$ la statistica di sessione calcolata come sopra. Sia $Q_p(\hat{\sigma} \mid \mathcal{W}_t)$ il quantile di livello $p$ della distribuzione di $\hat{\sigma}$ calcolata sulla finestra rolling $\mathcal{W}_t$ delle $N_{reg}$ sessioni più recenti precedenti alla sessione corrente. La classificazione è:
+**Definizione formale.** Sia $\hat{\sigma}_{s,\bar{t}} = \bar{\sigma}_s$ la statistica di sessione calcolata come sopra. Sia $Q_p(\hat{\sigma} \mid \mathcal{W}_t)$ il quantile di livello $p$ della distribuzione di $\hat{\sigma}$ calcolata sulla finestra rolling $\mathcal{W}_t$ delle $N_{reg}$ sessioni più recenti precedenti alla sessione corrente. $Q_p$ è calcolato sulla distribuzione delle **medie di sessione** $\bar{\sigma}_s$ delle $N_{reg}$ sessioni più recenti — quindi $N_{reg}$ valori, uno per sessione, coerenti con la definizione di statistica di sessione di cui sopra (baseline C-7.1, Q-09) e con la citazione Corsi (2009) HAR-RV che aggrega la volatilità per intervalli temporali, non per singola osservazione. Il confronto avviene tra $\hat{\sigma}_t$ (stima EGARCH della singola barra corrente, che ha variabilità intra-sessione) e $Q_p(\bar{\sigma}_s \mid \mathcal{W}_t)$ (percentile della distribuzione delle medie di sessione, che è una grandezza liscia): questo confronto è intenzionale e produce granularità alta nella classificazione (la barra corrente è turbolenta se la sua volatilità supera il percentile della distribuzione delle medie di sessione storiche). La classificazione è:
 
 $$R_t = \begin{cases} \text{turbolento} & \text{se } \hat{\sigma}_t > Q_p\!\big(\hat{\sigma} \mid \mathcal{W}_t\big) \\ \text{calmo} & \text{altrimenti} \end{cases}$$
 
@@ -257,7 +257,7 @@ Questo vincolo è più stringente della semplice assenza di look-ahead in senso 
 
 La Parte III definisce il **catalogo completo** delle feature ammissibili, organizzato in quattro categorie. La selezione del sottoinsieme di feature effettivamente usato dal modello è materia del cromosoma (Parte V) o del wrapper di validazione (Parte VII): la Parte III si limita a definire le feature calcolabili.
 
-Il numero massimo di feature candidate del catalogo è dichiarato come **parametro del modello**, non del cromosoma. Il valore di lavoro provvisorio è un massimo di 40 feature candidate, da congelare in Parte V sulla base dell'analisi della dimensionalità e del rischio di overfitting. La selezione è rinviata a Parte V/VII.
+Il numero massimo di feature candidate del catalogo è dichiarato come **parametro del modello**, non del cromosoma. Il valore di lavoro provvisorio è un massimo di 37 feature candidate, da congelare in Parte V sulla base dell'analisi della dimensionalità e del rischio di overfitting. La selezione è rinviata a Parte V/VII.
 
 #### 15.2.1 Feature di prezzo
 
@@ -265,7 +265,6 @@ Le feature di prezzo catturano la dinamica recente del rendimento a diverse scal
 
 - **Rendimento logaritmico 1-min corrente**: $x_t^{(r,1)} = r_{t-1}$ (il log-return della barra appena chiusa, $\in \mathcal{F}_{t-1}$).
 - **Rendimento cumulato su finestra rolling**: $x_t^{(r,k)} = \sum_{j=1}^{k} r_{t-j}$ per $k \in \{5, 15, 60\}$ barre 1-min, equivalente al log-return a scala $k$ della barra composita più recente completamente chiusa.
-- **Momentum logaritmico**: $x_t^{(\text{mom},k)} = \text{sign}\!\left(\sum_{j=1}^{k} r_{t-j}\right) \cdot \left|\sum_{j=1}^{k} r_{t-j}\right|$ — in pratica il rendimento cumulato firmato, per la direzione e la forza del trend recente.
 - **Media mobile esponenziale dei rendimenti**: la formula corretta della EMA troncata al warm-up è
 
   $$x_t^{(\text{ema},\lambda)} = (1-\lambda) \sum_{j=0}^{n_t - 1} \lambda^j \, r_{t-1-j}$$
@@ -287,7 +286,7 @@ Esempio numerico (tick FIB = 5pt): se $p_{t-1} = 27.500$ e $p_{t-2} = 27.480$, a
 Le feature di volume catturano le condizioni di liquidità e l'attività di mercato:
 
 - **Volume relativo di sessione**: $x_t^{(v,\text{rel})} = v_{1m}(t-1) / \bar{v}_{h,m}$, dove $\bar{v}_{h,m}$ è il volume medio storico per il minuto $h$ e il mese $m$ della sessione, calcolato sulla finestra storica di calibrazione. Questo ratio confronta il volume della barra appena chiusa con il volume atteso per quella fascia oraria, normalizzando per il ciclo stagionale intraday.
-- **Volume cumulato di sessione**: $x_t^{(v,\text{cum})} = \sum_{j=1}^{t-1} v_{1m}(j)$ — il volume totale contrattato dall'apertura delle 8:00 fino alla barra $t-1$ inclusa.
+- **Volume cumulato di sessione**: $x_t^{(v,\text{cum})} = \sum_{j=t_{\text{open}(s_t)}}^{t-1} v_{1m}(j)$, dove $t_{\text{open}(s_t)}$ è l'indice globale della prima barra (8:01 CET) della sessione corrente $s_t$ — il volume totale contrattato dall'apertura delle 8:00 fino alla barra $t-1$ inclusa, con reset a zero a ogni nuova sessione.
 - **Rapporto volume rolling / media storica**: $x_t^{(v,\text{ma})} = \frac{(1/k)\sum_{j=1}^{k} v_{1m}(t-j)}{\bar{v}}$, dove $\bar{v}$ è il volume medio sull'intera finestra di calibrazione.
 
 #### 15.2.3 Feature di volatilità
@@ -359,8 +358,10 @@ La scelta di mediana e MAD in luogo di media e deviazione standard è motivata d
 
 La lunghezza della finestra di normalizzazione $W_{norm}$ è un **parametro del modello**, valore di lavoro provvisorio $W_{norm} = 1.000$ barre 1-min (circa 2 giorni di trading), da congelare in Parte V. La normalizzazione è calcolata esclusivamente su dati della finestra $[t - W_{norm}, t-1]$ ($\in \mathcal{F}_{t-1}$), in coerenza con il vincolo di causalità.
 
+**Finestra di normalizzazione per feature con reset di sessione.** Per le feature con reset di sessione — EMA dei rendimenti (Cap.15.2.1) e volume cumulato di sessione (Cap.15.2.2) — la finestra di normalizzazione $W_{norm}$ non deve attraversare il confine di sessione, poiché le barre della sessione precedente contengono valori strutturalmente diversi (la feature era in uno stato "maturo" alla fine della sessione precedente, mentre alla riapertura è resettata a zero o quasi). Per queste feature, Med e MAD sono calcolate esclusivamente su $\{x_{t_{\text{open}(s_t)}}, \ldots, x_{t-1}\}$, ossia sulle barre della sessione corrente a partire dall'apertura. Conseguenza: la normalizzazione è effettivamente attiva solo a partire da $T_{warmup,\text{norm}}$ barre dall'apertura della sessione (valore di lavoro provvisorio $T_{warmup,\text{norm}} = 100$ barre, da congelare in Parte V); le barre precedenti sono marcate `unusable` per coerenza con il warm-up EMA ($T_{warmup,\text{EMA}} = 74$ barre). Il parametro $T_{warmup,\text{norm}} = 100 > T_{warmup,\text{EMA}} = 74$ garantisce che la normalizzazione disponga di un campione sufficiente prima di produrre z-score affidabili.
+
 **Gestione dei casi degeneri.** Se $\text{MAD} = 0$ (feature costante nella finestra rolling, possibile per feature binarie o contatori), si adotta la convenzione $\tilde{x}_t = 0$ (o equivalentemente si sostituisce MAD con un valore floor $\epsilon > 0$ parametro del modello). Questo caso è raro per le feature continue ma può verificarsi per la feature one-hot di regime $x_t^{(R)}$ in sessioni con regime costante.
 
 ---
 
-*Fine della Parte III. I blocchi quantitativi elementari — rendimento (Cap.12), volatilità condizionata (Cap.13), regime intraday (Cap.14), feature causali (Cap.15) — sono ora formalmente definiti e pronti per essere consumati dalla Parte IV (geometria delle zone, survival model) e dalla Parte V (cromosoma, operatori GA, fitness multi-obiettivo). Il parametro $W$, $p$, $N_{reg}$, $T_{persist}$, $N_{pivot}$, $n_c$, $\delta_{pivot}$, $W_{norm}$ e la distribuzione $D$ sono tutti dichiarati come provvisori e congelati in Parte V previo confronto empirico sullo storico Portara/CQG FIB 1-min.*
+*Fine della Parte III. I blocchi quantitativi elementari — rendimento (Cap.12), volatilità condizionata (Cap.13), regime intraday (Cap.14), feature causali (Cap.15) — sono ora formalmente definiti e pronti per essere consumati dalla Parte IV (geometria delle zone, survival model) e dalla Parte V (cromosoma, operatori GA, fitness multi-obiettivo). Il parametro $W$, $p$, $N_{reg}$, $T_{persist}$, $N_{pivot}$, $n_c$, $\delta_{pivot}$, $W_{norm}$, $T_{warmup,\text{EMA}}$, $T_{warmup,\text{norm}}$ e la distribuzione $D$ sono tutti dichiarati come provvisori e congelati in Parte V previo confronto empirico sullo storico Portara/CQG FIB 1-min.*

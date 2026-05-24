@@ -182,3 +182,80 @@ Fix: in Cap.10.2 CAP-02, sostituiti $\hat{\sigma}$ con $\hat{\sigma}_{\text{pt}}
 
 Tutti 29 AC originali confermati. Le 3 modifiche v5 sono chirurgiche su formula e simbolo, senza rimozione di contenuto strutturale. I capitoli Cap.12, Cap.13, Cap.14 sono invariati. Cap.15.2.1 e Cap.15.2.4 modificati per indice e denominatore rispettivamente, mantenendo la struttura e i vincoli di causalita e determinismo.
 
+---
+
+## Iterazione 6 — chiusura E-1/E-2/E-3/E-4 di Review EXTRA
+
+**Origine**: Review EXTRA post-PASS di CAP-03 (commit `9467a07`), audit extra-ostile richiesto dal supervisore. Verdetto CONDITIONAL con 4 finding MIGLIORA PERFORMANCE nuovi (E-1, E-2, E-3, E-4) e 1 NEUTRO (E-6, non a Developer). Decisione supervisore 2026-05-24: tutti e 4 i finding MIGLIORA PERFORMANCE approvati per micro-rework v6. Nessuna regressione dai fix v4/v5 rilevata dalla review.
+
+### Risposta per finding
+
+**E-1 — Cap.14.2: disambiguazione insieme di calcolo di $Q_p$**
+
+Il testo precedente dichiarava "$Q_p(\hat{\sigma} \mid \mathcal{W}_t)$ calcolato sulla finestra rolling $\mathcal{W}_t$ delle $N_{reg}$ sessioni" senza specificare se la distribuzione sottostante fosse formata da $N_{reg}$ medie di sessione (un valore per sessione) o da $N_{reg} \times 840$ barre singole. Due implementazioni divergenti producono classificazioni di regime incompatibili, con impatto diretto sulla suddivisione dei fold calmo/turbolento nel walk-forward e sul ranking per stabilita cross-regime.
+
+Fix: aggiunta frase esplicita prima della formula di classificazione: "$Q_p$ e' calcolato sulla distribuzione delle medie di sessione $\bar{\sigma}_s$ delle $N_{reg}$ sessioni piu recenti — quindi $N_{reg}$ valori, uno per sessione, coerenti con la definizione di statistica di sessione di cui sopra (baseline C-7.1, Q-09) e con la citazione Corsi (2009) HAR-RV". Aggiunta anche spiegazione che il confronto $\hat{\sigma}_t$ vs $Q_p(\bar{\sigma}_s)$ e' intenzionale (granularita alta: barra vs percentile di medie di sessione).
+
+**E-2 — Cap.15.2.1: eliminazione feature momentum logaritmico**
+
+La feature $x_t^{(\text{mom},k)} = \text{sign}(\sum r_{t-j}) \cdot |\sum r_{t-j}|$ e' identicamente uguale a $\sum r_{t-j}$ per ogni $x \in \mathbb{R}$ (identita $\text{sign}(x) \cdot |x| = x$). Spreca 3 slot su 40 feature candidate (7.5% del catalogo) e introduce collinearita perfetta con $x_t^{(r,k)}$ nel modello survival.
+
+Fix: eliminato il bullet "Momentum logaritmico" da Cap.15.2.1. Aggiornato il conteggio massimo di feature candidate da 40 a 37 in Cap.15.2 (eliminazione pulita: i 3 slot liberati non sono riservati a feature non ancora definite).
+
+**E-3 — Cap.15.2.2: disambiguazione indice volume cumulato**
+
+La formula precedente $x_t^{(v,\text{cum})} = \sum_{j=1}^{t-1} v_{1m}(j)$ usava $j=1$ senza specificare se $t$ fosse indice globale (somma sull'intero storico — inutilizzabile) o indice di sessione (semantica corretta ma con convenzione diversa dal resto del documento). Due implementazioni divergenti.
+
+Fix: riscritta come $x_t^{(v,\text{cum})} = \sum_{j=t_{\text{open}(s_t)}}^{t-1} v_{1m}(j)$ con definizione esplicita del simbolo $t_{\text{open}(s_t)}$ = indice globale della prima barra (8:01 CET) della sessione corrente $s_t$. Aggiunta nota "con reset a zero a ogni nuova sessione".
+
+**E-4 — Cap.15.4: finestra di normalizzazione limitata alla sessione per feature con reset**
+
+La finestra $W_{norm} = 1.000$ barre ($\approx 1.2$ sessioni) attraversa il confine di sessione. Per EMA e volume cumulato (feature con reset), le barre della sessione precedente contengono valori in uno stato "maturo" che distorcono mediana e MAD nelle prime barre della sessione corrente. Il documento non trattava questo caso.
+
+Fix: aggiunto paragrafo esplicito in Cap.15.4 che dichiara che per le feature con reset di sessione (EMA Cap.15.2.1, volume cumulato Cap.15.2.2) Med e MAD sono calcolate su $\{x_{t_{\text{open}(s_t)}}, \ldots, x_{t-1}\}$ (barre della sessione corrente). Dichiarato $T_{warmup,\text{norm}} = 100$ barre come parametro provvisorio (valore scelto > $T_{warmup,\text{EMA}} = 74$ per garantire campione sufficiente alla normalizzazione). Aggiunto $T_{warmup,\text{norm}}$ all'elenco dei parametri provvisori nel paragrafo finale del documento.
+
+### Modifiche applicate
+
+| Finding | Sezione | Prima | Dopo |
+|---------|---------|-------|------|
+| E-1 | Cap.14.2 paragrafo "Definizione formale" | $Q_p$ ambiguo (barre o medie di sessione) | Disambiguato: $N_{reg}$ medie di sessione, confronto intenzionale con $\hat{\sigma}_t$ barra |
+| E-2 | Cap.15.2 conteggio + Cap.15.2.1 bullet | 40 feature; bullet momentum presente | 37 feature; bullet momentum eliminato |
+| E-3 | Cap.15.2.2 formula volume cumulato | $\sum_{j=1}^{t-1} v_{1m}(j)$ (indice ambiguo) | $\sum_{j=t_{\text{open}(s_t)}}^{t-1} v_{1m}(j)$ con simbolo definito |
+| E-4 | Cap.15.4 + paragrafo finale | Nessun trattamento per feature con reset | Frase esplicita con $T_{warmup,\text{norm}}=100$; parametro aggiunto al paragrafo finale |
+
+### Misura prima/dopo (v5 -> v6)
+
+| Metrica | Prima (v5) | Dopo (v6) | Delta |
+|---------|-----------|----------|-------|
+| Ambiguita implementativa $Q_p$ (regime) | Alta: due implementazioni divergenti ($N_{reg}$ vs $N_{reg} \times 840$ valori) | Nulla: $N_{reg}$ medie di sessione dichiarato esplicitamente | Ranking fold calmo/turbolento deterministico |
+| Feature ridondanti nel catalogo | 3 slot (momentum = rendimento cumulato, collinearita perfetta) | 0 slot ridondanti | Potere espressivo catalogo: da 37 feature utili su 40 a 37 feature utili su 37 |
+| Ambiguita formula volume cumulato | Alta: $j=1$ interpetabile come globale o di sessione | Nulla: $t_{\text{open}(s_t)}$ definisce esplicitamente il reset | Implementazioni convergenti |
+| Distorsione normalizzazione (feature con reset) | Presente nelle prime ~100 barre per EMA e volume | Assente (finestra limitata a sessione corrente + warm-up dichiarato) | z-score affidabile a partire da $T_{warmup,\text{norm}}=100$ barre |
+| Parametri provvisori elencati in chiusura documento | $W$, $p$, $N_{reg}$, $T_{persist}$, $N_{pivot}$, $n_c$, $\delta_{pivot}$, $W_{norm}$, $D$ | Aggiunto $T_{warmup,\text{EMA}}$, $T_{warmup,\text{norm}}$ | Elenco completo dei parametri provvisori |
+
+### Verifica AC v6 (7 nuovi)
+
+| AC | Criterio | Esito |
+|----|----------|-------|
+| AC-v6-1 | E-1 chiuso: $Q_p$ su $N_{reg}$ medie di sessione $\bar{\sigma}_s$; coerenza C-7.1/Q-09 e Corsi (2009) | OK — Cap.14.2, paragrafo "Definizione formale" |
+| AC-v6-2 | E-2 chiuso: bullet momentum eliminato; conteggio aggiornato a 37 | OK — Cap.15.2 (37) + Cap.15.2.1 (bullet rimosso) |
+| AC-v6-3 | E-3 chiuso: formula volume cumulato usa $t_{\text{open}(s_t)}$; simbolo definito | OK — Cap.15.2.2 |
+| AC-v6-4 | E-4 chiuso: frase su finestra limitata a sessione; $T_{warmup,\text{norm}}=100$ provvisorio; coerenza con EMA | OK — Cap.15.4 + paragrafo finale |
+| AC-v6-5 | REPORT_CAP_03.md con sezione "Iterazione 6" | OK — questo file |
+| AC-v6-6 | Nessuna regressione su AC v4, v5, originali | Verificato — vedi sezione sotto |
+| AC-v6-7 | Nessuna modifica a CAP-01 o CAP-02 | OK — diff git: solo CAP_03_parte_III.md modificato |
+
+### Verifica non-regressione AC v4, v5, originali (post-v6)
+
+**AC v5 (7)**: Tutti confermati. I 4 fix v6 toccano sezioni diverse da quelle dei fix v5 (B-1 v2 era Cap.15.2.1 formula EMA, che non e' toccata; NB-1 v2 era Cap.15.2.4 denominatore, invariato; NB-2 v2 era CAP-02, non toccato in v6).
+
+**AC v4 (14)**: Tutti confermati. Le modifiche v6 sono additive o sostitutive chirurgiche: E-1 aggiunge testo a Cap.14.2 senza rimuovere il baseline C-7.1 gia presente; E-2 rimuove solo il bullet momentum non richiesto dagli AC v4; E-3 sostituisce la formula volume senza toccare le altre feature di volume; E-4 aggiunge testo a Cap.15.4 senza alterare la formula base.
+
+**AC originali (29)**: Tutti confermati. Cap.12 e Cap.13 sono invariati in v6. Cap.14 e Cap.15 ricevono aggiunte/sostituzioni chirurgiche che non rimuovono contenuto precedentemente presente per gli AC originali. I 3 requisiti che erano critici al momento della Review v1 (NB-1 pivot, NB-2 GED, NB-3 sigma units) sono invariati.
+
+### Domande aperte per il Planner
+Nessuna.
+
+### Criterio di rollback
+Se Review v4 ritiene che la disambiguazione di E-1 (confronto $\hat{\sigma}_t$ barra vs $Q_p$ di medie di sessione) introduca una semantica implicitamente diversa da quanto atteso dal baseline metodologico (dove la classificazione di regime e tipicamente a livello di periodo, non di barra), si puo ripristinare la formula originale e aggiungere invece una nota che rinvia la scelta implementativa a Parte V. La modifica e reversibile in 1 riga di testo.
+
