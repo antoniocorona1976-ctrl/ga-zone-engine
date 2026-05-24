@@ -21,21 +21,21 @@ Documento specializzato per FIB N=1, derivato da ENGINE_ALGO_INTEGRATO_HARD_LOCK
 - **Cap 10 — Replay e riproducibilità del lifecycle** (~2 pp): formato dei log (emissione, transizioni, chiusura), determinismo bit-exact dichiarato come vincolo formale.
 - **Cap 11 — Position lifecycle e tracking out-of-scope dal motore** (~1-2 pp) [NUOVO, decisione Q-05]: submacchina distinta dal lifecycle del segnale, traccia eventi post-target_1 ($\pi_{t_2 \mid t_1}$, MFE, MAE, stop post-target_1) per reporting GA; OUT-OF-SCOPE execution policy, IN-SCOPE solo metriche di calibrazione; citazioni testuali baseline hard-locked Cap. 21.1 e 22.6.
 
-## Parte III — Layer quantitativo single-instrument (~8 pp) — IN CORSO
+## Parte III — Layer quantitativo single-instrument (~8 pp) ✅ PASS Review v4 (documento commit ee0b2ee, review v4 PASS)
 
-- **Cap 12 — Definizioni di rendimento e scala temporale** (~1.5 pp): rendimenti log 1-min, aggregazione a barre superiori, gestione gap di sessione.
-- **Cap 13 — Modello di volatilita' condizionata** (~2.5 pp): EGARCH single-instrument, calibrazione, diagnostica residui standardizzati.
-- **Cap 14 — Stato di regime intraday** (~2 pp): classificazione regime calmo/turbolento, soglie derivate da quantili rolling, persistenza minima.
-- **Cap 15 — Feature engineering causale** (~2 pp): feature derivate da prezzo/volume/volatilita', vincolo di causalita' temporale (no look-ahead), normalizzazione robusta.
+- **Cap 12 — Definizioni di rendimento e scala temporale** (~1.5 pp): rendimenti log 1-min, aggregazione a barre superiori, gestione gap di sessione, regola deterministica di fill virtuale worst-case per il backtest (carryover N-6 CAP-02).
+- **Cap 13 — Modello di volatilita' condizionata** (~2.5 pp): EGARCH(1,1) single-instrument con equazioni media e varianza, distribuzione Student-t/GED con selezione AIC/BIC in Parte V, calibrazione MLE su finestra rolling W=210.000 fold-per-fold (divergenza dichiarata dal baseline), conversione $\hat{\sigma}_{\text{pt}}(t) = \hat{\sigma}(t) \cdot p_t$, diagnostica residui (Ljung-Box, ARCH-LM), inizializzazione cross-session (Opzione A/B aperta), osservazione coda bassa N-5.
+- **Cap 14 — Stato di regime intraday** (~2 pp): classificazione binaria calmo/turbolento deterministica su quantili rolling di $\bar{\sigma}_s$ (media di sessione, N_s=840), quantile $p=0{,}75$ su $N_{reg}=20$ sessioni, persistenza minima $T_{persist}=10$ barre, regime non ottimizzabile dal GA, impatto su condizionalita' soglie e fold walk-forward.
+- **Cap 15 — Feature engineering causale** (~2 pp): vincolo causalita' $x_t \in \mathcal{F}_{t-1}$, catalogo 37 feature (prezzo, volume, volatilita', struttura), algoritmo pivot detection frattale 4 condizioni con $n_c=3$/$\delta_{pivot}=10$pt, EMA con reset cross-session e $T_{warmup,\text{EMA}}=74$, normalizzazione z-score MAD con $W_{norm}=1000$ e $T_{warmup,\text{norm}}=100$ per feature con reset.
 
-## Parte IV — Geometria zone, target strutturali, survival (~12 pp)
+## Parte IV — Geometria zone, target strutturali, survival (~12 pp) — IN REVIEW
 
-- **Cap 16 — Definizione delle zone di entry** (~2 pp): costruzione geometrica della zona long e short, parametri di larghezza e ancoraggio.
-- **Cap 17 — Target strutturali** (~2 pp): derivazione del target dalla struttura del prezzo, vincolo minimo 80 punti (punto 4 dichiarazione).
-- **Cap 18 — Stop strutturali** (~2 pp): derivazione dello stop dalla struttura, separazione dallo stop personale dell'operatore.
-- **Cap 19 — Modello di survival per il target** (~2 pp): probabilita' condizionata di raggiungere il target prima dello stop strutturale e prima dello scadere della sessione.
-- **Cap 20 — Filtri di emissione basati sul survival** (~2 pp): soglie su probabilita' di target hit, integrazione con regime corrente.
-- **Cap 21 — Caso trade range** (~2 pp): gestione del setup a range con ampiezza definita, eccezione al filtro 80 punti.
+- **Cap 16 — Definizione delle zone di entry** (~2.5 pp): costruzione geometrica della zona long e short, ancoraggio a pivot strutturali, trattamento warm-up sessione, invalidazione strutturale pre-touch, condizione tempo residuo.
+- **Cap 17 — Target strutturali** (~2 pp): derivazione di target_1 e target_2 dalla struttura dei pivot, vincolo minimo 80 punti per directional, condizione distanza sigma-units.
+- **Cap 18 — Stop strutturali** (~2 pp): derivazione dello stop dalla struttura, vincolo $d_{stop} > b$, separazione dallo stop personale dell'operatore, condizionalita' al regime.
+- **Cap 19 — Modello di survival per il target** (~2.5 pp): competing risks target_1_hit vs stopped, formulazione matematica del modello candidato, feature input dal catalogo CAP-03, calibrazione fold-per-fold, censoring, output $\hat{p}_{hit}$.
+- **Cap 20 — Filtri di emissione basati sul survival** (~1.5 pp): soglia $\tau_{surv}$ parametro del cromosoma, integrazione AND con condizioni Cap.8, condizionalita' al regime, filtro implicito fine sessione.
+- **Cap 21 — Caso trade range** (~1.5 pp): definizione range da pivot, eccezione al filtro 80pt ($A_{range} \geq 80$), geometria zone/target/stop nel range, classificazione directional vs trade_range.
 
 ## Parte V — Motore genetico e fitness operativa (~10 pp)
 
