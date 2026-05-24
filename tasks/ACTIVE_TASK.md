@@ -256,3 +256,60 @@ Simmetrica per pivot low. Confermare $n_c = 3$ come valore provvisorio congelato
 ### Pipeline rework v4
 
 Development v4 (chiusura 3 BUG + 1 BUG riclassificato + 3 MIGLIORA PERF + mini-patch Cap.8.2) → Review v2 di CAP-03 → ... → PASS.
+
+---
+
+## Finding di Review v2 da risolvere (rework v5)
+
+Review v2 di CAP-03 (commit `6d959c6`) ha emesso verdetto **CONDITIONAL** con 1 BUG REALE + 2 MIGLIORA PERFORMANCE + 2 NEUTRO + 2 PROMEMORIA. **Decisione supervisore 2026-05-24**: B-1 obbligatorio + entrambi i NB-1 v2 e NB-2 v2 approvati per Developer. NEUTRO e PROMEMORIA non vanno a Developer (carryover legittimi).
+
+Stato dei finding di Review v1 (verificato in Review v2): 8/9 chiusi correttamente. La regressione B-1 è introdotta dal fix C-5.1, non un finding ricorrente.
+
+### BUG REALE obbligatorio
+
+#### **B-1 v2** — Regressione look-ahead nel fix EMA (Cap.15.2.1, riga 271)
+
+**Problema**: la formula v4 $x_t^{(\text{ema},\lambda)} = (1-\lambda)\sum_{j=0}^{n_t-1}\lambda^j r_{t-j}$ a $j=0$ usa $r_t = \ln(p_t / p_{t-1})$, che richiede $p_t$ (close della barra $t$). Ma $p_t$ appartiene a $\mathcal{F}_t$, non $\mathcal{F}_{t-1}$. Il testo di Cap.15.2.1 (riga 273) afferma "$r_t \in \mathcal{F}_{t-1}$" che è **falso** per la definizione di rendimento di Cap.12.1. Le altre feature di prezzo (rendimento $x_t^{(r,1)} = r_{t-1}$, cumulato $\sum_{j=1}^{k} r_{t-j}$, momentum) partono correttamente da $r_{t-1}$, mai da $r_t$.
+
+**Impatto GA**: look-ahead di 1 barra sistematico nella EMA. Il backtest vedrebbe il futuro, il forward run no → ranking dei cromosomi distorto.
+
+**Fix v5**: sostituire l'indice della sommatoria da $r_{t-j}$ a $r_{t-1-j}$ (oppure equivalentemente $\sum_{j=1}^{n_t}\lambda^{j-1} r_{t-j}$). Pesi invariati (la somma resta $(1-\lambda)\sum\lambda^j$ con $\lambda < 1$); cambia solo l'indice del rendimento più recente usato, che diventa $r_{t-1}$ (causale). Aggiornare la frase a riga 273 in modo da affermare correttamente che $r_{t-1} \in \mathcal{F}_{t-1}$. Verificare che il warm-up $T_{warmup,\text{EMA}} = 74$ resti coerente.
+
+### MIGLIORA PERFORMANCE approvati dal supervisore
+
+#### **NB-1 v2** — Feature distanza pivot: denominatore in unità sbagliate (Cap.15.2.4, riga 306)
+
+**Problema**: $x_t^{(piv)} = (p_{t-1} - p_{pivot}) / \hat{\sigma}_{t-1}$ è dichiarata in "sigma-units". Ma il numeratore è in punti FIB (ordine $10$-$100$), mentre $\hat{\sigma}_{t-1}$ è in log-return (ordine $10^{-4}$). Il rapporto è di ordine $10^5$, non adimensionale.
+
+**Impatto GA funzionale**: trascurabile (lo z-score con mediana e MAD di Cap.15.4 corregge la scala dell'output). Impatto semantico: la definizione formale è incoerente con quella di Cap.13.1 ($\hat{\sigma}$ vs $\hat{\sigma}_{\text{pt}}$).
+
+**Fix v5**: sostituire $\hat{\sigma}_{t-1}$ con $\hat{\sigma}_{\text{pt}, t-1}$ in Cap.15.2.4 riga 306 (coerente con NB-3 chiuso in v4 che ha introdotto $\hat{\sigma}_{\text{pt}}$).
+
+#### **NB-2 v2** — Residuo mini-patch CAP-02: formula condizione volatilità Cap.8.2 (riga 189)
+
+**Problema**: il testo di Cap.8.2 di CAP-02 (post mini-patch v4) usa $\hat{\sigma}_{\text{pt}}$ correttamente nella condizione di distanza (riga 201), ma la formula della condizione di volatilità a riga 189 ancora dichiara $\tau_{vol}(\hat{\sigma})$ invece di $\tau_{vol}(\hat{\sigma}_{\text{pt}})$. Stessa incoerenza in Cap.10.2 riga 298 (log della condizione).
+
+**Impatto GA funzionale**: nullo ($\tau_{vol}$ è funzione parametrica, il GA la adatta). Impatto semantico: incoerenza testuale fra Cap.8.2 (formula volatilità $\hat{\sigma}$) e Cap.8.2 (formula distanza $\hat{\sigma}_{\text{pt}}$) e con CAP-03 Cap.13.1.
+
+**Fix v5**: sostituire $\tau_{vol}(\hat{\sigma}(t_{emission}))$ con $\tau_{vol}(\hat{\sigma}_{\text{pt}}(t_{emission}))$ in CAP-02 Cap.8.2 riga 189 e nelle righe coerenti di Cap.10.2.
+
+### Carryover (NON a Developer)
+
+- **N-1** (NEUTRO): ambiguità $Q_p$ calcolato su statistiche di sessione o di barra (Cap.14.2). Carryover Parte V.
+- **N-2** (NEUTRO): $\hat{\sigma}_{\text{pt}}$ definito con $p_t$ invece di $p_{t-1}$ — differenza numerica $< 0{,}02\%$ trascurabile. Carryover documentazione interna.
+- **M-1** (PROMEMORIA): pivot all'inizio e alla fine della sessione non confermabili (conseguenza condizione 4 di Q-08, finestra $[t-n_c, t+n_c]$ in sessione). È **design corretto** ma va segnalato nel report. Carryover Parte VI.
+- **M-2** (PROMEMORIA): cadenza ricalibrazione EGARCH in production non specificata (la cadenza "fold-per-fold" di C-4.2 è per backtest/walk-forward; in production manca). Carryover Parte V/VI.
+
+### Acceptance criteria aggiuntivi per la v5
+
+- [ ] **AC-v5-1**: B-1 v2 chiuso: formula EMA con $r_{t-1-j}$ o equivalentemente sommatoria $\sum_{j=1}^{n_t}\lambda^{j-1} r_{t-j}$; riga 273 di Cap.15.2.1 afferma correttamente $r_{t-1} \in \mathcal{F}_{t-1}$
+- [ ] **AC-v5-2**: NB-1 v2 chiuso: Cap.15.2.4 riga 306 usa $\hat{\sigma}_{\text{pt}, t-1}$ al denominatore (non più $\hat{\sigma}_{t-1}$)
+- [ ] **AC-v5-3**: NB-2 v2 chiuso: CAP-02 Cap.8.2 riga 189 (formula condizione volatilità) usa $\hat{\sigma}_{\text{pt}}$; coerenza propagata in Cap.10.2 dove pertinente
+- [ ] **AC-v5-4**: 14 AC v4 + 29 AC originali restano soddisfatti (verifica esplicita, non implicita)
+- [ ] **AC-v5-5**: REPORT_CAP_03.md aggiornato con sezione "Iterazione 5 — chiusura B-1 + NB-1/NB-2 di Review v2" con misura prima/dopo
+- [ ] **AC-v5-6**: REPORT_CAP_02.md aggiornato con sezione "Iterazione 5 — residuo formula condizione volatilità Cap.8.2"
+- [ ] **AC-v5-7**: M-1 e M-2 di Review v2 dichiarati come carryover in REPORT_CAP_03 + tracciati in QUESTIONS.md o nel report con destinazione esplicita (Parte V/VI)
+
+### Pipeline rework v5
+
+Development v5 (3 fix chirurgici: 1 indice EMA + 1 simbolo Cap.15.2.4 + 1-2 simboli CAP-02 Cap.8.2/10.2) → Review v3 di CAP-03 → attesa PASS.
