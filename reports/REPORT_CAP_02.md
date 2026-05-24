@@ -276,3 +276,63 @@ Non applicabile: tutti e tre i fix sono correzioni fattuali di simboli e numeri 
 ### Criterio di rollback
 Non applicabile: la correzione e fattuale. Il log di emissione di Cap.10.2 deve usare gli stessi simboli e le stesse unita delle condizioni di emissione di Cap.8.2, per garantire la coerenza del replay deterministico (Cap.10.1). La sostituzione $\hat{\sigma} \to \hat{\sigma}_{\text{pt}}$ e imposta dalla coerenza dimensionale introdotta in Cap.13.1 di Parte III.
 
+---
+
+## Iterazione 4 — mini-patch Cap.6.1: flag payload + sincronizzazione 80pt
+
+**Origine**: Review v1 di CAP-04 ha emesso due PROMEMORIA approvati dal supervisore che richiedono mini-patch su CAP-02:
+
+1. **O-3 / M-12** (PROMEMORIA approvato): i flag `target_2_type` (synthetic/structural) e `stop_type` (structural/personal) introdotti dal Developer in CAP-04 Cap.17.4 e Cap.18.1 vanno collocati nel payload formale Cap.6.1 di Parte II (decisione di design dell'Orchestratore in assenza di Planner: scope CAP-04 esteso a chiusura PROMEMORIA invece di rinvio a Parte V).
+2. **O-6** (PROMEMORIA pre-esistente approvato): la formulazione del filtro 80pt per setup `trade_range` in Cap.6.1 e Cap.8.2 di Parte II (`|target_1 - stop_loss| >= 80 pt`) non era allineata con la formulazione normativa di Cap.5 di Parte I (`A_range >= 80 pt`). La sincronizzazione sceglie Cap.5 PI come riferimento normativo.
+
+### Modifiche applicate
+
+#### Modifica 1 (O-3 / M-12) — Aggiunta dei campi `target_2_type` e `stop_type` alla tupla $\mathcal{S}$
+
+| Posizione | Prima | Dopo |
+|-----------|-------|------|
+| Cap.6.1, formula display della tupla $\mathcal{S}$ (riga 19) | $\mathcal{S} = (\texttt{signal\_id},\ \ldots,\ \texttt{target\_2},\ \texttt{stop\_loss},\ \texttt{setup\_class},\ \Delta t_{cromosoma},\ T_{touch}^{max})$ — 10 campi | $\mathcal{S} = (\texttt{signal\_id},\ \ldots,\ \texttt{target\_2},\ \texttt{target\_2\_type},\ \texttt{stop\_loss},\ \texttt{stop\_type},\ \texttt{setup\_class},\ \Delta t_{cromosoma},\ T_{touch}^{max})$ — 12 campi |
+| Cap.6.1, descrizione testuale (dopo nota Q-05 Clausola 2 su target_2) | (assente) | Paragrafo `target_2_type` aggiunto con dominio $\{\text{structural}, \text{synthetic}\}$, popolamento deterministico dall'algoritmo di Cap.17.4 di Parte IV, uso da parte del consumer Telegram di Cap.9.2 (riga 37-38) |
+| Cap.6.1, descrizione testuale (dopo descrizione stop_loss, prima di setup_class) | (assente) | Paragrafo `stop_type` aggiunto con dominio $\{\text{structural}, \text{personal}\}$, valore sempre `structural` per segnali emessi dal motore (Cap.18.1 di Parte IV produce sia stop pivot sia stop sigma come `structural`), `personal` riservato a registri esterni in coerenza con la separazione di Cap.18.3 PIV (riga 52) |
+
+#### Modifica 2 (O-6) — Sincronizzazione filtro 80pt con Cap.5 PI
+
+| Posizione | Prima | Dopo |
+|-----------|-------|------|
+| Cap.6.1, formula display del filtro trade_range (riga 59) | $\|\texttt{target\_1} - \texttt{stop\_loss}\| \geq 80\ \text{punti FIB}$ | $A_{range} = p_{high,range} - p_{low,range} \geq 80\ \text{punti FIB}$ |
+| Cap.6.1, testo esplicativo (riga 61) | "ovvero l'ampiezza del rettangolo di prezzo entro cui il setup opera" | "ovvero l'ampiezza $A_{range}$ del rettangolo di prezzo entro cui il setup opera, definita come differenza fra il pivot high e il pivot low che delimitano il range (Cap.21.1 di Parte IV) [...] La formulazione è quella normativa di Cap.5 di Parte I: l'allineamento esplicito di Cap.6.1 a Cap.5 PI sull'ampiezza $A_{range}$ è introdotto nell'Iterazione 4 (chiusura O-6 v2 Review CAP-04), in luogo della precedente formulazione `|target_1 − stop_loss| ≥ 80 pt`" |
+| Cap.8.2, paragrafo "Il filtro 80 punti CAP-01 resta come vincolo assoluto" (riga 209) | "per setup trade_range $\|\texttt{target\_1} - \texttt{stop\_loss}\| \geq 80$ pt" | "per setup trade_range $A_{range} \geq 80$ pt (sincronizzato con Cap.5 di Parte I nell'Iterazione 4 di CAP-02, vedi Cap.6.1 e Cap.21.1 di Parte IV per la definizione operativa di $A_{range}$)" |
+
+### Misura prima/dopo
+
+| Metrica del comportamento GA / contratto | v3 (post-Review v3) + v4 + v5 (mini-patch precedenti) | v3 + Iterazione 4 (questo commit) | Delta |
+|---|---|---|---|
+| Campi del payload $\mathcal{S}$ | 10 (signal_id, timestamp_emission, direction, entry_zone, target_1, target_2, stop_loss, setup_class, $\Delta t_{cromosoma}$, $T_{touch}^{max}$) | 12 (+`target_2_type`, +`stop_type`) | +2 campi obbligatori del contratto del segnale |
+| Trasparenza informativa del consumer Telegram | Operatore non sa se target_2 è strutturale o sintetico (decisione cieca sulla qualità del livello) | Operatore vede `target_2_type` e sa qualificare la natura del livello pubblicato | Riduce ambiguità di lettura mobile per target sintetici; allinea il consumer al motore |
+| Coerenza Cap.6.1 PII ↔ CAP-04 Cap.17.4 (target_2_type) | Discrepante: CAP-04 dichiara il flag nel payload, payload PII non lo prevede formalmente | Coerente: il flag è nel payload PII e in CAP-04 Cap.17.4 lo popola | Eliminata 1 fonte di carryover M-12; coerenza fra Parti II-IV ristabilita |
+| Coerenza Cap.6.1 PII ↔ CAP-04 Cap.18.1/18.3 (stop_type) | Discrepante: CAP-04 dichiara il flag con dominio `{structural, personal}`, payload PII non lo prevede | Coerente: il flag è nel payload PII con stesso dominio e con dichiarazione esplicita che `personal` non è mai prodotto dal motore | Eliminata 2a fonte di carryover M-12; coerenza con separazione Cap.18.3 |
+| Coerenza formulazione 80pt fra Cap.5 PI e Cap.6.1 PII | Discrepante: Cap.5 PI usa `A_range`, Cap.6.1 PII usa `|target_1 - stop_loss|` (formulazioni non equivalenti in geometria trade_range con stop molto distante dal range) | Coerente: entrambi usano `A_range >= 80 pt`; Cap.5 PI = riferimento normativo dichiarato | Eliminata fonte di interpretazione divergente; impatto su classificazione setup trade_range del GA in casi limite |
+| Coerenza Cap.6.1 ↔ Cap.8.2 PII su 80pt trade_range | Discrepante (entrambi usavano vecchia formula `|target_1 - stop_loss|`) | Coerente (entrambi usano `A_range`) | Allineamento interno a CAP-02 |
+| Cromosomi che il GA produce con setup trade_range geometricamente ambiguo | Possibili: la geometria del range definita in CAP-04 Cap.21.1 (`A_range = p_high - p_low`) differiva dalla geometria del filtro Cap.6.1 PII (`target_1 - stop_loss`); cromosomi con stop molto distante dal range potevano violare il filtro PII pur soddisfacendo $A_{range} \geq 80$ pt o viceversa | Eliminati: la geometria del filtro PII coincide con la geometria del range CAP-04 | Conversione signal-to-trade del GA riproducibile su setup trade_range; ranking dei cromosomi non più distorto da incoerenza filtri |
+
+### Acceptance criteria — verifica puntuale Iterazione 4
+
+| # | Criterio | Esito | Posizione |
+|---|----------|-------|-----------|
+| I4-1 | Tupla $\mathcal{S}$ di Cap.6.1 estesa con `target_2_type` e `stop_type` come campi obbligatori | OK | `docs/methodology_v2/CAP_02_parte_II.md:19` (12 campi, +`target_2_type` dopo `target_2`, +`stop_type` dopo `stop_loss`) |
+| I4-2 | Descrizione formale `target_2_type` con dominio + popolamento deterministico + uso consumer Telegram | OK | `docs/methodology_v2/CAP_02_parte_II.md:37-38` (paragrafo dedicato; cross-ref Cap.17.4 PIV e Cap.9.2) |
+| I4-3 | Descrizione formale `stop_type` con dominio + valore sempre `structural` da motore + razionale `personal` | OK | `docs/methodology_v2/CAP_02_parte_II.md:52` (paragrafo dedicato; cross-ref Cap.18.1, Cap.18.3, Cap.10.2 per log diagnostica) |
+| I4-4 | Filtro 80pt trade_range in Cap.6.1 sincronizzato a `$A_{range} \geq 80$ pt` (Cap.5 PI normativo) | OK | `docs/methodology_v2/CAP_02_parte_II.md:59` (formula display) + `:61` (testo esplicativo con riferimento esplicito a Cap.5 PI e Cap.21.1 PIV; menzione della precedente formulazione e motivo della sincronizzazione) |
+| I4-5 | Filtro 80pt trade_range in Cap.8.2 (riga "Il filtro 80 punti CAP-01 resta come vincolo assoluto") sincronizzato | OK | `docs/methodology_v2/CAP_02_parte_II.md:209` (formula sostituita; cross-ref Cap.5 PI, Cap.6.1, Cap.21.1 PIV) |
+| I4-6 | Coerenza con CAP-04: cross-ref espliciti in Cap.17.4 (target_2_type) e Cap.18.1/18.3 (stop_type) | OK | `docs/methodology_v2/CAP_04_parte_IV.md:201` (Cap.17.4), `:257-259` (Cap.18.1), `:272` (Cap.18.3) — vedi REPORT_CAP_04.md sezione "Iterazione 2" tabella AC-v2-3 |
+| I4-7 | CARRYOVER aggiornato: M-12 → CLOSED-CAP-04, O-6 → CHIUSO Iter.4 CAP-02 nella tabella storica | OK | `tasks/CARRYOVER.md:32` (M-12), `:41` (O-6) |
+| I4-8 | Indice aggiornato per riflettere stato CAP-02 IN REVIEW Iterazione 4 | OK | `docs/methodology_v2/00_indice.md:15` |
+
+**Conteggio AC Iterazione 4: 8 OK, 0 PARZIALE, 0 MANCA su 8 totali.**
+
+### Criterio di rollback Iterazione 4
+
+- **Rollback dei campi del payload**: se Review v2 di CAP-04 o un'audit successiva contesta il dominio `{structural, personal}` di `stop_type` (es. preferisce `{structural, synthetic}` per analogia con `target_2_type`), il fix è puntuale di 1 riga in Cap.6.1 PII + 1 riga in CAP-04 Cap.18.1. Non è rollback strutturale dell'intera Iterazione 4.
+- **Rollback della sincronizzazione 80pt**: se in Parte V emerge che `A_range` e `|target_1 - stop_loss|` non sono interscambiabili in trade_range con stop molto distante dal range (es. cromosomi con `d_stop_sigma` elevato producono stop ben fuori dal range), la formulazione di Cap.6.1 va estesa con un secondo vincolo geometrico aggiuntivo (`d_stop > A_range`), non rolled-back. Cap.5 PI resta normativo.
+- **Non rollback**: imprecisioni di formattazione, cross-reference editoriali.
+

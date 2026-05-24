@@ -29,8 +29,8 @@ L'Orchestratore della **nuova** sessione legge questo file come input obbligator
 | M-9  | Developer CAP-04 | Benchmark Cox cause-specific vs Fine-Gray sub-distribution | Parte V | OPEN |
 | M-10 | Developer CAP-04 | Test Schoenfeld per assunzione hazard proporzionali | Parte V | OPEN |
 | M-11 | Developer CAP-04 | Dimensionalita' massima del vettore di feature $\tilde{\mathbf{x}}$ nel survival | Parte V | OPEN |
-| M-12 | Review v1 CAP-04 (O-3) + Developer | Flag `target_2_type` (synthetic/structural) e `stop_type` (structural/personal) — collocazione nel payload formale Cap.6.1 Parte II o solo nel log di emissione | Parte V (revisione payload) o mini-patch CAP-02 | OPEN |
-| M-13 | Review v1 CAP-04 (O-4) + Developer | Catalogo feature: 37 baseline (CAP-03) vs 38 per trade_range con $x^{(A_{range})}$ aggiuntiva — decisione formale | Parte V (cromosoma) | OPEN |
+| M-12 | Review v1 CAP-04 (O-3) + Developer | Flag `target_2_type` (synthetic/structural) e `stop_type` (structural/personal) — collocazione nel payload formale Cap.6.1 Parte II o solo nel log di emissione | Parte V (revisione payload) o mini-patch CAP-02 | CLOSED-CAP-04 (mini-patch CAP-02 Cap.6.1 Iterazione 4: campi `target_2_type` e `stop_type` aggiunti alla tupla $\mathcal{S}$; Cap.17.4, Cap.18.1, Cap.18.3 di CAP-04 aggiornati con riferimento esplicito ai due campi) |
+| M-13 | Review v1 CAP-04 (O-4) + Developer | Catalogo feature: 37 baseline (CAP-03) vs 38 per trade_range con $x^{(A_{range})}$ aggiuntiva — decisione formale | Parte V (cromosoma) | CLOSED-CAP-04 (Cap.21.5 di CAP-04 Iterazione 2: $x^{(A_{range})}$ dichiarata feature condizionale attiva solo in regime trade_range; catalogo globale del cromosoma per regime directional resta a 37 feature, Cap.15.2 di CAP-03 invariato) |
 | M-14 | Developer CAP-04 | Stratificazione del Cox per regime calmo/turbolento (interaction term o stratificazione formale) | Parte V | OPEN |
 | M-15 | Developer CAP-04 | Parametri di classificazione `trade_range` ($A_{range,min}=80$, $N_{osc}$, $n_{osc,min}$, soglie 4 condizioni) congelamento numerico | Parte V | OPEN |
 
@@ -38,7 +38,7 @@ L'Orchestratore della **nuova** sessione legge questo file come input obbligator
 
 | Origine | Note |
 |---------|------|
-| Discrepanza 80pt Cap.5 Parte I vs Cap.6.1 Parte II | Review v1 CAP-04 (O-6) PROMEMORIA pre-esistente: Cap.5 dice $A_{range} \geq 80$pt, Cap.6.1 dice $|target_1 - stop_{loss}| \geq 80$pt. CAP-04 ha scelto la formulazione Cap.5. Decisione formale rinviata. |
+| Discrepanza 80pt Cap.5 Parte I vs Cap.6.1 Parte II | Review v1 CAP-04 (O-6): pre-esistente. **CHIUSO Iterazione 4 di CAP-02** (mini-patch Cap.6.1 sincronizza la formulazione del filtro trade_range con Cap.5 PI: `$A_{range} = p_{high,range} - p_{low,range} \geq 80$ pt`; allineamento anche in Cap.8.2). Cap.5 di Parte I resta riferimento normativo. |
 
 ---
 
