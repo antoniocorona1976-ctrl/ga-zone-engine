@@ -313,3 +313,53 @@ Stato dei finding di Review v1 (verificato in Review v2): 8/9 chiusi correttamen
 ### Pipeline rework v5
 
 Development v5 (3 fix chirurgici: 1 indice EMA + 1 simbolo Cap.15.2.4 + 1-2 simboli CAP-02 Cap.8.2/10.2) → Review v3 di CAP-03 → attesa PASS.
+
+---
+
+## Finding di Review EXTRA da risolvere (rework v6)
+
+Review EXTRA post-PASS di CAP-03 (`reviews/REVIEW_CAP_03_extra_review.md`, audit extra-ostile richiesto dal supervisore dopo il PASS di Review v3 al commit `9467a07`) ha emesso verdetto **CONDITIONAL** con 4 finding MIGLIORA PERFORMANCE nuovi, nessun BUG REALE, nessuna regressione dai fix v4/v5. Il supervisore (decisione 2026-05-24) ha approvato **tutti e 4 i finding** per chiusura in un micro-rework v6.
+
+Natura del rework: 4 fix chirurgici di disambiguazione. Nessun refactoring strutturale. Nessuna modifica a CAP-01 o CAP-02. Atteso PASS in 1 sola iterazione.
+
+### MIGLIORA PERFORMANCE approvati dal supervisore (4/4)
+
+#### **E-1** — Cap.14.2 riga 208: disambiguare insieme di calcolo di $Q_p$
+
+**Problema**: il testo a riga 208 dice "$Q_p(\hat{\sigma} \mid \mathcal{W}_t)$ e' il quantile $p$ della distribuzione di $\hat{\sigma}$ calcolata sulla finestra rolling $\mathcal{W}_t$ delle $N_{reg}$ sessioni piu' recenti", ma non chiarisce se $Q_p$ e' calcolato sulle $N_{reg}$ medie di sessione $\bar{\sigma}_s$ (un valore per sessione) o sulle $N_{reg} \times 840$ barre singole. Due implementazioni divergenti: la prima produce $N_{reg}$ valori e un quantile liscio; la seconda produce $N_{reg} \times 840$ valori con variabilita' intra-sessione. La classificazione di regime e la suddivisione dei fold calmo/turbolento nel walk-forward cambiano fra le due implementazioni.
+
+**Fix v6**: aggiungere a Cap.14.2 una frase esplicita: "$Q_p$ e' il quantile della distribuzione delle medie di sessione $\bar{\sigma}_s$ delle $N_{reg}$ sessioni piu' recenti -- quindi $N_{reg}$ valori, uno per sessione, coerenti con la definizione di statistica di sessione di Cap.14.2 (baseline C-7.1, Q-09) e con la citazione Corsi (2009) HAR-RV che aggrega per intervalli temporali, non per singola osservazione".
+
+**Nota**: questo finding e' l'upgrade del carryover N-1 di Review v2 (allora classificato NEUTRO, ora riclassificato MIGLIORA PERFORMANCE per implementazioni divergenti).
+
+#### **E-2** — Cap.15.2.1 riga 268: eliminare la feature momentum (identita' banale)
+
+**Problema**: $x_t^{(\text{mom},k)} = \text{sign}(\sum r_{t-j}) \cdot |\sum r_{t-j}|$ e' identicamente uguale a $\sum r_{t-j} = x_t^{(r,k)}$ (replica esatta del rendimento cumulato). Spreca 3 slot su 40 e introduce collinearita' perfetta nel modello survival.
+
+**Fix v6**: eliminare il bullet a riga 268 dal catalogo. Aggiornare il conteggio massimo di feature candidate a Cap.15.2 (era 40, diventa 37) oppure mantenere 40 dichiarando che la riduzione e' disponibile per future feature da definire in Parte V.
+
+#### **E-3** — Cap.15.2.2 riga 290: disambiguare indice di sommatoria del volume cumulato
+
+**Problema**: $x_t^{(v,\text{cum})} = \sum_{j=1}^{t-1} v_{1m}(j)$ usa $j=1$ ambiguo (storico globale vs prima barra di sessione). Implementazione letterale produce feature inutilizzabile (cresce all'infinito attraverso sessioni).
+
+**Fix v6**: sostituire con $x_t^{(v,\text{cum})} = \sum_{j=t_{\text{open}(s_t)}}^{t-1} v_{1m}(j)$, dove $t_{\text{open}(s_t)}$ e' l'indice globale della prima barra della sessione corrente $s_t$. Aggiungere mezza riga di definizione del simbolo $t_{\text{open}}$.
+
+#### **E-4** — Cap.15.4: normalizzazione MAD attraversa confine di sessione per feature con reset
+
+**Problema**: $W_{norm} = 1000$ barre $\approx$ 1.19 sessioni. Per feature con reset di sessione (EMA, volume cumulato dopo fix E-3) la finestra contiene barre della sessione precedente con valori "alti" e barre della sessione corrente con valori "appena resettati" -- mediana e MAD distorte -- z-score anomalo nelle prime ~50-100 barre di ogni sessione.
+
+**Fix v6**: aggiungere a Cap.15.4 una frase: "Per le feature con reset di sessione (EMA dei rendimenti, volume cumulato di sessione), la finestra di normalizzazione e' limitata alla sessione corrente: $\text{Med}$ e $\text{MAD}$ sono calcolate su $\{x_{t_{\text{open}}}, \ldots, x_{t-1}\}$. Conseguenza: per queste feature la normalizzazione e' effettivamente attiva solo a partire da $T_{warmup,\text{norm}}$ barre dall'apertura (valore di lavoro provvisorio $T_{warmup,\text{norm}} = 100$ barre, congelato in Parte V); le barre precedenti sono marcate `unusable` per coerenza con il warm-up EMA". Aggiungere $T_{warmup,\text{norm}}$ all'elenco dei parametri provvisori in chiusura del Cap.15.4 e nel paragrafo finale del documento.
+
+### Acceptance criteria aggiuntivi per la v6
+
+- [ ] **AC-v6-1**: E-1 chiuso: testo Cap.14.2 disambigua esplicitamente che $Q_p$ e' calcolato sulle $N_{reg}$ medie di sessione $\bar{\sigma}_s$, non sulle singole barre; coerenza con C-7.1/Q-09 e citazione Corsi (2009)
+- [ ] **AC-v6-2**: E-2 chiuso: bullet momentum a riga 268 eliminato dal catalogo; conteggio max feature aggiornato (37) oppure mantenuto a 40 con dichiarazione esplicita che la riduzione e' disponibile per future feature in Parte V
+- [ ] **AC-v6-3**: E-3 chiuso: formula Cap.15.2.2 volume cumulato usa $t_{\text{open}(s_t)}$ come estremo inferiore della sommatoria; simbolo $t_{\text{open}}$ definito
+- [ ] **AC-v6-4**: E-4 chiuso: Cap.15.4 contiene la frase sulla finestra di normalizzazione limitata alla sessione corrente per feature con reset; $T_{warmup,\text{norm}} = 100$ dichiarato come parametro provvisorio congelato in Parte V; coerenza con warm-up EMA
+- [ ] **AC-v6-5**: REPORT_CAP_03.md aggiornato con sezione "Iterazione 6 -- chiusura E-1/E-2/E-3/E-4 di Review EXTRA"
+- [ ] **AC-v6-6**: nessuna regressione su AC v4, v5, originali; verifica esplicita nel report
+- [ ] **AC-v6-7**: nessuna modifica a CAP-01 o CAP-02 in questo rework (i 4 fix sono tutti interni a CAP-03)
+
+### Pipeline rework v6
+
+Development v6 (4 fix chirurgici: 1 disambiguazione Cap.14.2 + 1 eliminazione feature Cap.15.2.1 + 1 formula Cap.15.2.2 + 1 frase Cap.15.4) --> Review v4 di CAP-03 --> atteso PASS.
