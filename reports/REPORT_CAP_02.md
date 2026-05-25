@@ -336,3 +336,59 @@ Non applicabile: la correzione e fattuale. Il log di emissione di Cap.10.2 deve 
 - **Rollback della sincronizzazione 80pt**: se in Parte V emerge che `A_range` e `|target_1 - stop_loss|` non sono interscambiabili in trade_range con stop molto distante dal range (es. cromosomi con `d_stop_sigma` elevato producono stop ben fuori dal range), la formulazione di Cap.6.1 va estesa con un secondo vincolo geometrico aggiuntivo (`d_stop > A_range`), non rolled-back. Cap.5 PI resta normativo.
 - **Non rollback**: imprecisioni di formattazione, cross-reference editoriali.
 
+---
+
+## Iterazione 5 — Cap.9.2 aggiornamento campi pubblicati (chiusura NB-v2-1 v2 Review CAP-04) + dominio `stop_type` raffinato (D-v2-7)
+
+**Origine**: Review v2 di CAP-04 (commit `7b9faa5` + `6fdb05e` + `a92b515`) ha emesso verdetto CONDITIONAL con 1 BUG REALE (NB-v2-1) e 1 MIGLIORA PERFORMANCE (NB-v2-2) che richiedono mini-patch su CAP-02 in coerenza con i fix CAP-04 v3:
+
+1. **NB-v2-1** (BUG REALE coerenza interna documento, approvato dal supervisore 2026-05-25): Cap.6.1 di CAP-02 dichiara che `target_2_type` e `stop_type` sono campi del payload usati dal consumer Telegram (Cap.9.2), ma Cap.9.2 enumera solo 7 voci pubblicate senza i 2 nuovi campi. Il consumer Telegram non vede i campi che il payload dichiara di pubblicare. Decisione supervisore via (a): **aggiungere i due campi alla lista ordinata di Cap.9.2**, con descrizione del dominio + popolamento deterministico + uso da parte del consumer mobile.
+2. **NB-v2-2 / D-v2-7** (MIGLIORA PERFORMANCE approvato dall'Orchestratore in chiusura della Review v2): cambiare il dominio di `stop_type` da `{structural, personal}` a `{structural, synthetic}` per simmetria con `target_2_type` e per aumentare l'informatività del payload pubblicato. La modifica di Cap.6.1 era già materiale di Iterazione 4 (descrizione del campo), ma il dominio "personal" è ora considerato non più appropriato: lo stop sintetico (fallback sigma) era stato collassato in `structural` nella v2 mentre dovrebbe essere visto come distinto.
+
+### Modifiche applicate
+
+#### Modifica 1 (NB-v2-1) — Cap.9.2 lista pubblicata estesa a 9 voci
+
+| Posizione | Prima | Dopo |
+|-----------|-------|------|
+| Cap.9.2, lista numerata "in ordine obbligatorio" dei campi pubblicati sul messaggio Telegram | 7 voci: signal_id (1), direction (2), setup_class (3), entry_zone (4), target_1 e target_2 (5), stop_loss (6), timestamp_emission (7) | 9 voci: + voce 8 `target_2_type` (dominio {structural, synthetic}, popolamento deterministico via Cap.17.4 PIV, descrizione consumer mobile) + voce 9 `stop_type` (dominio {structural, synthetic}, popolamento deterministico via Cap.18.1 PIV, descrizione consumer mobile) |
+| Cap.9.2, paragrafo finale sull'uso del consumer Telegram | "...in coerenza con il punto 8 della dichiarazione di intenti che riserva queste decisioni all'operatore." | Esteso con: "La presenza dei due qualificatori `target_2_type` e `stop_type` permette all'operatore di valutare in lettura mobile la natura strutturale dei livelli pubblicati (un livello `synthetic` ha natura derivata da una regola del modello, non da una struttura confermata del prezzo) senza alcun impatto sulla decisione di ingresso, che resta vincolata al raw touch dell'entry_zone." |
+
+#### Modifica 2 (NB-v2-2 / D-v2-7) — Dominio `stop_type` raffinato in Cap.6.1
+
+| Posizione | Prima | Dopo |
+|-----------|-------|------|
+| Cap.6.1 riga 51, descrizione `stop_type`, dichiarazione di dominio | "dominio $\{\text{structural}, \text{personal}\}$" (con valore sempre `structural` dal motore, `personal` segnaposto per registri esterni) | "dominio $\{\text{structural}, \text{synthetic}\}$" (con bivalenza: `structural` quando stop_loss deriva dal pivot, `synthetic` quando deriva dal fallback sigma con $d_{stop,\sigma}$) |
+| Cap.6.1 riga 51, descrizione popolamento dal motore | Valore costante `structural` per qualsiasi segnale del motore; `personal` riservato come segnaposto del dominio mai prodotto | Bivalente: `structural` da pivot strutturale confermato, `synthetic` da fallback sigma in regime sigma-based; dominio non include valori prodotti dall'operatore (motore non gestisce stop manuali, out-of-scope dal contratto) |
+| Cap.6.1 riga 51, motivazione simmetria | (assente) | Aggiunto: "La simmetria di dominio con `target_2_type` (entrambi $\{\text{structural}, \text{synthetic}\}$) aumenta l'informatività del payload pubblicato." |
+
+### Misura prima/dopo Iterazione 5
+
+| Metrica del comportamento GA / coerenza interna CAP-02 | v2 post-Iterazione 4 (commit a92b515) | v3 post-Iterazione 5 (questo commit) | Delta |
+|---|---|---|---|
+| Coerenza interna Cap.6.1 ↔ Cap.9.2 (target_2_type, stop_type) | Discrepante: Cap.6.1 dichiara che consumer Telegram usa i valori, Cap.9.2 elenca solo 7 voci senza i 2 campi (NB-v2-1) | Coerente: Cap.9.2 enumera 9 voci con descrizione completa dei 2 nuovi campi | Eliminata 1 incoerenza interna; consumer mobile vede effettivamente i qualificatori dichiarati nel payload |
+| Numero campi pubblicati sul messaggio Telegram | 7 (lista di Cap.9.2 v2) | 9 (lista di Cap.9.2 v3, +2 qualificatori) | +2 informazioni utili al consumer mobile |
+| Dominio `stop_type` | $\{\text{structural}, \text{personal}\}$ con valore costante `structural` dal motore (campo non informativo, asimmetria con target_2_type) | $\{\text{structural}, \text{synthetic}\}$ bivalente: `structural` (pivot) vs `synthetic` (fallback sigma) (campo informativo, simmetria con target_2_type) | Aumentata informatività del payload pubblicato; simmetria con target_2_type ripristinata |
+| Informatività operativa del payload pubblicato per l'operatore | Operatore distingue solo `target_2_type` (structural vs synthetic); `stop_type` costante non porta informazione | Operatore distingue sia `target_2_type` sia `stop_type` con stesso vocabolario (structural vs synthetic); decisione operativa più informata | Conversione signal-to-trade dell'operatore arricchita di 1 dimensione (qualità strutturale dello stop) |
+| Coerenza Cap.6.1 ↔ CAP-04 Cap.18.1 (stop_type produzione dal motore) | Discrepante: Cap.6.1 v2 dichiarava `personal` come segnaposto formale, Cap.18.1 v2 produceva sempre `structural` collassando pivot/sigma | Coerente: Cap.6.1 v3 dichiara dominio bivalente, Cap.18.1 v3 produce `structural` (pivot) o `synthetic` (sigma) | Eliminata 1 fonte di interpretazione divergente fra Parti II e IV |
+
+### Acceptance criteria — verifica puntuale Iterazione 5
+
+| # | Criterio | Esito | Posizione |
+|---|----------|-------|-----------|
+| I5-1 | Cap.9.2 lista ordinata estesa a 9 voci, con `target_2_type` (8) e `stop_type` (9) come campi pubblicati con descrizione completa | OK | `docs/methodology_v2/CAP_02_parte_II.md:241` (lista numerata estesa) + `:248` (voce 8 `target_2_type` con dominio + popolamento + cross-ref Cap.17.4 PIV) + `:249` (voce 9 `stop_type` con dominio + popolamento + cross-ref Cap.18.1 PIV) |
+| I5-2 | Paragrafo finale di Cap.9.2 aggiornato con riferimento all'uso operativo dei 2 nuovi qualificatori | OK | `docs/methodology_v2/CAP_02_parte_II.md:253` (paragrafo finale esteso: spiegazione che i qualificatori non alterano la decisione di ingresso ma forniscono informazione strutturale al consumer mobile) |
+| I5-3 | Dominio `stop_type` in Cap.6.1 aggiornato a $\{\text{structural}, \text{synthetic}\}$ con descrizione bivalente | OK | `docs/methodology_v2/CAP_02_parte_II.md:51` (riga di descrizione di `stop_type` riformulata: dominio aggiornato + bivalenza pivot/sigma esplicitata + motivazione simmetria con target_2_type) |
+| I5-4 | Coerenza con CAP-04 Cap.18.1 (popola `structural` da pivot, `synthetic` da fallback sigma) | OK | `docs/methodology_v2/CAP_04_parte_IV.md:231` (Cap.18.1: produce `structural` quando stop_loss deriva dal candidato pivot, `synthetic` quando deriva dal candidato sigma di fallback con $d_{stop,\sigma}$); coerenza verificata |
+| I5-5 | Coerenza con CAP-04 Cap.18.3 (riformulato per dichiarare che il dominio non include valori prodotti dall'operatore) | OK | `docs/methodology_v2/CAP_04_parte_IV.md:260` (Cap.18.3 riformulato: dominio `{structural, synthetic}`, motore non gestisce stop manuali, stop personale operatore out-of-scope dal contratto) |
+| I5-6 | Coerenza con voce 9 di Cap.9.2 (descrizione `stop_type` aligned con il nuovo dominio) | OK | `docs/methodology_v2/CAP_02_parte_II.md:249` (voce 9 descrive `stop_type` con dominio $\{\text{structural}, \text{synthetic}\}$ e bivalenza pivot/sigma) |
+| I5-7 | Indice aggiornato per riflettere CAP-02 IN REVIEW Iterazione 5 | OK | `docs/methodology_v2/00_indice.md:15` |
+
+**Conteggio AC Iterazione 5: 7 OK, 0 PARZIALE, 0 MANCA su 7 totali.**
+
+### Criterio di rollback Iterazione 5
+
+- **Rollback di NB-v2-1 (Cap.9.2)**: se Review v3 contesta la presenza dei 2 campi nella lista pubblicata Telegram (es. preferisce che siano campi del log diagnostico non visibili sul messaggio operativo), il rollback è puntuale di 2 voci nella lista di Cap.9.2 (rimozione) + aggiornamento del paragrafo finale. Cap.6.1 e CAP-04 restano invariati. L'alternativa è già discussa nella decisione del supervisore (via (a) scelta vs via (b) di rimuovere il claim "consumer Telegram usa il valore"). Via (a) è quella implementata in questa Iterazione 5; via (b) era stata l'alternativa scartata.
+- **Rollback di D-v2-7 (dominio `stop_type`)**: se il supervisore obietta al dominio $\{\text{structural}, \text{synthetic}\}$ al checkpoint successivo, il rollback è di 1 riga in Cap.6.1 PII (ripristinare `{structural, personal}`) + 1 riga in CAP-04 Cap.18.1 (ripristinare valore costante `structural`) + 1 riga in CAP-04 Cap.18.3 (ripristinare riferimento a `personal` come segnaposto) + 1 riga in voce 9 di Cap.9.2. Asimmetria con target_2_type ripristinata ma con motivazione strutturale (non si vuole esporre la distinzione pivot vs sigma sul consumer mobile).
+- **Non rollback**: imprecisioni di formattazione, cross-reference editoriali.
+
