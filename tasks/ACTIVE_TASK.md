@@ -324,3 +324,121 @@ Modifiche concrete:
 ### Pipeline rework v2
 
 Development v2 (2 fix BUG REALI + 4 chiusure PROMEMORIA + mini-patch CAP-02) -> Review v2 di CAP-04 -> atteso PASS (con possibili nuove osservazioni minori sui mini-patch CAP-02).
+
+---
+
+## Finding di Review v2 da risolvere (rework v3)
+
+Review v2 di CAP-04 (commit `7b9faa5` + `6fdb05e` + `a92b515`) ha emesso verdetto **CONDITIONAL** con 3 BUG REALI + 1 MIGLIORA PERFORMANCE + 5 NEUTRO. **Decisione supervisore 2026-05-25**:
+- 3 BUG REALI obbligatori (NB-v2-1 via (a) aggiunta a Cap.9.2; NB-v2-3 razionale (a); NB-v2-4 esempio numerico tick FIB)
+- 1 MIGLIORA PERFORMANCE approvato (NB-v2-2 cambio dominio `stop_type`)
+- 5 NEUTRO **inclusi** come fix opportunistici (O-v2-1...5) -- decisione supervisore: "includi anche NEUTRO"
+
+I 2 BUG REALI di Review v1 (NB-1, NB-2) restano CHIUSI; nessuna regressione su AC v1 (43 OK + 1 PARZIALE NEUTRO su 44, 3 AC v1 ora promossi a OK).
+
+Pipeline attesa rework v3: 9 fix chirurgici (<= 5 righe ciascuno) -> Review v3 -> PASS (alta confidenza).
+
+### BUG REALI obbligatori
+
+#### **NB-v2-1** -- Cap.6.1 / Cap.9.2 incoerenza payload-pubblicazione
+
+**Problema**: Cap.6.1 (CAP-02 patch4) riga 39 e Cap.17.4 (CAP-04) riga 197 dichiarano "Il consumer Telegram dell'operatore (Cap.9.2) usa il valore" per `target_2_type`; Cap.6.1 riga 51 idem per `stop_type`. Tuttavia Cap.9.2 di CAP-02 enumera "in ordine obbligatorio" 7 voci: signal_id, direction, setup_class, entry_zone, target_1 e target_2, stop_loss, timestamp_emission. **I due nuovi campi non compaiono nella lista pubblicata.**
+
+**Fix v3 -- decisione supervisore (a)**: aggiungere i due campi alla lista ordinata di Cap.9.2.
+
+Modifiche concrete:
+1. **Cap.9.2 di CAP-02**: estendere la lista ordinata a 9 voci:
+   - 8. `target_2_type` (qualifica la natura del livello target_2 pubblicato)
+   - 9. `stop_type` (qualifica la natura dello stop pubblicato)
+   Aggiornare anche la specifica del formato del messaggio Telegram coerentemente.
+2. **Cap.10.2 di CAP-02** (log emissione): verificare che la formulazione generica "tutti i campi di Cap.6.1" copra automaticamente i nuovi due campi; se elenco esplicito, aggiornare.
+3. **REPORT_CAP_02.md**: aggiungere sezione "Iterazione 5 -- Cap.9.2 aggiornamento campi pubblicati (chiusura NB-v2-1)".
+
+#### **NB-v2-3** -- Razionale (a) censoring non-informativo strutturalmente sbagliato
+
+**Problema**: Cap.19.4 (CAP-04) riga 369, razionale (a) della dichiarazione di censoring non-informativo, dice "il timeout di sessione e' fissato dall'orario di chiusura (22:00 CET) e non dalla dinamica del prezzo". Ma il timer di censoring del modello survival NON e' 22:00 CET (orario assoluto), e' $\Delta t_{cromosoma}$ (cap di 2 giorni di trading dal raw touch, vedi Cap.20.4 e Parte II Cap.11). I due tempi sono distinti: 22:00 CET chiude la sessione operativa, $\Delta t_{cromosoma}$ chiude il segnale come `expired`. Razionale (a) confonde i due e va rimosso.
+
+Inoltre, il flip-flop di design D-6 (v1) -> D-v2-5 (v2) non e' discusso nel REPORT_CAP_04. In v1 il Developer dichiarava "censoring potenzialmente informativo, rinviato Parte V" (D-6); in v2 ha dichiarato "non-informativo, formalizzato qui" (D-v2-5). Il razionale del cambiamento manca.
+
+**Fix v3**: 
+1. **Cap.19.4 di CAP-04 riga 369**: rimuovere la frase del razionale (a). Razionale (b) (sul fold OOS frozen) tiene da solo come motivazione strutturale.
+2. **REPORT_CAP_04**: aggiungere alla sezione "Iterazione 3" una nota esplicita sul flip-flop D-6 -> D-v2-5 -> D-v3-1, con motivazione del cambiamento di assunzione (es. "dopo riflessione in iterazione 2, l'assunzione di non-informativita' condizionata alle covariate e' plausibile a priori; la verifica empirica formale resta Parte V").
+
+#### **NB-v2-4** -- Esempio numerico Cap.21.2 viola tick FIB
+
+**Problema**: Cap.21.2 riga 487 esempio dell'algoritmo di oscillazione usa prezzi 27.402, 27.498, 27.403. Tick FIB = 5pt -> tutti i prezzi devono essere multipli di 5. 27.402 non lo e' (27.400 o 27.405). Viola il vincolo non-negoziabile dichiarato in Cap.10 Parte II.
+
+**Fix v3**: correggere l'esempio numerico Cap.21.2 riga 487 usando prezzi multipli di 5. Proposta operativa (allineata al suggerimento Reviewer):
+- Range trade_range: $p_{low,range} = 27.400$, $p_{high,range} = 27.500$; $A_{range} = 100$ pt; $\epsilon = 5$ pt
+- Barra t1: close = 27.495 ($\in [27.495, 27.505]$) -> tocco bordo alto
+- Barra t2 (t2 > t1): close = 27.405 ($\in [27.395, 27.405]$) -> tocco bordo basso
+- Oscillazione completata = 1 conteggio
+
+Verificare che il pseudocodice di Cap.21.2 produca conteggio 1 sull'esempio corretto.
+
+### MIGLIORA PERFORMANCE approvato dall'Orchestratore (decisione D-v2-7)
+
+#### **NB-v2-2** -- Dominio `stop_type` asimmetrico
+
+**Problema**: dominio `{structural, personal}` con valore costante `structural` dal motore (Cap.18.1 riga 231); `personal` "segnaposto formale del dominio mai prodotto dal motore" (Cap.18.3 riga 260). Campo non informativo verso operatore. Asimmetria con `target_2_type` dominio `{structural, synthetic}` che e' invece discriminante.
+
+**Decisione di design D-v2-7** (Orchestratore): cambiare dominio di `stop_type` a `{structural, synthetic}` per simmetria con `target_2_type` e aumentare l'informativita' del payload pubblicato (Cap.9.2 aggiornato in NB-v2-1).
+
+**Fix v3**:
+1. **Cap.6.1 di CAP-02 riga 51**: cambiare "stop_type $\in \{structural, personal\}$" in "stop_type $\in \{structural, synthetic\}$".
+2. **Cap.18.1 di CAP-04 riga 231**: cambiare "popolato come `structural` in tutti i casi (sia quando stop_loss deriva dal candidato pivot, sia quando deriva dal candidato sigma di fallback)" in "popolato come `structural` quando stop_loss deriva dal candidato pivot, come `synthetic` quando deriva dal candidato sigma di fallback con `d_stop_sigma`".
+3. **Cap.18.3 di CAP-04 riga 260**: rimuovere o riformulare la frase su `personal` segnaposto. Sostituire con: "il valore `synthetic` e' prodotto quando lo stop strutturale richiede fallback sigma; il dominio non include valori prodotti dall'operatore (out-of-scope: il motore non gestisce stop manuali)".
+4. **REPORT_CAP_04**: nella sezione "Iterazione 3" dichiarare D-v2-7 (decisione di design dell'Orchestratore, contestabile dal supervisore al checkpoint).
+
+### Osservazioni minori NEUTRO incluse come fix opportunistici
+
+#### **O-v2-1** -- Esempio Cap.16.1 usa orari invece di indici di barra
+
+**Fix v3**: nell'esempio di Cap.16.1 sostituire "10:15" e "11:30" con indici di barra coerenti con la notazione algoritmica. Proposta: $b_{135}$ (10:15 = 135 minuti dall'apertura delle 8:00) e $b_{210}$ (11:30 = 210 minuti). Aggiungere mezza riga di nota: "indice di barra = minuti dall'apertura della sessione 8:00 CET; per esempio $b_{135}$ corrisponde alle 10:15".
+
+#### **O-v2-2** -- `target_2_type` non richiamato esplicitamente in Cap.21.4 (trade_range)
+
+**Fix v3**: in Cap.21.4 di CAP-04 (geometria trade_range) aggiungere richiamo esplicito a `target_2_type`. Proposta: nella sezione che descrive il target_2 del setup trade_range, aggiungere mezza riga "Il campo `target_2_type` del payload (Cap.6.1 PII) viene popolato come `structural` (target_2 = bordo opposto del range, sempre strutturale per definizione di trade_range)".
+
+#### **O-v2-3** -- Cap.20.4 derivazione $\lim p_{hat,hit} = 0$ non rigorosa
+
+**Fix v3**: in Cap.20.4 formalizzare la derivazione del limite. Proposta: aggiungere 2-3 righe con argomento basato su monotonicita' del survival $S(t)$ e finitezza del cap $\Delta t_{cromosoma}$. Citazione opzionale: "vedi Klein-Moeschberger (2003) cap. 2 per la convergenza monotona del survival function a 0 per $t \to \infty$ sotto rischio competitivo positivo".
+
+#### **O-v2-4** -- Doppia notazione $\epsilon$ in Cap.21.2
+
+**Fix v3**: rinominare uno dei due $\epsilon$ in Cap.21.2. Proposta:
+- $\epsilon$ (condizione 2 della classificazione trade_range, distanza dai bordi) resta invariato
+- $\epsilon$ dell'algoritmo oscillazione (definizione formale, riga ~470) rinominato in $\epsilon_{osc}$ con valore provvisorio 5 pt invariato
+
+Aggiornare tutte le occorrenze nel testo, nel pseudocodice e nella tabella riepilogo parametri (se presente).
+
+#### **O-v2-5** -- Pseudocodice oscillazione non gestisce esplicitamente cross-session
+
+**Fix v3**: nel pseudocodice di Cap.21.2 (definizione algoritmo oscillazione) aggiungere all'inizio un commento esplicito sul cross-session:
+```
+# Il ciclo si limita alla sessione corrente; le barre della sessione precedente
+# sono escluse dal conteggio. L'edge case cross-session e' neutralizzato dal
+# warm-up T_warmup_norm = 100 barre (Cap.15.4 di Parte III) >= N_osc = 60 barre.
+```
+
+### Acceptance criteria aggiuntivi per la v3
+
+- [ ] **AC-v3-1**: NB-v2-1 chiuso. Cap.9.2 di CAP-02 enumera 9 voci con `target_2_type` (8) e `stop_type` (9) come campi pubblicati del messaggio Telegram. Coerenza con Cap.6.1 e cross-ref di CAP-04 verificata.
+- [ ] **AC-v3-2**: NB-v2-3 chiuso. Cap.19.4 riga 369 non contiene piu' il razionale (a) sbagliato. Razionale (b) e' presente e tiene da solo. REPORT_CAP_04 sezione "Iterazione 3" discute il flip-flop D-6 -> D-v2-5 -> D-v3-1.
+- [ ] **AC-v3-3**: NB-v2-4 chiuso. Cap.21.2 riga 487 esempio numerico usa prezzi tutti multipli di 5 (proposta: 27.400, 27.500, 27.495, 27.405). Pseudocodice verificato sull'esempio corretto.
+- [ ] **AC-v3-4**: NB-v2-2 chiuso (decisione D-v2-7). Dominio `stop_type` = `{structural, synthetic}` in Cap.6.1 di CAP-02. Cap.18.1 produce entrambi i valori (pivot/sigma). Cap.18.3 riformulato. Nessun residuo "personal" come dominio nel documento.
+- [ ] **AC-v3-5**: O-v2-1 chiuso. Cap.16.1 esempio usa indici di barra ($b_{135}$, $b_{210}$ o equivalenti) con riga di nota sulla notazione.
+- [ ] **AC-v3-6**: O-v2-2 chiuso. Cap.21.4 contiene richiamo esplicito a `target_2_type = structural` per trade_range.
+- [ ] **AC-v3-7**: O-v2-3 chiuso. Cap.20.4 formalizza il limite $p_{hat,hit} \to 0$ con argomento di monotonicita' e finitezza del cap.
+- [ ] **AC-v3-8**: O-v2-4 chiuso. Doppia notazione $\epsilon$ in Cap.21.2 risolta (uno dei due rinominato $\epsilon_{osc}$). Tutte le occorrenze aggiornate.
+- [ ] **AC-v3-9**: O-v2-5 chiuso. Pseudocodice Cap.21.2 contiene commento esplicito sul cross-session.
+- [ ] **AC-v3-10**: nessuna regressione sugli AC v2 (12 voci AC-v2-1...12) ne' sugli AC v1 (35 voci) ne' sugli AC I4 CAP-02 (8 voci). Verifica esplicita nel REPORT.
+- [ ] **AC-v3-11**: CARRYOVER.md aggiornato se nuovi M-promemoria emergono (atteso: nessuno).
+- [ ] **AC-v3-12**: REPORT_CAP_04.md include sezione "## Iterazione 3 -- risposta ai finding di Review v2 + decisione D-v2-7" con tabella sintesi finding + tabella AC v3 + nota flip-flop D-6/D-v2-5/D-v3-1.
+- [ ] **AC-v3-13**: REPORT_CAP_02.md include sezione "## Iterazione 5 -- Cap.9.2 aggiornamento campi pubblicati (NB-v2-1)".
+- [ ] **AC-v3-14**: 00_indice.md riflette CAP-04 IN REVIEW v3, CAP-02 IN REVIEW Iterazione 5.
+- [ ] **AC-v3-15**: tutti i file modificati committati e pushati. Working tree pulito sui file di task.
+
+### Pipeline rework v3
+
+Development v3 (3 fix BUG REALI + 1 MIGLIORA PERFORMANCE D-v2-7 + 5 fix NEUTRO opportunistici + correzione REPORT) -> Review v3 di CAP-04 -> atteso PASS in 1 iterazione (correzioni chirurgiche tutte <= 5 righe, nessuna decisione di design aperta dopo D-v2-7).
