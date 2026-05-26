@@ -45,7 +45,7 @@ Documento specializzato per FIB N=1, derivato da ENGINE_ALGO_INTEGRATO_HARD_LOCK
 - **Cap 25 — Walk-forward nested con purge ed embargo** (~2 pp): schema temporale dei fold, prevenzione del leakage, purge ed embargo tra in-sample e out-of-sample.
 - **Cap 26 — Calibrazione dimensione popolazione, generazioni, criteri di stop** (~2 pp): popolazione 128, generazioni fino a 150, criteri di convergenza, gestione del seed.
 
-## Parte VI — Emissione segnali e lifecycle senza execution (~6 pp)
+## Parte VI — Emissione segnali e lifecycle senza execution (~6 pp) 🟡 IN REVIEW Review v1 (documento commit da-compilare; 38 AC v1 da Reviewer; ciclo Review v1 in corso)
 
 - **Cap 27 — Pipeline di inference real-time** (~1.5 pp): ingest del feed Directa, calcolo feature, valutazione del bundle frozen, emissione del segnale.
 - **Cap 28 — Politica anti-doppio-segnale** (~1.5 pp): gestione di segnali concorrenti sulla stessa direzione, no-refresh del segnale emesso.
