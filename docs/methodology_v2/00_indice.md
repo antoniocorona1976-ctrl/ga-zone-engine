@@ -37,7 +37,7 @@ Documento specializzato per FIB N=1, derivato da ENGINE_ALGO_INTEGRATO_HARD_LOCK
 - **Cap 20 — Filtri di emissione basati sul survival** (~1.5 pp): soglia $\tau_{surv}$ parametro del cromosoma, integrazione AND con condizioni Cap.8, condizionalita' al regime, filtro implicito fine sessione.
 - **Cap 21 — Caso trade range** (~1.5 pp): definizione range da pivot, eccezione al filtro 80pt ($A_{range} \geq 80$), geometria zone/target/stop nel range, classificazione directional vs trade_range.
 
-## Parte V — Motore genetico e fitness operativa (~10 pp) ✅ PASS Review v2 (review commit `50b6e7e` del 2026-05-26; documento commit `16590ae`; 5 fix v2 chirurgici post-CONDITIONAL Review v1: NB-1 unita' derivazione M-4 / NB-2 $K_{max}=6$ per strato + stratificazione preservata / NB-3 nomenclatura MAE rimossa / RP-1 $T_{budget}=80$h / RP-3 $\theta_{CV}$ starting point Parte VII; tutti 10 AC v2 OK; 47 AC v1 invariati + 3 promossi PARZIALE→OK + AC-2 PARZIALE carryover documentazione; 11 M-promemoria chiusi (M-4, M-5, M-6, M-2 v2 parziale, M-7, M-8, M-9, M-10, M-11, M-14, M-15) + 1 nuovo M-16 condizionale Parte VII)
+## Parte V — Motore genetico e fitness operativa (~10 pp) 🟡 IN REVIEW v3 (riapertura 2026-05-26 dal supervisore via `DEV_STATUS=READY_FOR_REVIEW`; audit indipendente Review v3 in `reviews/REVIEW_CAP_05_v3_review.md` verdetto **CONDITIONAL** con 2 BUG REALI: NB-v3-1 NB-2 chiuso solo formalmente — censoring incoerente Cap.25.5/Cap.26.7 + aritmetica errata + Harrell violato sotto $K_{max}=6$ con caso pessimo strato 44; NB-v3-2 RP-1 chiuso solo formalmente — $T_{budget}=80$h motivato su calcolo Cap.23.6 ORMAI OBSOLETO 72h pre-fix M-4, calcolo aggiornato è 107h. Rework v3 in `tasks/ACTIVE_TASK.md`. Stato pre-riapertura — PASS Review v2 commit `50b6e7e` — invalidato a livello formale; il documento al commit `16590ae` resta baseline per il rework chirurgico v3.)
 
 - **Cap 22 — Cromosoma e spazio dei parametri** (~2 pp): genoma del bundle (parametri zone, target, stop, soglie filtro, parametri survival), vincoli di ammissibilita'.
 - **Cap 23 — Operatori GA** (~2 pp): selezione NSGA-II, crossover, mutazione, elitismo.
@@ -45,7 +45,7 @@ Documento specializzato per FIB N=1, derivato da ENGINE_ALGO_INTEGRATO_HARD_LOCK
 - **Cap 25 — Walk-forward nested con purge ed embargo** (~2 pp): schema temporale dei fold, prevenzione del leakage, purge ed embargo tra in-sample e out-of-sample.
 - **Cap 26 — Calibrazione dimensione popolazione, generazioni, criteri di stop** (~2 pp): popolazione 128, generazioni fino a 150, criteri di convergenza, gestione del seed.
 
-## Parte VI — Emissione segnali e lifecycle senza execution (~6 pp) 🟡 IN REVIEW Review v1 (documento commit da-compilare; 38 AC v1 da Reviewer; ciclo Review v1 in corso)
+## Parte VI — Emissione segnali e lifecycle senza execution (~6 pp) 🟡 IN REVIEW Review v2 (documento v1 commit `8875f1c` FAIL su 3 BUG REALI + 8 NEUTRO; rework v2 risolve tutti gli 11 finding approvati dal supervisore; 38 AC v1 + sub-AC v2 nuovi su $f_5^{live}$ e tie-break; ciclo Review v2 in corso)
 
 - **Cap 27 — Pipeline di inference real-time** (~1.5 pp): ingest del feed Directa, calcolo feature, valutazione del bundle frozen, emissione del segnale.
 - **Cap 28 — Politica anti-doppio-segnale** (~1.5 pp): gestione di segnali concorrenti sulla stessa direzione, no-refresh del segnale emesso.
