@@ -45,7 +45,7 @@ Documento specializzato per FIB N=1, derivato da ENGINE_ALGO_INTEGRATO_HARD_LOCK
 - **Cap 25 — Walk-forward nested con purge ed embargo** (~2 pp): schema temporale dei fold, prevenzione del leakage, purge ed embargo tra in-sample e out-of-sample.
 - **Cap 26 — Calibrazione dimensione popolazione, generazioni, criteri di stop** (~2 pp): popolazione 128, generazioni fino a 150, criteri di convergenza, gestione del seed.
 
-## Parte VI — Emissione segnali e lifecycle senza execution (~6 pp) 🟡 IN REVIEW Review v2 (documento v1 commit `8875f1c` FAIL su 3 BUG REALI + 8 NEUTRO; rework v2 risolve tutti gli 11 finding approvati dal supervisore; 38 AC v1 + sub-AC v2 nuovi su $f_5^{live}$ e tie-break; ciclo Review v2 in corso)
+## Parte VI — Emissione segnali e lifecycle senza execution (~6 pp) 🟡 IN REVIEW Review v2 (documento v2 commit `d082972` del 2026-05-26; storico v1 commit `8875f1c` FAIL su 3 BUG REALI + 8 NEUTRO ratificati dal supervisore via commit `bea513f`; rework v2 chiude tutti gli 11 finding via stash pop + audit per finding senza patch chirurgiche aggiuntive; 38 AC v1 promossi a OK + 3 sub-AC v2 nuovi su $f_5^{live}$ (AC-30-3bis-1, AC-30-3bis-2) e su convenzione $\epsilon_p$ tie-break (AC-28-3bis); preambolo esteso a 10 parametri di tuning operativo non congelati ($W_B, N_{reg,\min}^{live}, \alpha_{f_5}$ aggiunti a quelli v1); ciclo Review v2 in corso)
 
 - **Cap 27 — Pipeline di inference real-time** (~1.5 pp): ingest del feed Directa, calcolo feature, valutazione del bundle frozen, emissione del segnale.
 - **Cap 28 — Politica anti-doppio-segnale** (~1.5 pp): gestione di segnali concorrenti sulla stessa direzione, no-refresh del segnale emesso.
