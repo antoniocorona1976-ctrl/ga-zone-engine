@@ -4,7 +4,7 @@ La Parte VI mette in produzione il bundle frozen prodotto dal walk-forward neste
 
 La Parte VI non contiene la validazione OOS finale con DSR/PBO/bootstrap stazionario (Parte VII Cap.31-34), i gate decisionali di go-live (Parte VII Cap.36), il processo di freezing del bundle (Parte VII Cap.35), né le specifiche di interfaccia (Appendici C-D-E). La Parte VI non contiene alcuna logica di esecuzione ordini, order routing, gestione fill, slippage di esecuzione, calcolo di posizione netta: il sistema rimane "solo emissione" come dichiarato in Cap.1 di Parte I. La Parte VI non contiene logica di re-training del GA in production: il bundle frozen non viene riottimizzato in live, e l'unica ricalibrazione real-time consentita riguarda i parametri runtime del modello di volatilità EGARCH (Cap.27.5), con cadenza fissa e trigger di break parametrico monitorati in Cap.30.4.
 
-Tutti i parametri introdotti in Parte VI come variabili di tuning operativo ($T_{recal,\text{EGARCH}}$, $\theta_B$, $T_{B,\text{persist}}$, $W_{prod}$, $T_{drift,\text{persist}}$, $T_{emit,\text{persist}}$, $\epsilon_p$) sono dichiarati **non congelati in Parte VI, riconsiderati post-go-live**: la Parte VI non aggiunge una propria tabella di congelamento e non modifica la tabella di Cap.26.5 di Parte V, che resta invariata. Le soglie $E_{max} = 5$, $E_{min} = 0{,}2$, $E_{exp,max} = 0{,}30$ utilizzate in Cap.30 sono ereditate da Cap.26.5 di Parte V già congelate e Cap.30 le riusa senza ridichiararle.
+Tutti i parametri introdotti in Parte VI come variabili di tuning operativo ($T_{recal,\text{EGARCH}}$, $\theta_B$, $T_{B,\text{persist}}$, $W_B$, $W_{prod}$, $T_{drift,\text{persist}}$, $T_{emit,\text{persist}}$, $\epsilon_p$, $N_{reg,\min}^{live}$, $\alpha_{f_5}$) sono dichiarati **non congelati in Parte VI, riconsiderati post-go-live**: la Parte VI non aggiunge una propria tabella di congelamento e non modifica la tabella di Cap.26.5 di Parte V, che resta invariata. Le soglie $E_{max} = 5$, $E_{min} = 0{,}2$, $E_{exp,max} = 0{,}30$ utilizzate in Cap.30 sono ereditate da Cap.26.5 di Parte V già congelate e Cap.30 le riusa senza ridichiararle.
 
 ---
 
@@ -12,7 +12,7 @@ Tutti i parametri introdotti in Parte VI come variabili di tuning operativo ($T_
 
 ### 27.1 Architettura della pipeline e vincolo emissione-only
 
-Il motore opera in **modalità emissione-only**: produce e pubblica segnali ma non esegue ordini, non instrada richieste di acquisto/vendita al broker e non gestisce posizione. Questo vincolo strutturale discende dal punto 1 della dichiarazione di intenti dell'operatore e dal Cap.1 di Parte I, e si applica integralmente alla pipeline di inference real-time qui formalizzata. La pipeline gira **in locale sul personal computer dell'operatore** (Intel Core i5-7200U/8 GB, Cap.3 di Parte I) e non delega a infrastruttura cloud alcuna funzione di inference: il cloud è utilizzato esclusivamente per la fase di training periodico del bundle (Cap.4 di Parte I), non per la produzione live. La fonte del feed real-time è **Directa SIM DAPI** (porta 10001), in coerenza con Cap.3 di Parte I; nessuna chiamata di execution viene effettuata verso DAPI.
+Il motore opera in **modalità emissione-only**: produce e pubblica segnali ma non esegue ordini, non instrada richieste di acquisto/vendita al broker e non gestisce posizione. Questo vincolo strutturale discende dal punto 1 della dichiarazione di intenti dell'operatore e dal Cap.1 di Parte I, e si applica integralmente alla pipeline di inference real-time qui formalizzata. La pipeline opera durante la **finestra di sessione 8:00-22:00 CET** di Cap.1 di Parte I (840 barre 1-min per sessione), che coincide con la finestra di emissione e processamento dei segnali del motore. La pipeline gira **in locale sul personal computer dell'operatore** (Intel Core i5-7200U/8 GB, Cap.3 di Parte I) e non delega a infrastruttura cloud alcuna funzione di inference: il cloud è utilizzato esclusivamente per la fase di training periodico del bundle (Cap.4 di Parte I), non per la produzione live. La fonte del feed real-time è **Directa SIM DAPI** (porta 10001), in coerenza con Cap.3 di Parte I; nessuna chiamata di execution viene effettuata verso DAPI.
 
 La pipeline è strutturata come sequenza deterministica di blocchi, eseguita a ogni nuova barra 1-min chiusa proveniente dal feed Directa DAPI:
 
@@ -46,7 +46,7 @@ Il **seed** del bundle frozen (Cap.26.8 di Parte V e Cap.10 di Parte II) è part
 
 ### 27.4 Pipeline di emissione del payload
 
-Il payload del segnale prodotto dalla pipeline in inference live è **bit-exact identico al payload formale di Cap.6.1 di Parte II** (Iterazione 4 con $\mathcal{S}$ esteso a 11 campi `signal_id, timestamp_emission, direction, entry_zone, target_1, target_2, target_2_type, stop_loss, stop_type, setup_class, $\Delta t_{cromosoma}$, $T_{touch}^{max}$`). La pipeline non aggiunge campi runtime, non rimuove campi e non rinomina campi: il payload pubblicato in produzione è la tupla $\mathcal{S}$ di Parte II senza estensioni né riduzioni.
+Il payload del segnale prodotto dalla pipeline in inference live è **bit-exact identico al payload formale di Cap.6.1 di Parte II** (Iterazione 4 con $\mathcal{S}$ esteso a 12 campi `signal_id, timestamp_emission, direction, entry_zone, target_1, target_2, target_2_type, stop_loss, stop_type, setup_class, $\Delta t_{cromosoma}$, $T_{touch}^{max}$`). La pipeline non aggiunge campi runtime, non rimuove campi e non rinomina campi: il payload pubblicato in produzione è la tupla $\mathcal{S}$ di Parte II senza estensioni né riduzioni.
 
 I valori dei campi sono prodotti dalla derivazione deterministica documentata in Parte IV:
 
@@ -114,6 +114,10 @@ L'edge case considerato è il seguente: al tempo $t$ vale $|\mathcal{A}(t)| = 0$
 3. **In caso di tie ulteriore** (stesso $\hat{p}_{hit}$ entro $\epsilon_p$, stessa `setup_class`), si seleziona il candidato con **$\Delta t_{cromosoma}$ più breve**, dove $\Delta t_{cromosoma}$ è il gene del cromosoma di Cap.6.1 di Parte II. La motivazione è che, in tie strutturale, il candidato con orizzonte temporale post-trigger più breve è meno esposto a deriva di regime durante la fase post-trigger; l'operatore manuale beneficia di un timer più stretto in termini di durata della decisione.
 4. **In caso di tie residuo** (improbabile, perché richiede coincidenza esatta di $\hat{p}_{hit}$, `setup_class`, $\Delta t_{cromosoma}$), si applica l'**ordinamento lessicografico crescente del `signal_id`**, generato come hash deterministico dei campi del payload secondo Cap.10 di Parte II. L'ordinamento lessicografico è deterministico per costruzione (l'hash è una funzione deterministica del payload, e due payload distinti producono `signal_id` distinti); la regola garantisce risoluzione di ogni tie senza ricorso a sorgenti non deterministiche (RNG, timestamp wall-clock).
 
+**Convenzione operativa di tie sul livello 1.** Il confine fra livello 1 (selezione per $\hat{p}_{hit}$ massimo) e livello 2 (tie su $\hat{p}_{hit}$) è dichiarato esplicitamente come segue: dati due candidati $\mathcal{S}_{c_1}, \mathcal{S}_{c_2}$, se $|\hat{p}_{hit}(\mathcal{S}_{c_1}) - \hat{p}_{hit}(\mathcal{S}_{c_2})| > \epsilon_p$ allora la selezione è risolta al livello 1 a favore del candidato con $\hat{p}_{hit}$ numericamente maggiore; se $|\hat{p}_{hit}(\mathcal{S}_{c_1}) - \hat{p}_{hit}(\mathcal{S}_{c_2})| \leq \epsilon_p$ allora i due candidati sono considerati in tie sul livello 1 e si applica il livello 2. La convenzione è simmetrica e transitiva per costruzione e garantisce replay bit-exact a parità di valore di $\epsilon_p$ usato dall'implementazione (vincolo Cap.10 di Parte II).
+
+**Esempio numerico di tie-break.** Si considerino due candidati simultanei al tempo $t$, generati da un ipotetico bundle multi-cromosoma: $\mathcal{S}_{c_1}$ con $\hat{p}_{hit} = 0{,}620\,000$, `setup_class` = `trade_range`, $\Delta t_{cromosoma} = 60$ min; $\mathcal{S}_{c_2}$ con $\hat{p}_{hit} = 0{,}620\,000\,3$, `setup_class` = `directional`, $\Delta t_{cromosoma} = 45$ min. Con $\epsilon_p = 10^{-6}$, la differenza $|0{,}620\,000\,3 - 0{,}620\,000| = 3 \cdot 10^{-7} \leq \epsilon_p$: i due candidati sono in tie sul livello 1. Si passa al livello 2: $\mathcal{S}_{c_2}$ ha `setup_class` = `directional` e $\mathcal{S}_{c_1}$ ha `setup_class` = `trade_range`, quindi $\mathcal{S}_{c_2}$ è selezionato. Se invece $\epsilon_p = 10^{-9}$, la stessa differenza $3 \cdot 10^{-7} > \epsilon_p$ farebbe vincere $\mathcal{S}_{c_2}$ direttamente al livello 1 (per $\hat{p}_{hit}$ marginalmente maggiore). L'esempio rende esplicita la dipendenza del replay dal valore di $\epsilon_p$ adottato in produzione.
+
 La regola di tie-break opera **prima** dell'emissione: si seleziona deterministicamente il candidato $\mathcal{S}_c^*$ e si emette solo quello; i candidati scartati per tie-break sono **loggati con causa esplicita `dropped_due_to_tiebreak_loss`** (terminologia di esempio, coerente con Cap.10.2 di Parte II), per replay bit-exact.
 
 ### 28.4 Determinismo del replay e logging dei candidati
@@ -149,38 +153,39 @@ Il **contenuto formale del messaggio** è quello di **Cap.9.2 di Parte II** a **
 
 ### 29.2 Layout mobile-first del messaggio di emissione
 
-Le 9 voci pubblicate di Cap.9.2 di Parte II sono riordinate per **priorità di lettura mobile**: i campi che richiedono decisione operativa immediata in posizione alta (visibili senza scroll), i campi di contesto e qualificazione in posizione bassa. Il `signal_id` è incluso come **footer compatto** abbreviato (es. primi 6-8 caratteri dell'hash deterministico, sufficienti per disambiguazione visiva fra emissioni successive senza occupare riga utile).
+Le 9 voci pubblicate di Cap.9.2 di Parte II Iterazione 5 sono riordinate per **priorità di lettura mobile**: i campi che richiedono decisione operativa immediata in posizione alta (visibili senza scroll), i campi di contesto e qualificazione in posizione bassa. **Il numero totale di voci pubblicate è esattamente 9**, identico al contratto di Cap.9.2 di Parte II Iterazione 5 (`signal_id, direction, setup_class, entry_zone, target_1, target_2, stop_loss, timestamp_emission, target_2_type, stop_type` con `target_1` e `target_2` raggruppate alla voce 5 secondo Cap.9.2 paragrafo 247): nessuna voce aggiuntiva, nessuna voce omessa.
 
-Ordinamento delle 9 voci di Cap.9.2 di Parte II per priorità mobile:
+**Convenzione di posizionamento del `signal_id`.** Per coerenza normativa rigorosa con Cap.9.2 di Parte II Iterazione 5 (che colloca `signal_id` in posizione 1 come "identificatore del segnale, riportato in chiaro come chiave operativa", paragrafo 243), il layout mobile-first di Cap.29.2 pubblica `signal_id` come **prima voce di intestazione** (testa del messaggio, abbreviato per leggibilità mobile ai primi 6-8 caratteri dell'hash deterministico). La convenzione è dichiarata esplicitamente: `signal_id` in testa permette all'operatore di identificare immediatamente il segnale nello scroll della cronologia Telegram e mantiene l'ordinamento normativo di Cap.9.2 al primo posto; il riordino successivo riguarda solo le 8 voci di contenuto operativo.
 
-1. **`direction`** — LONG o SHORT in caps, prima riga, evidenza visiva forte (Markdown bold quando ammesso dal bot).
-2. **`entry_zone`** — banda numerica formattata come intervallo discreto $[p_{ref} - b, p_{ref} + b]$ in punti FIB, valori multipli di 5 per costruzione (Cap.6.1 di Parte II + tick FIB 5 pt Cap.5 di Parte I).
-3. **`target_1`** — prezzo in punti FIB e **distanza dal centro della banda** $|\texttt{target\_1} - p_{ref}|$ in pt, formato `TGT1: <prezzo> (<+/-distanza> pt)` per leggibilità immediata della distanza operativa.
-4. **`stop_loss`** — prezzo in punti FIB e distanza $d_{stop} = |p_{ref} - \texttt{stop\_loss}|$ in pt, formato `SL: <prezzo> (<+/-distanza> pt)`.
-5. **`target_2`** con qualificatore **`target_2_type`** ($\in \{\text{structural}, \text{synthetic}\}$ di Cap.6.1 di Parte II Iterazione 4 + Cap.9.2 Iterazione 5), formato `TGT2: <prezzo> (<S|s>)` dove `S` indica `structural` e `s` indica `synthetic`.
-6. **`stop_type`** con qualificatore $\in \{\text{structural}, \text{synthetic}\}$ di Cap.6.1 di Parte II Iterazione 4 + Cap.9.2 Iterazione 5 (associato a `stop_loss` con notazione analoga, es. `SL-type: structural`).
-7. **$\Delta t_{cromosoma}$** in minuti di trading, abbreviato come `EXP: <N>min post-trig`.
+Ordinamento delle 9 voci di Cap.9.2 di Parte II Iterazione 5 per priorità mobile:
+
+1. **`signal_id`** — identificatore abbreviato in testa, formato `ID: <prefisso6-8>` (primi 6-8 caratteri dell'hash deterministico del payload secondo Cap.10 di Parte II), sufficiente per disambiguazione visiva fra emissioni successive.
+2. **`direction`** — LONG o SHORT in caps, evidenza visiva forte (Markdown bold quando ammesso dal bot).
+3. **`entry_zone`** — banda numerica formattata come intervallo discreto $[p_{ref} - b, p_{ref} + b]$ in punti FIB, valori multipli di 5 per costruzione (Cap.6.1 di Parte II + tick FIB 5 pt Cap.5 di Parte I).
+4. **`target_1`** — prezzo in punti FIB e **distanza dal centro della banda** $|\texttt{target\_1} - p_{ref}|$ in pt, formato `TGT1: <prezzo> (<+/-distanza> pt)` per leggibilità immediata della distanza operativa.
+5. **`stop_loss`** — prezzo in punti FIB e distanza $d_{stop} = |p_{ref} - \texttt{stop\_loss}|$ in pt, formato `SL: <prezzo> (<+/-distanza> pt)`.
+6. **`target_2`** con qualificatore **`target_2_type`** ($\in \{\text{structural}, \text{synthetic}\}$ di Cap.6.1 di Parte II Iterazione 4 + Cap.9.2 Iterazione 5), formato `TGT2: <prezzo> (<S|s>)` dove `S` indica `structural` e `s` indica `synthetic`. La voce `target_2_type` di Cap.9.2 paragrafo 250 è qui pubblicata insieme al valore di `target_2` come qualificatore in linea, in coerenza con la rappresentazione mobile compatta.
+7. **`stop_type`** con qualificatore $\in \{\text{structural}, \text{synthetic}\}$ di Cap.6.1 di Parte II Iterazione 4 + Cap.9.2 Iterazione 5 (paragrafo 251), associato a `stop_loss` con notazione analoga, es. `SL-type: structural`.
 8. **`setup_class`** $\in \{\text{directional}, \text{trade\_range}\}$, abbreviato come `CLASS: dir` o `CLASS: range`.
-9. **`timestamp_emission`** in CET, formato `EMIT: <HH:MM:SS> CET`.
+9. **`timestamp_emission`** in CET, formato `EMIT: <HH:MM> CET` (minuto chiuso secondo Cap.6.1 di Parte II).
 
-Il campo $T_{touch}^{max}$ (gene del cromosoma di Cap.6.1 di Parte II) **non figura nel messaggio Telegram** in coerenza con Cap.9.2 di Parte II ($\Delta t_{cromosoma}$ e $T_{touch}^{max}$ erano dichiarati come parametri tecnici del modello rilevanti per il log interno ma non per la decisione operativa dell'operatore); la sua presenza nel layout di Cap.29.2 sarebbe estensione del contratto di Cap.9.2 e non è introdotta. Il layout pubblica le 9 voci dichiarate in Cap.9.2; nient'altro.
+I campi $\Delta t_{cromosoma}$ e $T_{touch}^{max}$ (geni del cromosoma di Cap.6.1 di Parte II) **non figurano nel messaggio Telegram** in coerenza con il paragrafo 253 di Cap.9.2 di Parte II Iterazione 5, che li dichiara esplicitamente "parametri tecnici del modello rilevanti per il log interno (Cap.10) ma non per la decisione operativa dell'operatore". La loro inclusione nel layout di Cap.29.2 sarebbe estensione del contratto informativo di Cap.9.2 di Parte II Iterazione 5 e violerebbe il principio "payload formale (immutabile, Cap.6.1) vs rappresentazione mobile (cosmetica, Cap.29)" dichiarato in Cap.29.1: la rappresentazione mobile riordina le voci pubblicate, non ne aggiunge di nuove. Il layout pubblica esattamente le 9 voci di Cap.9.2 di Parte II Iterazione 5; nient'altro.
 
 **Esempio numerico completo del messaggio di emissione** (rispetta tick FIB 5 pt, valori multipli di 5):
 
 ```
+ID: a3f7d9
 LONG
 ZONE: 13.250 - 13.260
 TGT1: 13.350 (+95 pt)
 SL: 13.200 (-55 pt)
 TGT2: 13.450 (S)
 SL-type: structural
-EXP: 60min post-trig
 CLASS: dir
-EMIT: 10:42:15 CET
-ID: a3f7d9
+EMIT: 10:42 CET
 ```
 
-Tutti i valori numerici dell'esempio sono multipli di 5 (Cap.5 di Parte I + Cap.6.1 di Parte II). La lettura sul cellulare richiede una sola schermata mobile e permette all'operatore di leggere direzione, banda e distanze in pochi secondi.
+Tutti i valori numerici dell'esempio sono multipli di 5 (Cap.5 di Parte I + Cap.6.1 di Parte II). Il `timestamp_emission` è formattato al minuto chiuso CET in coerenza con Cap.6.1 di Parte II. La lettura sul cellulare richiede una sola schermata mobile e permette all'operatore di leggere `signal_id`, direzione, banda e distanze in pochi secondi.
 
 ### 29.3 Notifica `trigger_event` come messaggio separato
 
@@ -199,12 +204,12 @@ Al verificarsi del raw touch della `entry_zone` (Cap.7.3 di Parte II), il motore
 ```
 TRIGGER
 ID: a3f7d9
-TRIG: 11:18:00 CET @ 13.255
+TRIG: 11:18 CET @ 13.255
 WAITED: 36min pre-trig
 STATUS: active
 ```
 
-Il valore `13.255` è multiplo di 5 (tick FIB Cap.5 di Parte I); `WAITED: 36min pre-trig` è la fase di attesa $\Delta t_{pretrigger}$ in minuti di trading.
+Il valore `13.255` è multiplo di 5 (tick FIB Cap.5 di Parte I); il `timestamp` del trigger è formattato al minuto chiuso CET in coerenza con Cap.6.1 di Parte II; `WAITED: 36min pre-trig` è la fase di attesa $\Delta t_{pretrigger}$ in minuti di trading.
 
 ### 29.4 Gestione duplicati di lettura e idempotenza
 
@@ -224,7 +229,7 @@ Alla transizione del segnale da `active` a uno degli stati terminali di Cap.7 di
 - riferimento al **`signal_id`** del segnale (footer abbreviato);
 - **stato terminale finale**, uno dei 6 di Cap.7.1 di Parte II;
 - **prezzo del trigger** se applicabile (valore di chiusura del segnale: per `target_1_hit` il prezzo di target_1; per `stopped` il prezzo di stop_loss; per `expired` il prezzo dell'ultima barra del timer; per `invalidated` o `missed_target` il prezzo che ha innescato la condizione; per `revoked` nessun prezzo, ma riferimento al `signal_id` del segnale sostituto);
-- **$R_{gross}$** in punti FIB (positivo, negativo o nullo), calcolato come differenza fra il prezzo di chiusura e il prezzo di fill virtuale (Cap.10.4 di Parte II) per i segnali eseguiti; vuoto o `n/a` per i segnali non eseguiti (`invalidated`, `missed_target`, `revoked` pre-trigger).
+- **$R_{gross}$** in punti FIB (positivo, negativo o nullo), calcolato come differenza fra il prezzo di chiusura e il prezzo di fill virtuale (definizione Cap.7.3 di Parte II; uso nel log di chiusura Cap.10.4 di Parte II) per i segnali eseguiti; vuoto o `n/a` per i segnali non eseguiti (`invalidated`, `missed_target`, `revoked` pre-trigger).
 
 **Esempio numerico completo della notifica di transizione terminale** (caso `target_1_hit` di un segnale LONG eseguito con $R_{gross} = +95$ pt):
 
@@ -244,13 +249,13 @@ Tutti i valori numerici dell'esempio sono multipli di 5 (tick FIB Cap.5 di Parte
 
 ### 30.1 Metriche di fitness live
 
-Il monitoraggio del lifecycle in produzione calcola **counterpart live** delle metriche di fitness del NSGA-II di **Cap.24.1 di Parte V** ($f_1, f_2, f_3, f_4$), su una **finestra rolling di produzione** $W_{prod}$ che aggrega i segnali emessi nelle sessioni più recenti. La definizione delle metriche live coincide formalmente con quella di Cap.24.1; cambia il dominio di calcolo (segnali di produzione invece che fold OOS del walk-forward).
+Il monitoraggio del lifecycle in produzione calcola **counterpart live** delle metriche di fitness del NSGA-II di **Cap.24.1 di Parte V**. Cap.30.1 tratta le quattro metriche marginali $f_1, f_2, f_3, f_4$, calcolate su una **finestra rolling di produzione** $W_{prod}$ che aggrega i segnali emessi nelle sessioni più recenti; la quinta metrica $f_5$ (stabilità cross-regime) è trattata separatamente in Cap.30.3 come metrica a frequenza più bassa, in coerenza con la sua natura intrinseca di disparità fra due sottoinsiemi (calmo vs turbolento). La definizione delle metriche live coincide formalmente con quella di Cap.24.1; cambia il dominio di calcolo (segnali di produzione invece che fold OOS del walk-forward).
 
-$W_{prod}$ è **parametro di tuning operativo** con dominio temporale tipico di alcune settimane-mese di trading; il **default proposto per il primo run di produzione** è $W_{prod} = 21$ sessioni di trading rolling ($\approx$ 1 mese calendario di FIB), coerente con la cadenza di ricalibrazione EGARCH proposta in Cap.27.5 e con la persistenza del flag di regime di Cap.25.4 di Parte V ($\eta_{div}$ calcolato su $W_{prod}$ corrisponde a circa 21 osservazioni di classificazione sessione). Il valore è dichiarato **non congelato in Parte VI** e riconsiderato post-go-live sulla base degli esiti empirici di stabilità delle metriche live.
+$W_{prod}$ è **parametro di tuning operativo** con dominio temporale tipico di alcune settimane-mese di trading; il **default proposto per il primo run di produzione** è $W_{prod} = 21$ sessioni di trading rolling di 8:00-22:00 CET ($\approx$ 1 mese calendario di FIB, totale 17.640 barre 1-min), coerente con la cadenza di ricalibrazione EGARCH proposta in Cap.27.5 e con la persistenza del flag di regime di Cap.25.4 di Parte V. Il valore è dichiarato **non congelato in Parte VI** e riconsiderato post-go-live sulla base degli esiti empirici di stabilità delle metriche live.
 
 Le 4 metriche live sono:
 
-- **$f_1^{live}(t) = E[R_{net} \mid \text{executed}]$** su $W_{prod}$. Media empirica del rendimento netto in punti FIB sui segnali eseguiti del fold di produzione rolling. La definizione di $R_{net}$ include il commissioning $c = 1$ pt FIB equivalente per operazione (eredità Cap.5 di Parte I, conversione 5 EUR commissione / 5 EUR per punto FIB), coerente con la formula di Cap.24.1 di Parte V: $f_1 = E[R_{gross} \mid \text{executed}] - 2c$. La nomenclatura `executed`, la gestione dei segnali in stato terminale `expired posttrigger_timeout` (chiusura virtuale forzata), e l'esclusione dei segnali non eseguiti (`invalidated`, `missed_target`, `revoked`) sono identiche a Cap.24.1 di Parte V.
+- **$f_1^{live}(t) = E[R_{net} \mid \text{executed}]$** su $W_{prod}$. Media empirica del rendimento netto in punti FIB sui segnali eseguiti del fold di produzione rolling. La definizione di $R_{net}$ include il commissioning $c = 1$ pt FIB equivalente per operazione (eredità Cap.2 di Parte I, conversione 5 EUR commissione / 5 EUR per punto FIB), coerente con la formula di Cap.24.1 di Parte V: $f_1 = E[R_{gross} \mid \text{executed}] - 2c$. La nomenclatura `executed`, la gestione dei segnali in stato terminale `expired posttrigger_timeout` (chiusura virtuale forzata), e l'esclusione dei segnali non eseguiti (`invalidated`, `missed_target`, `revoked`) sono identiche a Cap.24.1 di Parte V.
 - **$f_2^{live}(t)$** $=$ target_1 hit rate su $W_{prod}$. Frazione di segnali in stato terminale `target_1_hit` sul totale dei segnali eseguiti del fold di produzione rolling. Denominatore: $|\{i : \text{executed}(s_i)\}|$ secondo Cap.24.1 di Parte V (include `target_1_hit, stopped, expired posttrigger_timeout`).
 - **$f_3^{live}(t)$** $=$ invalidation rate pre-touch su $W_{prod}$. Frazione di segnali in stato terminale `invalidated` sul totale dei segnali emessi del fold rolling. Denominatore: $|\{i : \text{emitted}(s_i)\}|$ secondo Cap.24.1 di Parte V.
 - **$f_4^{live}(t)$** $=$ maximum drawdown intraday dell'equity sintetica calcolata su $W_{prod}$. Definizione coerente con Cap.24.1 di Parte V: $f_4 = \max_t (\text{eq}_t^{peak} - \text{eq}_t)$ con $\text{eq}_t$ somma cumulativa di $R_{net}$ per i segnali eseguiti del fold ordinati per $t_{exec}$.
@@ -270,9 +275,26 @@ dove $T_{drift,\text{persist}}$ è **parametro di tuning operativo** con dominio
 
 L'alert è visualizzato sulla dashboard di Cap.30.6 con riferimento esplicito alla metrica derivata, al valore live, ai valori $Q_1, Q_3$ della distribuzione cross-fold, e al numero di giorni di trading consecutivi fuori intervallo. **L'alert non chiude il loop di re-training**: la decisione di ritraining del GA in risposta a deriva persistente è materia di Parte VII Cap.36 (gate decisionali post-go-live), non di Cap.30.
 
-### 30.3 Metriche tracciate (lifecycle aggiuntive)
+### 30.3 Metrica $f_5^{live}$ — stabilità cross-regime live
 
-Cap.30 traccia live anche le **metriche di lifecycle aggiuntive** di **Cap.24.3 di Parte V**, prodotte dalla submacchina position lifecycle di Cap.11 di Parte II. Queste metriche sono di **reporting**, non producono alert (in coerenza con Cap.24.3 di Parte V: non sono obiettivi diretti del NSGA-II, ma indicatori di qualità informativa del payload).
+Cap.30.3 calcola live la **contropartita live di $f_5$ stabilità cross-regime** (quinto obiettivo del NSGA-II di **Cap.24.1 di Parte V**, definizione paragrafo 261-263: $f_5(\theta) = |f_1^{calmo}(\theta) - f_1^{turbolento}(\theta)| / \max(|f_1^{calmo}(\theta)|, |f_1^{turbolento}(\theta)|, 1)$), come metrica di lifecycle a **frequenza più bassa** rispetto a $f_1^{live}$-$f_4^{live}$ di Cap.30.1.
+
+**Definizione di $f_5^{live}(t)$**. Sulla finestra rolling di produzione $W_{prod}$ (Cap.30.1, default proposto 21 sessioni di 8:00-22:00 CET) si segmenta l'insieme dei segnali eseguiti del fold rolling in due sottoinsiemi sulla base della **classificazione regime live $R_{t_{emission,i}} \in \{\text{calmo}, \text{turbolento}\}$** (Cap.14 di Parte III, classificazione prodotta dal blocco 5 della pipeline di Cap.27.1) al momento dell'emissione del segnale $i$-esimo. Si calcolano le due medie condizionate
+$$f_1^{calmo,live}(t) = E[R_{net} \mid \text{executed}, R_{t_{emission}} = \text{calmo}] \quad \text{su } W_{prod}$$
+$$f_1^{turbolento,live}(t) = E[R_{net} \mid \text{executed}, R_{t_{emission}} = \text{turbolento}] \quad \text{su } W_{prod}$$
+e si definisce
+$$f_5^{live}(t) = \frac{|f_1^{calmo,live}(t) - f_1^{turbolento,live}(t)|}{\max(|f_1^{calmo,live}(t)|, |f_1^{turbolento,live}(t)|, 1)}$$
+coerentemente con la formula di Cap.24.1 di Parte V applicata al fold di produzione rolling al posto del fold OOS del walk-forward.
+
+**Frequenza di calcolo più bassa di $f_1$-$f_4$**. Diversamente da $f_1^{live}$-$f_4^{live}$ che si aggiornano a ogni segnale che entra in stato terminale all'interno di $W_{prod}$, $f_5^{live}$ richiede **una popolazione minima per ciascun regime** nei due sottoinsiemi per essere statisticamente significativa: il calcolo è eseguito **al massimo una volta per giornata di trading** (es. end-of-session aggregato), e solo quando la cardinalità del sottoinsieme meno rappresentato sui segnali eseguiti del $W_{prod}$ corrente supera una soglia minima $N_{reg,\min}^{live}$ (parametro di tuning operativo, valore di **default proposto** $N_{reg,\min}^{live} = 10$ segnali eseguiti per ogni regime, **non congelato in Parte VI**). Se $N_{reg,\min}^{live}$ non è soddisfatto in entrambi i regimi sul $W_{prod}$ corrente, $f_5^{live}(t)$ è dichiarato `n/a` per quell'aggiornamento; il calcolo viene ripetuto quando il pool di segnali raggiunge la soglia.
+
+**Confronto con la distribuzione cross-fold di $f_5$**. Anche $f_5^{live}$ ammette confronto con la distribuzione $f_5^{global}$ del walk-forward di **Cap.24.6 di Parte V** (paragrafo 330: $f_5^{global}$ calcolato concatenando tutti i segnali OOS dei $F = 8$ fold separati per regime). La distribuzione di riferimento di $f_5$ è puntuale (uno scalare $f_5^{global}$ aggregato) e non un IQR cross-fold come per $f_1$-$f_4$: di conseguenza la soglia di deriva di Cap.30.2 (intervallo IQR cross-fold) non è direttamente applicabile a $f_5^{live}$. Si emette **alert di deriva di stabilità cross-regime** se $f_5^{live}(t) > f_5^{global} \cdot (1 + \alpha_{f_5})$ per più di $T_{drift,\text{persist}}$ giorni di trading consecutivi, con $\alpha_{f_5}$ parametro di tuning operativo (tolleranza relativa, valore di **default proposto** $\alpha_{f_5} = 0{,}25$ — incremento del 25% rispetto al valore di walk-forward, **non congelato in Parte VI**). La motivazione è che un cromosoma frozen calibrato per stabilità cross-regime $f_5^{global}$ può degradare la propria stabilità in produzione (es. shock di mercato che modifica la distribuzione dei regimi calmo/turbolento) senza che gli alert di Cap.30.2 lo rilevino — gli alert di Cap.30.2 monitorano $f_1$-$f_4$ marginali, non la disparità cross-regime di $f_1$.
+
+**Impatto sul GA**. Il NSGA-II di Cap.24.1 di Parte V ha selezionato il cromosoma frozen tenendo conto di $f_5$ insieme a $f_1$-$f_4$ come quinto obiettivo del fronte di Pareto. Senza $f_5^{live}$ il monitoraggio della deriva è incompleto su uno dei 5 assi di selezione: un bundle frozen può conservare $f_1^{live}$-$f_4^{live}$ entro $[Q_1, Q_3]$ ma degradare $f_5^{live}$ in modo che la disparità $|f_1^{calmo} - f_1^{turbolento}|$ aumenti — segnale strutturale di deriva del regime non visibile dalle metriche marginali. Cap.30.3 chiude esplicitamente questa lacuna.
+
+### 30.3bis Metriche di lifecycle tracciate (eredità Cap.24.3 di Parte V)
+
+Cap.30.3bis traccia live le **metriche di lifecycle aggiuntive** di **Cap.24.3 di Parte V**, prodotte dalla submacchina position lifecycle di Cap.11 di Parte II. Queste metriche sono di **reporting**, non producono alert (in coerenza con Cap.24.3 di Parte V: non sono obiettivi diretti del NSGA-II, ma indicatori di qualità informativa del payload).
 
 - **$\pi_{t_2 \mid t_1}^{live}(t)$** — target_2 hit rate condizionale al raggiungimento di target_1, calcolato sui segnali del fold di produzione rolling $W_{prod}$ che hanno raggiunto `target_1_hit` e per i quali la submacchina position lifecycle di Cap.11.3 di Parte II ha registrato l'evento `target_2_reached` prima di altri eventi terminanti della submacchina.
 - **MFE/MAE aggregati live** — distribuzioni di maximum favourable excursion e maximum adverse excursion misurate dal momento del `trigger_event` $t_{exec}$ alla chiusura del segnale (per i segnali eseguiti), secondo la definizione di Cap.10.4 di Parte II. La submacchina position lifecycle di Cap.11.2 di Parte II traccia inoltre MFE/MAE post-target_1 (dal momento di `target_1_hit` alla chiusura della submacchina) per i segnali che hanno raggiunto target_1: anche queste distribuzioni sono tracciate live.
@@ -314,10 +336,11 @@ La **dashboard di Cap.30** è **lato motore** (PC dell'operatore, eventualmente 
 **Contenuto della dashboard lato motore**:
 
 - **Tabella delle 4 metriche live $f_1$-$f_4$** di Cap.30.1 con valore corrente, $Q_1, Q_3$ della distribuzione cross-fold di Cap.30.2, giorni consecutivi fuori intervallo, flag di alert attivo.
-- **Tabella delle metriche tracciate** di Cap.30.3 ($\pi_{t_2 \mid t_1}^{live}$, MFE/MAE aggregati, $f_{stop \mid t_1}^{live}$) con valori correnti e finestra di calcolo $W_{prod}$.
+- **Riga dedicata a $f_5^{live}$ stabilità cross-regime** di Cap.30.3 con valore corrente, cardinalità dei due regimi (calmo/turbolento) sul $W_{prod}$ corrente, valore di riferimento $f_5^{global}$ del walk-forward (Cap.24.6 di Parte V), giorni consecutivi sopra soglia $(1 + \alpha_{f_5}) \cdot f_5^{global}$, flag di alert attivo. Se la cardinalità minima $N_{reg,\min}^{live}$ non è raggiunta in entrambi i regimi, la riga riporta `n/a` con indicazione della cardinalità mancante.
+- **Tabella delle metriche di lifecycle tracciate** di Cap.30.3bis ($\pi_{t_2 \mid t_1}^{live}$, MFE/MAE aggregati, $f_{stop \mid t_1}^{live}$) con valori correnti e finestra di calcolo $W_{prod}$.
 - **Grafico della serie temporale di $B(t)$** di Cap.30.4 con linea di soglia $\theta_B$ e marcatori di alert.
 - **Grafico della frequenza di emissione $r_{emit}^{live}(t)$** di Cap.30.5 con linee di soglia $E_{min}$ e $E_{max}$ e marcatori di alert.
-- **Lista degli alert attivi**: per ogni alert di Cap.30.2, Cap.30.4, Cap.30.5, riepilogo del trigger e dell'orario di prima rilevazione.
+- **Lista degli alert attivi**: per ogni alert di Cap.30.2, Cap.30.3 (deriva di $f_5^{live}$), Cap.30.4, Cap.30.5, riepilogo del trigger e dell'orario di prima rilevazione.
 
 **Nessuna interazione execution-side**. La dashboard è puramente di monitoraggio: non espone bottoni di emissione manuale, non permette di sopprimere alert, non interagisce con il broker Directa per execution. La conformità al vincolo "solo emissione, nessuna esecuzione" di Cap.1 di Parte I si estende al monitoring: la dashboard può mostrare lo stato dei segnali e delle metriche, ma non può intervenire sull'operatività.
 
@@ -331,4 +354,4 @@ Cap.30 si limita a tracciare le metriche di fitness (Cap.30.1) e lifecycle (Cap.
 
 ---
 
-*Fine della Parte VI. La pipeline di inference real-time del bundle frozen (Cap.27) con il meccanismo di ricalibrazione EGARCH e trigger di break parametrico (Cap.27.5 chiusura M-2 v2 CAP-03 residuo), la politica anti-doppio-segnale che operazionalizza il vincolo $|\mathcal{A}(t)| \leq 1$ di Cap.6.3 di Parte II (Cap.28), il layout mobile-first del messaggio Telegram che estende senza duplicare Cap.9.2 di Parte II (Cap.29), il monitoraggio del lifecycle in produzione con metriche live, dashboard lato motore e alert su deriva (Cap.30) sono ora formalmente specificati. Il bundle frozen prodotto dal walk-forward nested di Parte V è operativamente in produzione, l'operatore riceve segnali bit-exact identici al contratto di Parte II via Telegram, e la deriva del cromosoma rispetto al regime di mercato corrente è monitorata in tempo reale; le decisioni di re-training del GA in risposta a deriva persistente sono rinviate a Parte VII Cap.36 (gate decisionali post-go-live). Parte VI non aggiunge una tabella di congelamento propria: i parametri di tuning operativo ($T_{recal,\text{EGARCH}}, \theta_B, T_{B,\text{persist}}, W_{prod}, T_{drift,\text{persist}}, T_{emit,\text{persist}}, \epsilon_p$) sono dichiarati non congelati e riconsiderati post-go-live; le soglie già congelate in Cap.26.5 di Parte V ($E_{max} = 5, E_{min} = 0{,}2, E_{exp,max} = 0{,}30$) sono riusate senza ridichiarazione. La Parte VII consuma il bundle frozen e il log di replay live per la validazione OOS finale, i gate decisionali di go-live e la decisione formale di re-training.*
+*Fine della Parte VI. La pipeline di inference real-time del bundle frozen (Cap.27) con il meccanismo di ricalibrazione EGARCH e trigger di break parametrico (Cap.27.5 chiusura M-2 v2 CAP-03 residuo), la politica anti-doppio-segnale che operazionalizza il vincolo $|\mathcal{A}(t)| \leq 1$ di Cap.6.3 di Parte II (Cap.28), il layout mobile-first del messaggio Telegram che estende senza duplicare Cap.9.2 di Parte II (Cap.29), il monitoraggio del lifecycle in produzione con metriche live (incluse le contropartite delle 5 fitness $f_1$-$f_5$ del NSGA-II di Cap.24.1 di Parte V), dashboard lato motore e alert su deriva (Cap.30) sono ora formalmente specificati. Il bundle frozen prodotto dal walk-forward nested di Parte V è operativamente in produzione, l'operatore riceve segnali bit-exact identici al contratto di Parte II via Telegram, e la deriva del cromosoma rispetto al regime di mercato corrente è monitorata in tempo reale su tutti e 5 gli assi di selezione del fronte di Pareto; le decisioni di re-training del GA in risposta a deriva persistente sono rinviate a Parte VII Cap.36 (gate decisionali post-go-live). Parte VI non aggiunge una tabella di congelamento propria: i parametri di tuning operativo ($T_{recal,\text{EGARCH}}, \theta_B, T_{B,\text{persist}}, W_B, W_{prod}, T_{drift,\text{persist}}, T_{emit,\text{persist}}, \epsilon_p, N_{reg,\min}^{live}, \alpha_{f_5}$) sono dichiarati non congelati e riconsiderati post-go-live; le soglie già congelate in Cap.26.5 di Parte V ($E_{max} = 5, E_{min} = 0{,}2, E_{exp,max} = 0{,}30$) sono riusate senza ridichiarazione. La Parte VII consuma il bundle frozen e il log di replay live per la validazione OOS finale, i gate decisionali di go-live e la decisione formale di re-training.*
