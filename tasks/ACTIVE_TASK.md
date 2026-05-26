@@ -337,3 +337,94 @@ Development v1 $\to$ Review v1 audit ostile con classificazione GA $\to$ punto d
 **Atteso numero di iterazioni**: 2-3 cicli, coerente con la complessita' della Parte V (motore stesso del progetto) e con il numero di M-promemoria da integrare (16, di cui 11 attivi in CAP-05). Il primo ciclo Review v1 probabilmente trovera' 4-8 finding totali (BUG REALI + MIGLIORA + NEUTRO); la decisione del supervisore sui finding non-BUG seguira' la prassi standard del progetto.
 
 **Criterio di rollback in caso di fallimento**: se Review v2 trova ancora BUG REALI strutturali su Cap.22-26, si valuta uno splitting di Parte V in Parte V.A (Cap.22-24 motore + fitness) e Parte V.B (Cap.25-26 walk-forward + calibrazione), con due cicli Review distinti. Decisione di rollback rinviata al supervisore al primo CONDITIONAL.
+
+---
+
+## Finding di Review v1 da risolvere (rework v2)
+
+Review v1 di CAP-05 (commit `bd8ce34`) ha emesso verdetto **CONDITIONAL** con 3 BUG REALI + 3 RISCHIO PEGGIORAMENTO + 5 NEUTRO. **Decisione supervisore 2026-05-26**:
+- 3 BUG REALI obbligatori (NB-1, NB-2, NB-3)
+- RP-1 approvato (aumenta T_budget a 75-80h)
+- RP-2 ignorato (la motivazione no-double-median del Developer tiene; effetto Simpson resta rischio teorico; Reviewer Parte VII potra' riprendere con dati empirici)
+- RP-3 approvato in forma "starting point Parte VII" (dichiara $\theta_{CV}=0,5$ come valore di lavoro per primo run, riconsiderato empiricamente in Parte VII; nessuna citazione di facciata)
+- 5 NEUTRO (O-1...O-5) ignorati come da default
+
+Pipeline attesa rework v2: 5 fix chirurgici (3 BUG REALI + RP-1 + RP-3) -> Review v2 -> PASS (alta confidenza, nessuno dei fix tocca l'architettura del motore).
+
+### BUG REALI obbligatori
+
+#### **NB-1** -- Derivazione 12.800-25.600 min M-4 incoerente nelle unita' (Cap.23.6 righe 209-215)
+
+**Problema**: Cap.23.6 a riga 215 scrive "$16.448 \times 0,8 \approx 13.000$, dove il fattore 0,8 cattura un ulteriore margine ottimistico di caching" -- ma $16.448 \times 0,8$ e' un numero di **valutazioni**, non di **minuti** single-thread. M-4 di CAP-01 e' in minuti. La derivazione confonde unita': applica un fattore alle valutazioni e poi etichetta il risultato come minuti.
+
+**Fix v2**: riallineare le unita' in Cap.23.6. Due strade equivalenti -- il Developer sceglie e motiva nel REPORT:
+
+(a) **Preserva CAP-01 M-4 [12.800; 25.600] min** dichiarando esplicitamente il range di valutazione fitness $t_{eval} \in [0,74; 1,47]$ min/cromosoma coerente con $N_{eval}^{actual} = 17.408$:
+$$N_{eval}^{actual} \cdot t_{eval} = 17.408 \cdot [0,74; 1,47] = [12.882; 25.590] \approx [12.800; 25.600] \text{ min single-thread}$$
+Rimuovere la riga errata "$16.448 \times 0,8$". Aggiornare anche Cap.4 PI o REPORT_CAP_01 se necessario per coerenza inter-capitolo.
+
+(b) **Ridichiara M-4 effettivo** coerente con $t_{eval} \in [0,5; 1,0]$ min/cromosoma e $N_{eval}^{actual} \in [16.448; 18.368]$, che produce $[8.224; 18.368]$ min single-thread per singolo run di calibrazione. Aggiornare CAP-01 (mini-patch Cap.4 PI) per allineare la stima compute con il nuovo range.
+
+**Scelta raccomandata**: (a), che preserva CAP-01 senza mini-patch retroattivo. Verificare con un esempio numerico esplicito che la derivazione regga.
+
+#### **NB-2** -- $K_{max}=12$ congelato vs decisione stratificazione Cap.25.5 incompatibili sotto Harrell (Cap.26.7 righe 645-649, Cap.25.5 riga 421)
+
+**Problema**: Cap.25.5 dichiara stratificazione formale come default di Parte V; Cap.26.7 riconosce esplicitamente che sotto stratificazione con split 50/50 ogni strato ha $N_{eventi} \geq 60$ e Harrell richiede $K_{max} \leq 6$ per strato. Tuttavia Cap.26.7 congela $K_{max}=12$ comunque. La stima Cox cause-specific stratificata risulta sovra-parametrizzata, con coefficienti $\beta_{j,R}$ instabili cross-fold; la stima $\hat{p}_{hit}$ e' biased; il filtro $E_{surv}$ di Cap.20 PIV usa stima distorta; il ranking del fronte di Pareto e' alterato.
+
+**Fix v2**: scegliere una delle 3 opzioni, motivata nel REPORT (sezione "Decisioni rilevanti"):
+
+(a) **Congela $K_{max}=6$** in Cap.26.5 e Cap.26.7. Aggiornare Cap.25.5 per dichiarare che con $K \leq 6$ la stratificazione rispetta Harrell. Minimizza il rischio overfitting; preserva la stratificazione come default.
+
+(b) **Mantieni $K_{max}=12$ e cambia Cap.25.5** da stratificazione formale default a **interaction term default** (modello unico con $K+1$ feature, regime come indicator). La stratificazione resta come opzione di rollback condizionata a $N_{eventi,strato} \geq 10 K_{max}$. Coerente con Harrell su modello non stratificato.
+
+(c) **Mantieni entrambi $K_{max}=12$ + stratificazione** ammorbidendo Harrell a $N_{eventi}/K \geq 5$ con citazione esplicita di una fonte specifica che giustifichi il salto. Sconsigliato: fragile in audit, fonte specifica difficile da reperire.
+
+**Scelta raccomandata**: (a) o (b). Il Developer motiva la scelta sulla base di: simmetria fra strati (a vs b), interpretabilita' clinica del modello, robustezza compute (b non duplica i coefficienti).
+
+#### **NB-3** -- Nomenclatura "MAE alla scadenza" incoerente con regola operativa (Cap.24.1 riga 239)
+
+**Problema**: Cap.24.1 scrive "il rendimento e' la MAE alla scadenza (Cap.10.4 di Parte II): il segnale viene chiuso virtualmente al prezzo della barra in cui il timer ha esaurito $\Delta t_{cromosoma}$". MAE (Maximum Adverse Excursion) e' per definizione il massimo movimento avverso durante l'intero segnale, NON il rendimento al momento dell'expiry. La regola operativa e' univoca (rendimento dal fill al prezzo di chiusura virtuale forzata), ma la nomenclatura confonde.
+
+**Fix v2**: sostituire "MAE alla scadenza" con **"rendimento di chiusura virtuale forzata"** (o equivalente: "rendimento al timeout post-trigger", "rendimento di expiry forzato"). Mantenere la regola operativa invariata. Costo: 1 sostituzione di etichetta in Cap.24.1 riga 239. Verificare che il termine "MAE" non riemerga nel resto di Cap.24 con la stessa accezione scorretta.
+
+### RP approvati dal supervisore
+
+#### **RP-1** -- Tensione $F=8$ vs $T_{budget}=60$ ore (Cap.26.2 riga 517, Cap.26.5 riga 614)
+
+**Problema**: nel caso ottimo Cap.23.6, walk-forward nested richiede ~72 ore wall-clock (8 fold $\times$ 9 ore/fold). $T_{budget}=60$ ore e' insufficiente per coprire il caso ottimo; il GA fermato a $T_{budget}$ ha solo 6,7 fold completi. Aggregazione cross-fold meno robusta.
+
+**Decisione supervisore**: aumenta $T_{budget}$ a **75-80 ore** per coprire il caso ottimo $F=8$.
+
+**Fix v2**:
+1. **Cap.26.2 riga 517**: aggiornare $T_{budget}=60$ ore con il nuovo valore. Il Developer sceglie fra 75 e 80 (suggerito 80 per margine; 75 e' floor minimo). Motivare la scelta.
+2. **Cap.26.5 riga 614**: aggiornare la tabella di congelamento (voce $T_{budget}$).
+3. **Cap.23.6**: aggiornare il commento sulla tensione $F$ vs $T_{budget}$ (riga 217 e dintorni) -- ora la tensione e' risolta nel caso ottimo.
+4. **REPORT_CAP_05 sezione "Misura prima/dopo"**: aggiungere riga sull'aggiornamento $T_{budget}$.
+
+#### **RP-3** -- Soglia $\theta_{CV}=0,5$ senza fonte (Cap.25.5 riga 423, Cap.26.5 riga 616)
+
+**Problema**: $\theta_{CV}=0,5$ e' trigger di rollback dal Cox stratificato (default) all'interaction term. Valore non motivato da rule of thumb o citazione.
+
+**Decisione supervisore**: opzione 2 -- dichiara $\theta_{CV}=0,5$ come **starting point** per primo run di calibrazione, riconsiderato empiricamente in Parte VII. Nessuna citazione di facciata.
+
+**Fix v2**:
+1. **Cap.25.5 riga 423**: aggiornare la formulazione. Aggiungere ~2 righe del tipo: "Il valore $\theta_{CV}=0,5$ e' starting point per il primo run di calibrazione (in assenza di rule of thumb consolidata in letteratura per CV di coefficienti Cox come threshold di stabilita'). La soglia e' riconsiderata empiricamente in Parte VII sulla base degli esiti cross-fold dei coefficienti $\beta_{j,R}$; eventuale ridiscussione formale e' rinviata al ciclo di validazione OOS."
+2. **Cap.26.5 riga 616**: aggiornare la voce $\theta_{CV}$ con flag "starting point, riconsiderato Parte VII".
+3. **REPORT_CAP_05 sezione "Domande aperte"** o "Criterio di rollback": annotare che $\theta_{CV}$ e' candidato a ridiscussione in Parte VII.
+
+### Acceptance criteria aggiuntivi per la v2
+
+- [ ] **AC-v2-1**: NB-1 chiuso. Cap.23.6 ha derivazione M-4 coerente nelle unita' (val $\times$ min/val = min). Il valore inferiore 12.800 min e' giustificato senza confusione di unita'. Esempio numerico verificabile.
+- [ ] **AC-v2-2**: NB-2 chiuso. Scelta motivata fra opzioni (a), (b), (c) nel REPORT. Cap.25.5 e Cap.26.7 coerenti fra loro sotto la scelta selezionata. Nessuna contraddizione residua sulla rule of thumb Harrell.
+- [ ] **AC-v2-3**: NB-3 chiuso. Cap.24.1 riga 239 non contiene piu' "MAE alla scadenza"; sostituita con nomenclatura coerente con la regola operativa. Termine "MAE" assente come nomenclatura per il rendimento di chiusura virtuale forzata nel resto del documento.
+- [ ] **AC-v2-4**: RP-1 chiuso. $T_{budget}$ aggiornato a 75-80 ore in Cap.26.2 e Cap.26.5. Cap.23.6 aggiornato sulla tensione risolta. Scelta del valore preciso motivata nel REPORT.
+- [ ] **AC-v2-5**: RP-3 chiuso. Cap.25.5 dichiara $\theta_{CV}=0,5$ come starting point Parte VII; Cap.26.5 con flag corrispondente. REPORT annota la riconsiderazione Parte VII.
+- [ ] **AC-v2-6**: nessuna regressione sugli AC v1 (52 voci: 47 OK + 4 PARZIALI promossi a OK ove possibile + 1 condizionale gia' OK). Verifica esplicita nel REPORT con tabella prima/dopo dove rilevante.
+- [ ] **AC-v2-7**: REPORT_CAP_05.md include sezione "## Iterazione 2 -- risposta ai finding di Review v1 + decisioni RP-1/RP-3" con: per ogni finding, modifica applicata + misura prima/dopo + AC chiuso. Sezione "Decisioni rilevanti" aggiornata con la scelta motivata per NB-2 (opzione a/b/c).
+- [ ] **AC-v2-8**: CARRYOVER.md aggiornato se nuovi M-promemoria emergono (atteso: nessuno; Review v1 ha dichiarato "Nessun M-promemoria nuovo emerge da questa Review per Parte VI/VII").
+- [ ] **AC-v2-9**: 00_indice.md riflette CAP-05 IN REVIEW v2.
+- [ ] **AC-v2-10**: tutti i file modificati committati e pushati su origin/main. Working tree pulito sui file di task. `tasks/DEV_STATUS.md` = `READY_FOR_REVIEW` dopo la consegna.
+
+### Pipeline rework v2
+
+Development v2 (3 fix BUG REALI + RP-1 + RP-3 + correzione REPORT) -> Review v2 di CAP-05 -> atteso PASS in 1 iterazione (correzioni chirurgiche tutte $\leq$ 10 righe; nessuna decisione di design strutturale aperta dopo la scelta NB-2).
