@@ -37,7 +37,7 @@ Documento specializzato per FIB N=1, derivato da ENGINE_ALGO_INTEGRATO_HARD_LOCK
 - **Cap 20 — Filtri di emissione basati sul survival** (~1.5 pp): soglia $\tau_{surv}$ parametro del cromosoma, integrazione AND con condizioni Cap.8, condizionalita' al regime, filtro implicito fine sessione.
 - **Cap 21 — Caso trade range** (~1.5 pp): definizione range da pivot, eccezione al filtro 80pt ($A_{range} \geq 80$), geometria zone/target/stop nel range, classificazione directional vs trade_range.
 
-## Parte V — Motore genetico e fitness operativa (~10 pp) — IN REVIEW v2 (documento `docs/methodology_v2/CAP_05_parte_V.md`; report `reports/REPORT_CAP_05.md`; rework v2 post-CONDITIONAL Review v1 con 3 BUG REALI chiusi + RP-1 + RP-3 ratificati dal supervisore; in attesa di Review v2)
+## Parte V — Motore genetico e fitness operativa (~10 pp) ✅ PASS Review v2 (review commit `50b6e7e` del 2026-05-26; documento commit `16590ae`; 5 fix v2 chirurgici post-CONDITIONAL Review v1: NB-1 unita' derivazione M-4 / NB-2 $K_{max}=6$ per strato + stratificazione preservata / NB-3 nomenclatura MAE rimossa / RP-1 $T_{budget}=80$h / RP-3 $\theta_{CV}$ starting point Parte VII; tutti 10 AC v2 OK; 47 AC v1 invariati + 3 promossi PARZIALE→OK + AC-2 PARZIALE carryover documentazione; 11 M-promemoria chiusi (M-4, M-5, M-6, M-2 v2 parziale, M-7, M-8, M-9, M-10, M-11, M-14, M-15) + 1 nuovo M-16 condizionale Parte VII)
 
 - **Cap 22 — Cromosoma e spazio dei parametri** (~2 pp): genoma del bundle (parametri zone, target, stop, soglie filtro, parametri survival), vincoli di ammissibilita'.
 - **Cap 23 — Operatori GA** (~2 pp): selezione NSGA-II, crossover, mutazione, elitismo.
