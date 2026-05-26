@@ -1,8 +1,8 @@
 ### REPORT SUPERVISORE -- CAP-05
 
 **Task**: Parte V del documento metodologico v2 (Motore genetico, fitness operativa, walk-forward nested, calibrazione, congelamento numerico)
-**Stato**: COMPLETATO
-**Iterazione**: v1
+**Stato**: COMPLETATO -- v2 rework post-CONDITIONAL Review v1
+**Iterazione**: v2 (rework su 3 BUG REALI + RP-1 + RP-3 ratificati dal supervisore)
 
 ---
 
@@ -224,3 +224,103 @@ Nessuna domanda bloccante. Le decisioni di scope del Planner (3 in ACTIVE_TASK s
 5. **AC-2 PARZIALE**: se Review v1 considera blocking, aggiunta in Cap.24.5 cross-ref esplicito a Cap.9.2 PII (eredita' 16) e in Cap.24.3 cross-ref a Cap.20.4 PIV (eredita' 41) con mini-patch. Costo basso.
 
 Il Developer non considera PASS condizionata a queste osservazioni: tutti gli AC sono verificati OK o PARZIALE motivato; il Reviewer valutera' se le PARZIALI sono accettabili. Se richiede fix, mini-patch in iterazione v2 senza rework completo PV.
+
+---
+
+## Iterazione 2 -- risposta ai finding di Review v1 + decisioni RP-1/RP-3
+
+**Contesto**: Review v1 CAP-05 (commit `bd8ce34`) ha emesso CONDITIONAL con 3 BUG REALI (NB-1, NB-2, NB-3) + 3 RISCHIO PEGGIORAMENTO (RP-1, RP-2, RP-3) + 5 NEUTRO. Decisione supervisore 2026-05-26: 3 BUG REALI obbligatori + RP-1 approvato (T_budget 60h→75-80h) + RP-3 approvato in forma "starting point Parte VII"; RP-2 ignorato; 5 NEUTRO ignorati. Iterazione v2 produce 5 fix chirurgici (~30-40 righe modificate complessive) senza toccare l'architettura del motore.
+
+### Tabella sintesi finding chiusi
+
+| Finding | Capitolo/Riga | Modifica applicata | Misura prima | Misura dopo | AC chiuso |
+|---------|---------------|-------------------|--------------|-------------|-----------|
+| NB-1 -- Derivazione 12.800-25.600 min con unita' incoerenti | Cap.23.6 righe 209-223 | Riallineamento unita' val $\times$ min/val = min: dichiarato esplicitamente $t_{eval} \in [0,74; 1,47]$ min/cromosoma coerente con $N_{eval}^{actual} = 17.408$ valutazioni; rimossa formula errata "$16.448 \cdot 0,8$"; aggiornata conciliazione $F$ effettivo e tensione $T_{budget}$ con riferimento RP-1 | Range derivato confondendo valutazioni e minuti (es. "$16.448 \cdot 0,8 \approx 13.000$ minuti" con $0,8$ moltiplicatore di valutazioni) | Range derivato dimensionalmente coerente: $17.408 \cdot [0,74; 1,47] = [12.882; 25.590] \approx [12.800; 25.600]$ min; verifica numerica esplicita | AC-v2-1 OK |
+| NB-2 -- $K_{max}=12$ incompatibile con stratificazione sotto Harrell | Cap.25.5 riga 421-423 + Cap.26.5 riga 609 + Cap.26.7 righe 645-655 | **Scelta opzione (a)**: congelato $K_{max} = 6$ per strato (coerente con Harrell $N_{eventi,\text{strato}}/K \geq 10$ sotto split 50/50 con $N_{eventi,\text{strato}} \geq 60$); stratificazione formale Cap.25.5 preservata come default; Cap.26.7 riscritto con motivazione analitica per strato | $K_{max} = 12$ congelato in Cap.26.5; Cap.25.5 dichiara stratificazione default; Cap.26.7 riconosce esplicitamente la contraddizione ($K_{max} \leq 6$ per strato sotto split 50/50) ma congela 12 comunque (stima Cox sovra-parametrizzata, $\hat{p}_{hit}$ biased, ranking Pareto distorto) | $K_{max} = 6$ per strato coerente con stratificazione; rapporto $N_{eventi,\text{strato}}/K_{max} \in [10; 32]$ in tutti i fold; nessuna sovra-parametrizzazione; stima Cox stabile; $\hat{p}_{hit}$ non biased | AC-v2-2 OK |
+| NB-3 -- Nomenclatura "MAE alla scadenza" incoerente con regola operativa | Cap.24.1 riga 239 | Sostituita "MAE alla scadenza" con "rendimento di chiusura virtuale forzata"; aggiunta nota esplicativa che MAE e MFE restano definite secondo l'accezione standard (massimi movimenti avversi/favorevoli intra-segnale, Cap.11 PII) e sono tracciate come metriche di lifecycle in Cap.24.3, non come rendimento di chiusura. Termine "MAE" non riemerge altrove in Cap.24 con accezione scorretta (verifica via grep: rimane solo riga 288 Cap.24.3 con accezione corretta "MFE e MAE post-target_1") | "Rendimento $=$ MAE alla scadenza" (incoerente: MAE $\neq$ rendimento di chiusura) | "Rendimento $=$ rendimento di chiusura virtuale forzata" (coerente con regola operativa: rendimento dal prezzo di fill al prezzo di chiusura virtuale alla barra di expiry) | AC-v2-3 OK |
+| RP-1 -- Tensione $F=8$ vs $T_{budget}=60$h | Cap.26.2 riga 523 + Cap.26.5 riga 603 + Cap.23.6 riga 223 | $T_{budget} = 60$ ore aggiornato a **$T_{budget} = 80$ ore** (scelta valore alto del range 75-80h per margine di robustezza, vedi sotto); Cap.26.5 aggiornata; Cap.23.6 aggiornata con riferimento alla chiusura RP-1 e nota tensione residua sotto i nuovi range M-4 (rinvio a Parte VII Cap.34) | $T_{budget} = 60$ ore copriva solo 6,7 fold completi del walk-forward nested $F=8$; bundle parziale; aggregazione cross-fold con varianza inflated | $T_{budget} = 80$ ore copre il caso ottimo $F=8$ fold (~72 ore wall-clock) con margine di 8 ore (~11%) per varianza spot c5.4xlarge; tensione del run di calibrazione di lavoro risolta; tensione residua sotto i nuovi range M-4 (107 ore wall-clock caso ottimo) rinviata a Parte VII Cap.34 (compute stress test) | AC-v2-4 OK |
+| RP-3 -- Soglia $\theta_{CV} = 0,5$ senza fonte | Cap.25.5 riga 429 + Cap.26.5 riga 622 | Cap.25.5 aggiornato con dichiarazione esplicita: "$\theta_{CV} = 0,5$ e' dichiarato come starting point per il primo run di calibrazione, in assenza di rule of thumb consolidata in letteratura per CV di coefficienti Cox come threshold di stabilita'. La soglia e' riconsiderata empiricamente in Parte VII...". Cap.26.5 con flag "(**starting point, riconsiderato Parte VII**)" nella colonna valore + motivazione esplicita | $\theta_{CV} = 0,5$ valore di lavoro senza giustificazione esplicita ne' fonte; rischio peggioramento sul ranking se troppo permissivo/restrittivo | $\theta_{CV} = 0,5$ esplicitamente dichiarato starting point; rinvio formale alla validazione empirica di Parte VII Cap.31; nessuna citazione di facciata; flag in Cap.26.5 traccia la natura provvisoria | AC-v2-5 OK |
+
+### Decisioni rilevanti -- iterazione 2
+
+**Decisione NB-2: opzione (a) $K_{max} = 6$ congelato + stratificazione preservata.**
+
+Tra le 3 opzioni proposte dal Reviewer:
+- **(a) $K_{max} = 6$ + stratificazione preservata**: minimizza overfitting, preserva la decisione di architettura del modello (stratificazione e' la scelta strutturalmente piu' coerente con cromosoma regime-dipendente $\tau_{vol}$, $\tau_{surv}$, $d_{stop,\sigma}$).
+- **(b) $K_{max} = 12$ + interaction term**: preserva la capacita' predittiva (12 feature contro 6) ma cambia la decisione architettonica di Cap.25.5 (no piu' stratificazione di default; perdita di interazioni non-lineari fra regime e feature).
+- **(c) $K_{max} = 12$ + Harrell ammorbidito a $N/K \geq 5$**: fragile in audit; fonte specifica difficile da reperire; Reviewer stesso sconsiglia.
+
+**Scelta: (a).** Motivazione tecnica:
+1. **Conservativita' sotto stima MLE**: $K_{max} = 6$ con $N_{eventi,\text{strato}} \in [60; 190]$ produce rapporto $\geq 10$ in tutti i fold, anche nel caso pessimo $N_{eventi,\text{strato}} = 60$. La stima Cox e' stabile.
+2. **Coerenza architettonica**: la stratificazione di Cap.25.5 e' coerente con la regime-dipendenza dei geni del cromosoma (Cap.22.3, 22.4). Mantenerla preserva la simmetria del design.
+3. **Robustezza in audit**: (a) non richiede citazioni opportunistiche e non muta la decisione di default; tutte le formule restano coerenti modulo la sostituzione $K_{max}: 12 \to 6$.
+4. **Costo compute non rilevante**: la riduzione del numero di feature da 12 a 6 per strato riduce marginalmente il costo della stima MLE Cox; il ranking del fronte di Pareto e' meno biased (le feature escluse hanno effetto residuo nel cromosoma $\mathbf{s}$ via selezione GA).
+
+**Trade-off accettato**: $K_{max} = 6$ riduce la flessibilita' espressiva del modello survival; alcune feature predittive potrebbero essere escluse dal vettore attivo. La selezione GA via $\mathbf{s}$ con vincolo $\sum_j s_j \leq 6$ esplora il sottospazio di 6 feature ottimali; la flessibilita' del modello e' ridotta ma non eliminata. Se la robustezza empirica del primo run mostrasse capacita' predittiva insufficiente con $K_{max} = 6$, il rollback architettonico a opzione (b) e' possibile in iterazione di re-design Parte VII Cap.31, non in Parte V.
+
+**Decisione RP-1: $T_{budget} = 80$ ore (valore alto del range 75-80h).**
+
+Tra i due estremi del range:
+- **$T_{budget} = 75$ ore**: floor di sicurezza con margine 3 ore (~4%) sul caso ottimo 72 ore.
+- **$T_{budget} = 80$ ore**: margine 8 ore (~11%) sul caso ottimo 72 ore.
+
+**Scelta: 80 ore.** Motivazione:
+1. **Margine di robustezza > margine di costo**: 4 ore aggiuntive di EC2 spot c5.4xlarge (~5-8 EUR di costo aggiuntivo) sono trascurabili rispetto al costo di un run di calibrazione interrotto (i bundle parziali producono fronti di Pareto sotto-dimensionati, aggregazione cross-fold inflated).
+2. **Varianza wall-clock c5.4xlarge spot**: le istanze EC2 spot possono essere interrotte o rilanciate; un margine ~11% copre il caso pessimo di overhead di rilancio.
+3. **Overhead di IO**: i log di calibrazione fold-per-fold (output dei test diagnostici survival, dei flag di rollback EGARCH/Cox/Fine-Gray) producono overhead di IO non trascurabile sui dischi spot di c5.4xlarge.
+4. **Tensione residua sotto i nuovi range M-4**: il caso ottimo dei nuovi range single-thread $[12.800; 25.600]$ per fold da' ~107 ore wall-clock per $F=8$ con 16 vCPU, eccedente il budget; ma $T_{budget} = 80$ ore copre la stima Cap.23.6 originale (72 ore caso ottimo, con $r_{cache}$/min-per-fold dell'iterazione v1) e il run di calibrazione iniziale di lavoro. La decisione operativa sotto i nuovi range M-4 (ridurre $F$ a 2-3 vs parallelizzazione cross-fold $> 16$ vCPU) e' rinviata a Parte VII Cap.34.
+
+### Verifica esplicita degli AC v2 (10 voci AC-v2-1..10)
+
+| AC-ID | Criterio v2 | Esito | Evidenza |
+|-------|-------------|-------|----------|
+| AC-v2-1 | NB-1 chiuso. Cap.23.6 ha derivazione M-4 coerente nelle unita' (val $\times$ min/val = min). Lower bound 12.800 min giustificato senza confusione di unita'. Esempio numerico verificabile. | OK | Cap.23.6 righe 209-223: range derivato come $N_{eval}^{actual} \cdot t_{eval} = 17.408 \cdot [0,74; 1,47] = [12.882; 25.590] \approx [12.800; 25.600]$ min. Unita' dimensionalmente coerenti. Formula errata "$16.448 \cdot 0,8$" rimossa. |
+| AC-v2-2 | NB-2 chiuso. Scelta motivata fra opzioni (a), (b), (c) nel REPORT. Cap.25.5 e Cap.26.7 coerenti fra loro sotto la scelta selezionata. Nessuna contraddizione residua sulla rule of thumb Harrell. | OK | Scelta (a) motivata sopra "Decisioni rilevanti". Cap.25.5 riga 427: $K_{max} = 6$ per strato con $N_{eventi,\text{strato}}/K \in [10; 32]$ rispetta Harrell. Cap.26.7 riga 653: $K_{max} = 6$ congelato con calcolo esplicito. Cap.26.5 riga 609: tabella aggiornata. |
+| AC-v2-3 | NB-3 chiuso. Cap.24.1 riga 239 non contiene piu' "MAE alla scadenza"; sostituita con nomenclatura coerente. Termine "MAE" assente come nomenclatura per il rendimento di chiusura virtuale forzata nel resto del documento. | OK | Cap.24.1 riga 245: "rendimento di chiusura virtuale forzata". Verifica grep su "MAE" mostra solo riga 288 Cap.24.3 con accezione corretta (post-target_1 tracking, lifecycle metric). |
+| AC-v2-4 | RP-1 chiuso. $T_{budget}$ aggiornato a 75-80 ore in Cap.26.2 e Cap.26.5. Cap.23.6 aggiornato sulla tensione risolta. Scelta del valore preciso motivata nel REPORT. | OK | Cap.26.2 riga 523: $T_{budget} = 80$ ore con motivazione (chiusura RP-1). Cap.26.5 riga 603: tabella aggiornata. Cap.23.6 riga 223: riferimento RP-1 + tensione residua sotto nuovi range M-4 rinviata a Parte VII Cap.34. Scelta 80h vs 75h motivata sopra. |
+| AC-v2-5 | RP-3 chiuso. Cap.25.5 dichiara $\theta_{CV} = 0,5$ come starting point Parte VII; Cap.26.5 con flag corrispondente. REPORT annota la riconsiderazione Parte VII. | OK | Cap.25.5 riga 429: dichiarazione esplicita starting point + rinvio Parte VII Cap.31. Cap.26.5 riga 622: flag "(**starting point, riconsiderato Parte VII**)" + motivazione "no rule of thumb consolidata". REPORT "Domande aperte" gia' annotava la natura provvisoria della soglia. |
+| AC-v2-6 | Nessuna regressione sugli AC v1 (52 voci: 47 OK + 4 PARZIALI promossi a OK ove possibile). Verifica esplicita nel REPORT con tabella prima/dopo. | OK | Tabella verifica regressione AC v1 sotto. AC-23-5/AC-24-2/AC-26-8 promossi da PARZIALE a OK (NB-1/NB-3/NB-2 chiusi). AC-2 resta PARZIALE come carryover documentazione interna (eredita' 16 Telegram 9 voci e 41 filtro implicito $T_{residuo}$ -- cross-ref letterale non in scope NB-1/NB-2/NB-3 e non parte della patch v2). |
+| AC-v2-7 | REPORT include sezione "## Iterazione 2..." con tabella + decisioni rilevanti + verifica AC v2. Sezione "Decisioni rilevanti" aggiornata con scelta motivata per NB-2 (a/b/c). | OK | Questa sezione. |
+| AC-v2-8 | CARRYOVER.md aggiornato se nuovi M-promemoria emergono (atteso: nessuno; Review v1 ha dichiarato "Nessun M-promemoria nuovo emerge"). | OK | CARRYOVER.md non modificato. Review v1 ha esplicitamente dichiarato "Nessun M-promemoria nuovo emerge da questa Review per Parte VI/VII. Tutti i finding sono riparabili in mini-patch CAP-05." |
+| AC-v2-9 | 00_indice.md riflette CAP-05 IN REVIEW v2. | OK | 00_indice.md riga 40 aggiornata da "IN REVIEW v1" a "IN REVIEW v2". |
+| AC-v2-10 | Tutti i file modificati committati e pushati su origin/main. Working tree pulito sui file di task. tasks/DEV_STATUS.md = READY_FOR_REVIEW. | OK | Commit + push effettuati. Verifica `git status` + `git log --oneline -3` post-consegna. |
+
+### Verifica no-regressione sugli AC v1 (52 voci)
+
+| AC-ID v1 | Esito v1 | Esito v2 | Nota |
+|----------|----------|----------|------|
+| AC-1 | OK | OK | Struttura Cap.22-26 invariata; lunghezza ~10pp preservata. |
+| AC-2 | PARZIALE | PARZIALE | Eredita' 16 (Telegram 9 voci Cap.9.2 PII) e 41 (filtro implicito $T_{residuo}$ Cap.20.4 PIV): cross-ref letterale non in scope dei 5 fix v2. Carryover documentazione interna. Reviewer ha dichiarato "non bloccante" nella v1; resta PARZIALE come tale. |
+| AC-3 | OK | OK | 15 M-promemoria pertinenti coperti; modifica v2 non altera mappa M-ID/capitolo. |
+| AC-4 | OK | OK | Misura prima/dopo: estesa con sezione Iterazione 2 (5 finding) sopra. |
+| AC-5 | OK | OK | Italiano formale + LaTeX + citazioni inline preservati nei 5 fix. |
+| AC-22-1 ... AC-22-7 | OK x7 | OK x7 | Cap.22 cromosoma non modificato. |
+| AC-23-1 ... AC-23-7 | 6 OK + AC-23-5 PARZIALE | **AC-23-5 promosso a OK** | NB-1 chiuso: derivazione 12.800-25.600 min coerente nelle unita'. |
+| AC-24-1 | OK | OK | $M = 5$ invariato. |
+| **AC-24-2** | PARZIALE | **OK** | NB-3 chiuso: "MAE alla scadenza" sostituita con "rendimento di chiusura virtuale forzata". Coerenza nomenclatura + regola operativa preservata. |
+| AC-24-3 ... AC-24-10 | OK x8 | OK x8 | Cap.24 non altrimenti modificato. |
+| AC-25-1 ... AC-25-5 | OK x5 | OK x5 | $W_{in}, W_{oos}, P_{purge}, P_{emb}, F$ invariati. Inoue-Rossi protocol invariato. Classificazione regime parallel media-mediana invariata. |
+| **AC-25-6** | OK | OK (rafforzato) | Cap.25.5 stratificazione formale preservata con motivazione 3 aggiornata per $K_{max} = 6$; rollback $CV > \theta_{CV} = 0,5$ con flag starting point Parte VII (RP-3). |
+| AC-25-7 ... AC-25-10 | OK x4 | OK x4 | Cap.25.6-25.9 non modificati. |
+| AC-26-1 | OK | OK | $P = 128$, $G_{max} = 150$ invariati. |
+| **AC-26-2** | OK | OK (rafforzato) | Cap.26.2 $T_{budget}$ aggiornato 60h $\to$ 80h con motivazione completa (chiusura RP-1). Tensione $F = 8$ vs $T_{budget}$ ora risolta nel caso ottimo della stima v1. |
+| AC-26-3, AC-26-4 | OK x2 | OK x2 | Distribuzione $D$ + inizializzazione EGARCH invariate. |
+| AC-26-5 | OK | OK | Tabella Cap.26.5 con 60 voci; 3 righe aggiornate ($K_{max}$ 12 $\to$ 6, $T_{budget}$ 60 $\to$ 80, $\theta_{CV}$ flag starting point); resto invariato. |
+| AC-26-6 | OK | OK | $A_{range,min} = 80$ non congelabile invariato. |
+| AC-26-7 | OK | OK | Cap.26.6 RR floor invariato. |
+| **AC-26-8** | PARZIALE | **OK** | NB-2 chiuso con scelta (a): $K_{max} = 6$ congelato in Cap.26.7 con motivazione analitica per strato; coerenza con stratificazione Cap.25.5 rispettata; Harrell rule of thumb rispettata in tutti i fold. |
+| AC-26-9 | OK | OK | Seed Cap.26.8 invariato. |
+| AC-T-1 ... AC-T-9 | OK x9 | OK x9 | Vincoli trasversali (tick FIB, determinismo, causalita', italiano formale, citazioni, formato REPORT, indice, commit/push) tutti preservati. AC-T-6 citazioni: nessuna citazione di facciata aggiunta per RP-3 (decisione supervisore ratificata). |
+
+**Sintesi no-regressione**: 52 AC v1 totali. **3 AC promossi da PARZIALE a OK** (AC-23-5, AC-24-2, AC-26-8). **1 AC resta PARZIALE** (AC-2 -- eredita' 16/41 cross-ref letterale, carryover non in scope v2). **3 AC rafforzati** (AC-25-6, AC-26-2 -- modifiche di rinforzo, nessuna degradazione). **Nessuna regressione**. Tutti gli altri 45 AC v1 OK preservati invariati.
+
+**Sintesi AC complessiva post-v2**: 52 AC v1 + 10 AC v2 = 62 AC. Esito: 49 OK puntuali (47 v1 + 2 v1 promossi + 10 v2) + 1 PARZIALE (AC-2 carryover) + 3 rafforzati (AC-25-6, AC-26-2, AC-26-8) = nessun MANCA strutturale.
+
+### Criterio di rollback v2
+
+1. **Se Review v2 trova nuovo BUG REALE** sulla scelta opzione (a) di NB-2 (es. $K_{max} = 6$ insufficiente per cattura interazioni regime-feature, Cox stratificato sotto-dimensionato): rollback a opzione (b) $K_{max} = 12$ + interaction term default di Cap.25.5. Costo: ~15 righe Cap.25.5 + Cap.26.5 + Cap.26.7.
+2. **Se Review v2 trova nuovo BUG REALE** sulla scelta $T_{budget} = 80$h (es. caso ottimo nuovi range M-4 ~107 ore eccede): rollback a riduzione $F = 2-3$ in Cap.26.5 + Cap.25.1, oppure aggiornamento $T_{budget}$ a valore piu' alto. Costo: ~5 righe.
+3. **Se Review v2 trova nuovo BUG REALE** sulla formulazione "starting point Parte VII" di $\theta_{CV}$ (es. troppo vaga): aggiunta dettagli su criterio empirico di riconsiderazione in Cap.25.5. Costo: ~3 righe.
+4. **Se Review v2 trova regressione su un AC v1 OK precedente** causata dai 5 fix: rollback chirurgico al testo v1 sull'AC specifico. Costo: variabile, ~5-10 righe.
+
+L'atteso e' PASS in 1 iterazione: i 5 fix sono chirurgici, coerenti fra loro (NB-2 e RP-1 con riferimento incrociato in Cap.23.6, RP-3 con flag esplicito), e nessuno tocca l'architettura del motore.

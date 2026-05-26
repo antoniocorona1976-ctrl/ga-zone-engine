@@ -37,7 +37,7 @@ Documento specializzato per FIB N=1, derivato da ENGINE_ALGO_INTEGRATO_HARD_LOCK
 - **Cap 20 — Filtri di emissione basati sul survival** (~1.5 pp): soglia $\tau_{surv}$ parametro del cromosoma, integrazione AND con condizioni Cap.8, condizionalita' al regime, filtro implicito fine sessione.
 - **Cap 21 — Caso trade range** (~1.5 pp): definizione range da pivot, eccezione al filtro 80pt ($A_{range} \geq 80$), geometria zone/target/stop nel range, classificazione directional vs trade_range.
 
-## Parte V — Motore genetico e fitness operativa (~10 pp) — IN REVIEW v1 (documento `docs/methodology_v2/CAP_05_parte_V.md`; report `reports/REPORT_CAP_05.md`; iterazione v1 in attesa di Review)
+## Parte V — Motore genetico e fitness operativa (~10 pp) — IN REVIEW v2 (documento `docs/methodology_v2/CAP_05_parte_V.md`; report `reports/REPORT_CAP_05.md`; rework v2 post-CONDITIONAL Review v1 con 3 BUG REALI chiusi + RP-1 + RP-3 ratificati dal supervisore; in attesa di Review v2)
 
 - **Cap 22 — Cromosoma e spazio dei parametri** (~2 pp): genoma del bundle (parametri zone, target, stop, soglie filtro, parametri survival), vincoli di ammissibilita'.
 - **Cap 23 — Operatori GA** (~2 pp): selezione NSGA-II, crossover, mutazione, elitismo.
