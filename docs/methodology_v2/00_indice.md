@@ -72,7 +72,7 @@ Documento specializzato per FIB N=1, derivato da ENGINE_ALGO_INTEGRATO_HARD_LOCK
 - **Cap 43 — Procedura di sanity validation** (~1 pp): finestra ultimi 18-24 mesi, ratio-adjusted vs unadjusted-stitched; metriche (quantili rendimenti log 1/5/60-min, autocorrelazione rendimenti e rendimenti quadrati lag 1/5/30, $\sigma$ giornaliera realized); criterio $3\sigma$ bootstrap con $B=2.000$ replicazioni di Parte VII Cap.34; implementazione out-of-scope, vivra' in FASE-D del roadmap.
 - **Cap 44 — Esclusione esplicita di fonti alternative** (~0.5 pp): MIB cash, vendor non-Portara/CQG senza nuovo task Planner, mix vendor cross-index, CFD broker, dati intraday liberi (Yahoo, Investing).
 
-## Parte 9 — Pipeline runtime FIB su Directa DAPI (~8-10 pp) [IN REVIEW]
+## Parte 9 — Pipeline runtime FIB su Directa DAPI (~9-12 pp) [IN REVIEW v2]
 
 - **Cap 45 — Premessa e collocazione**: cosa formalizza la Parte 9, relazione con CAP-DATA-01 / Parte 8, invariante research = runtime applicato all'adapter DAPI -> bundle frozen Portara.
 - **Cap 46 — Architettura del canale DAPI**: gateway Darwin loopback `127.0.0.1`, banner `Release 2.5.1`, triplo porte `10001/10002/10003`, `APIPortSettings.txt` come identificatore locale (Gap-1), uso esclusivo del canale (D-6), pattern socket persistente, rate-limit empirico (cooldown ~30s dopo 14 connessioni rapide).
