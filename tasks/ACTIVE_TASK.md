@@ -153,3 +153,151 @@ successivo.
 - Adapter bar_synthetic non reversibile (invariante semantico ereditato
   da CAP-DATA-01 §3.4)
 - Vincolo uso esclusivo canale (D-6) non reversibile
+
+---
+
+## (i) Mappatura eredita' Parti I-VIII -> sezioni della scaletta
+
+Riferimenti incrociati obbligatori per il Developer. Ogni sezione della
+scaletta deve citare ESATTAMENTE i capitoli sotto elencati come ancore
+nell'eredita' del documento metodologico v2. Verifica eseguita su
+`docs/methodology_v2/00_indice.md` (Parti I-VIII complete, tutte PASS).
+Per "Parte 8 / CAP-DATA-01" si intendono i Cap.37-44 secondo l'indice
+corrente; per "Parte VIII §3.x" del task card originale si intende il
+contenuto interno dei singoli capitoli della Parte 8.
+
+| Sez. | Tema sezione | Eredita' obbligatorie (Parte / Cap. / sub-rif.) |
+|------|--------------|--------------------------------------------------|
+| §1 | Premessa, collocazione, invariante research = runtime | Parte I Cap.1 (definizione strumento + sessione operativa) · Parte I Cap.3 (infrastruttura disponibile: Directa, Portara/CQG, Telegram) · Parte II Cap.10 (replay e riproducibilita' del lifecycle, determinismo bit-exact) · Parte 8 Cap.37 (FIB pieno back-adjusted Portara/CQG come fonte ufficiale training; razionale `research = runtime`) · Parte 8 Cap.44 (esclusione esplicita di fonti alternative, vincolo invariante) |
+| §2 | Architettura canale DAPI (gateway, porte 10001/10003, banner, APIPortSettings, uso esclusivo, socket persistente, rate-limit) | Parte I Cap.3 (broker Directa, canale Telegram, lacune API rinviate ad Appendice C) · Appendice C (API Directa: qualificazione Darwin / DAPI / Visual Trader — citazione di riferimento del task in cui Appendice C sara' completata in coda al doc v2) |
+| §3 | Catalogo simboli FIB e cash europei (IDEM FIB6x/MINI6x + cash DITAS/DGER/DSTX50/DFRA, schemi PRICE/BOOK_5/ANAG) | Parte I Cap.1 (strumento FIB su mercato IDEM, sessione 08:00-22:00 CET) · Parte I Cap.2 (operativita' 1 contratto, separazione MINI/standard) · Parte 8 Cap.37 (esclusione MIB cash dalla serie ufficiale di training, da NON confondere con DITAS runtime gating) · Parte 8 Cap.42 (convenzione cross-index PHASE-2 come perimetro normativo per cash europei) |
+| §4 | Format dati canonico runtime (CSV BOM UTF-8, manifest JSON, source ∈ {DIRECTA, AGG_FROM_D, AGG_FROM_60s}) | Parte 8 Cap.38 (convenzione back-adjustment ufficiale: ratio-adjusted + Panama-additive + unadjusted; format normativo del training) · Parte 8 Cap.40 (preprocessor griglia 1-min regolare, flag `bar_synthetic` persistito nel bundle frozen) · Parte 8 Cap.43 (procedura di sanity validation: metriche di confronto su finestre 18-24 mesi) |
+| §5 | Mappatura schema DAPI -> bundle frozen Portara (tabella canonica + regola `bar_synthetic=True` in runtime quando il minuto non ha trade) | Parte 8 Cap.40 (definizione operativa `bar_synthetic`, forward-fill su Close, volume=0, uso differenziato a valle: volatilita' su barre reali, prezzo su griglia completa) · Parte 8 Cap.43 (sanity validation come strumento di verifica della coerenza schema) · Parte VII Cap.31 (procedura di validazione OOS — gap semantics implicita nel test su finestre OOS, citazione testuale dell'invariante `bar_synthetic`) |
+| §6 | Gestione errori, recovery, riavvio Darwin (decodifica 1004/1007/1030, backoff, fallback aggregazione, stato RUNTIME_DEGRADED) | Parte 8 Cap.40 (semantica gap di sessione e barre sintetiche; comportamento del preprocessor a valle di dati mancanti) · Parte VII Cap.31 (replay deterministico bit-exact: il riavvio Darwin non deve violare il determinismo) · Parte II Cap.10 (formato log e determinismo per il replay) · Parte VI Cap.27 (pipeline di inference real-time: collocazione del recovery dentro il ciclo operativo) |
+| §7 | Warm-up stati condizionali all'avvio sessione (lookback DAPI ≤100gg per EGARCH; fallback Portara per restart dopo downtime >100gg) | Parte III Cap.13 (EGARCH(1,1) single-instrument: equazioni media e varianza, inizializzazione cross-session — osservazione coda bassa N-5) · Parte III Cap.14 (stato di regime intraday, persistenza minima $T_{persist}=10$ barre, quantile $p=0{,}75$ su $N_{reg}=20$ sessioni) · Parte III Cap.15 (EMA reset cross-session, $T_{warmup,\text{EMA}}=74$ barre; normalizzazione z-score MAD con $W_{norm}=1000$ e $T_{warmup,\text{norm}}=100$) · Parte V Cap.25 (walk-forward fold-per-fold del rolling EGARCH $W=210.000$ barre, decisione Q-06/C-4.1) · Parte VI Cap.27 (pipeline di inference real-time: punto di chiamata del warm-up all'avvio sessione) |
+| §8 | Sessione operativa runtime FIB 08:00-22:00 CET (calendario, timezone, allineamento epoche) | Parte I Cap.1 (sessione operativa 08:00-22:00 CET, Q-01 chiusa) · Parte II Cap.7 (state machine del segnale: timer pre-trigger $T_{touch}^{max}$ e post-trigger $\Delta t_{cromosoma}$ entro la finestra di sessione) · Parte 8 Cap.41 (timeline ufficiale delle sessioni FIB E1-E5 1994-2026, file `data/sessions/fib_session_calendar.csv` a 6 campi, conversione CET/CEST normativa) |
+| §9 | Decisione Q-A: gating cash europei (verdetto Q-A-3, motivazione, regola operativa, perimetro vincolante) | Parte I Cap.5 (definizione operativa del successo, metrica primaria expected net return — il gating qualitativo NON ne modifica la fitness GA) · Parte III Cap.15 (catalogo 37 feature: il cash europeo NON entra nel feature tensor) · Parte V Cap.22 (cromosoma e spazio dei parametri: il gating qualitativo vive in `config/gating_rules.yaml` fuori dal genoma del bundle) · Parte 8 Cap.42 (convenzione cross-index PHASE-2: DITAS/DGER/DSTX50/DFRA NON sono cross-index PHASE-2, sono cash logging/gating qualitativo) |
+| §10 | Audit log e retention (cosa logga, formato, retention minima 90gg / permanente sui giorni di emissione) | Parte II Cap.10 (formato dei log di emissione, transizioni, chiusura; determinismo bit-exact dichiarato come vincolo formale) · Parte VI Cap.30 (monitoraggio del lifecycle in produzione, metriche live, alert su deriva: il log DAPI alimenta la dashboard di Cap.30) · Parte VII Cap.35 (frozen bundle e immutabilita': l'audit log e' parte del corredo di evidenza del bundle in produzione) |
+| §11 | Punti aperti fuori scope (FDAX standard, lookup codici mese IDEM, vendor cross-index pluriennale, rinvio CAP-DATA-03) | Parte 8 Cap.42 (convenzione cross-index PHASE-2 — vendor DAX/ESTX50/ES Portara/CQG come perimetro futuro) · Parte 8 Cap.44 (esclusione esplicita di fonti alternative — qualunque vendor diverso da Portara/CQG senza nuovo task Planner) · CAP-DATA-03 / Parte 10 futura (continuita' tape, recupero gap, riconciliazione canonica giornaliera, storicizzazione strutturata) |
+| §12 | Tabella decisioni del capitolo (ID, descrizione, motivazione 1 riga) | nessuna eredita' diretta: e' la sintesi normativa interna al capitolo, allineata in stile alla tabella decisioni di Parte 8 Cap.37-44 e di Parte VII Cap.36 (gate decisionali) |
+
+Note operative:
+- Il Developer e' tenuto a citare i capitoli esattamente con la notazione
+  in tabella (es. "Parte 8 Cap.40" o "Parte III Cap.13"). Il documento NON
+  duplica contenuti gia' normati: rinvia con riferimento puntuale.
+- Per "Appendice C" si intende il segnaposto presente nell'indice ufficiale
+  della Parte Appendici operative; quando il task corrente formalizza il
+  canale DAPI, l'Appendice C verra' aggiornata in una fase successiva di
+  consolidamento delle Appendici (NON in CAP-DATA-02).
+
+---
+
+## (ii) Numerazione capitoli interni del documento metodologico v2
+
+L'ultimo capitolo della Parte 8 (CAP-DATA-01) e' il **Cap.44** ("Esclusione
+esplicita di fonti alternative"). La Parte 9 (CAP-DATA-02) parte quindi
+dal **Cap.45** e copre 12 capitoli consecutivi fino al **Cap.56** incluso.
+
+Stima dimensionale complessiva del capitolo: **8-10 pagine A4** (consulenza
+metodologica esterna ratificata).
+
+| Cap. | Sezione scaletta | Lunghezza attesa | Densita' |
+|------|-------------------|--------------------|----------|
+| Cap.45 | §1 Premessa e collocazione (research = runtime, relazione con CAP-DATA-01) | ~0,5 pp | bassa |
+| Cap.46 | §2 Architettura canale DAPI (gateway, porte, banner, APIPortSettings, uso esclusivo, socket persistente, rate-limit) | ~1 pp | alta |
+| Cap.47 | §3 Catalogo simboli FIB e cash europei (tabella IDEM + cash + schemi PRICE/BOOK_5/ANAG, codice mese I=settembre) | ~1 pp | alta |
+| Cap.48 | §4 Format dati canonico runtime (CSV BOM UTF-8 + manifest JSON, source ∈ {DIRECTA, AGG_FROM_D, AGG_FROM_60s}) | ~0,75 pp | media |
+| Cap.49 | §5 Mappatura schema DAPI -> bundle frozen Portara (tabella canonica + bar_synthetic in runtime) | ~1 pp | alta |
+| Cap.50 | §6 Gestione errori, recovery, riavvio Darwin (codici 1004/1007/1030, backoff, fallback aggregazione, RUNTIME_DEGRADED) | ~1 pp | alta |
+| Cap.51 | §7 Warm-up stati condizionali (EGARCH/quantili, lookback ≤100gg, fallback Portara) | ~0,75 pp | media |
+| Cap.52 | §8 Sessione operativa runtime FIB 08:00-22:00 CET (calendario, timezone, allineamento epoche) | ~0,5 pp | media |
+| Cap.53 | §9 Decisione Q-A: gating cash europei (verdetto Q-A-3, perimetro vincolante) | ~0,75 pp | alta |
+| Cap.54 | §10 Audit log e retention (formato, retention 90gg rolling / permanente giorni emissione) | ~0,5 pp | media |
+| Cap.55 | §11 Punti aperti fuori scope (FDAX standard, lookup IDEM, vendor cross-index, rinvio CAP-DATA-03) | ~0,5 pp | bassa |
+| Cap.56 | §12 Tabella decisioni del capitolo (ID, descrizione, motivazione 1 riga) | ~0,75 pp | alta |
+
+Totale stimato: **~9 pp A4** (entro il range 8-10 pp della consulenza).
+
+Vincoli operativi:
+- La numerazione Cap.45-Cap.56 e' VINCOLANTE per il Developer.
+- Il Developer e' tenuto ad aggiornare `00_indice.md` aggiungendo la
+  sezione "Parte 9 — Pipeline runtime FIB su Directa DAPI (~8-10 pp)"
+  con la lista dei 12 capitoli sopra (Cap.45..Cap.56), ognuno con il
+  titolo coerente con la scaletta e l'indicazione "in review" durante
+  il ciclo Developer→Reviewer e "PASS" con data e hash review a chiusura.
+
+---
+
+## (iii) Censimento M-promemoria pertinenti a CAP-DATA-02
+
+Lettura `tasks/CARRYOVER.md` aggiornata al 2026-05-27. Tabella di
+censimento e verdetto di pertinenza per CAP-DATA-02 (Parte 9 / Cap.45-56).
+
+| M-ID | Origine | Pertinenza CAP-DATA-02 | Motivazione |
+|------|---------|------------------------|-------------|
+| M-2 | Review v1 CAP-02 | **NO** | Verifica empirica $L_{max}=30$s su latenza Telegram. Materia di **Appendice E** (Telegram bot personale). Non si chiude in Parte 9, resta OPEN come carryover ad Appendice E nel ciclo di consolidamento delle Appendici. CAP-DATA-02 NON tratta il canale Telegram, tratta il canale dati Directa. Rinvio motivato. |
+| M-4 | Review v4 CAP-01 | NO | Tasso di rimpiazzo NSGA-II e baseline 12.800-25.600 minuti. Gia' **CLOSED-CAP-05** (Cap.23.6 Parte V). Nessuna azione richiesta. |
+| M-5 | Review v1 CAP-03 (Q-06/C-4.3) | NO | Benchmark rolling vs expanding vs EWMA + Inoue-Rossi 2011. Gia' **CLOSED-CAP-05** (Cap.25.3 Parte V). Nessuna azione richiesta. |
+| M-6 | Review v1 CAP-03 (Q-09/C-7.3) | NO | Classificazione regime media vs mediana + test stabilita'. Gia' **CLOSED-CAP-05** (Cap.25.4 Parte V). Nessuna azione richiesta. |
+| M-1 v2 CAP-03 | Review v2 CAP-03 | NO | Pivot inizio/fine sessione non confermabili. Gia' **CLOSED-CAP-04** (Cap.16). Nessuna azione richiesta. |
+| M-2 v2 CAP-03 | Review v2 CAP-03 | NO | Cadenza ricalibrazione EGARCH in production. Gia' **CLOSED-CAP-06 completo** (Cap.27.5 + Cap.30.4 Parte VI). Nessuna azione richiesta. |
+| M-7 | Review v1 CAP-04 (O-5) | NO | Censoring informativo Cox cause-specific. Gia' **CLOSED-CAP-05** (Cap.25.6 Parte V). Nessuna azione richiesta. |
+| M-8 | Developer CAP-04 | NO | Verifica censoring non-informativo nel survival. Gia' **CLOSED-CAP-05** (Cap.25.6 Parte V). Nessuna azione richiesta. |
+| M-9 | Developer CAP-04 | NO | Benchmark Cox cause-specific vs Fine-Gray. Gia' **CLOSED-CAP-05** (Cap.25.7 Parte V). Nessuna azione richiesta. |
+| M-10 | Developer CAP-04 | NO | Test Schoenfeld per assunzione hazard proporzionali. Gia' **CLOSED-CAP-05** (Cap.25.8 Parte V), con derivazione di M-16 condizionale chiuso in Parte VII. Nessuna azione richiesta. |
+| M-11 | Developer CAP-04 | NO | Dimensionalita' massima feature survival ($K_{max}$). Gia' **CLOSED-CAP-05** post-rework v3 (Cap.22.6 + Cap.26.7 Parte V). Nessuna azione richiesta. |
+| M-12 | Review v1 CAP-04 (O-3) + Dev | NO | Flag `target_2_type` / `stop_type` nel payload Cap.6.1. Gia' **CLOSED-CAP-04** (mini-patch CAP-02 Iterazione 4). Nessuna azione richiesta. |
+| M-13 | Review v1 CAP-04 (O-4) + Dev | NO | Catalogo feature 37 vs 38 per trade_range ($x^{(A_{range})}$). Gia' **CLOSED-CAP-04** (Cap.21.5 CAP-04 Iterazione 2). Nessuna azione richiesta. |
+| M-14 | Developer CAP-04 | NO | Stratificazione Cox per regime calmo/turbolento. Gia' **CLOSED-CAP-05** (Cap.25.5 Parte V). Nessuna azione richiesta. |
+| M-15 | Developer CAP-04 | NO | Parametri `trade_range` congelamento numerico ($A_{range,min}$, $N_{osc}$, ...). Gia' **CLOSED-CAP-05** (Cap.26.5/26.6 Parte V). Nessuna azione richiesta. |
+| M-16 condizionale | Review v1 CAP-05 (Cap.25.8 trigger) | NO | Cox time-varying coefficients se test Schoenfeld viola sistematicamente in >50% dei fold. Gia' **CLOSED-CAP-07 con condizione operativa** (Cap.31.3 Parte VII + metadato bundle `cox_time_varying_active` in Cap.35.1). L'attivazione dipende dall'esito empirico del walk-forward nel ciclo successivo di training, NON e' materia di CAP-DATA-02. **INVARIATO** rispetto a quanto richiesto dal Planner. Nessuna azione richiesta. |
+
+**Sintesi:** **nessun M-promemoria del CARRYOVER e' pertinente a
+CAP-DATA-02**. La Parte 9 e' un capitolo a perimetro nuovo (provider
+runtime DAPI) che non eredita M-promemoria aperti dalla pipeline
+metodologica delle Parti I-VIII. M-2 resta OPEN come carryover ad
+Appendice E (Telegram), non si chiude in Parte 9. M-16 resta
+CLOSED-CAP-07 invariato come da vincolo del Planner.
+
+**Carryover post-CAP-DATA-02:** non si prevedono nuovi M-promemoria
+intrinseci al capitolo a livello di Planner. La Review v1 potra'
+emetterne; se cosi' fosse, l'Orchestratore dovra' registrarli nel
+CARRYOVER al passaggio PASS, in particolare per la futura CAP-DATA-03
+/ Parte 10 (continuita' tape, recupero gap, riconciliazione canonica
+giornaliera, storicizzazione strutturata).
+
+---
+
+## (iv) Decisioni di scope residue
+
+Verifica esplicita di completezza del task card rispetto alle decisioni
+ratificate (D-1, D-6, C-1, C-2, C-3, C-7 sui 6 Gap, Q-A-3 sul gating
+cash europei). Lista delle decisioni gia' chiuse:
+
+- D-1: niente market data a pagamento — vincolo chiuso.
+- D-6: uso esclusivo canale DAPI, no DGo/TradingView concorrente — chiuso.
+- C-1: naming β2 (CAP_09_parte_9.md, REPORT_CAP_09.md, "Parte 9" arabo) — chiuso.
+- C-2: push diretto origin/main — chiuso.
+- C-3: aggiornamento 00_indice.md a fine ciclo — chiuso.
+- C-7: 6 Gap obbligatori (Gap-1..Gap-6) — chiusi nella sezione "Sei gap obbligatori".
+- Q-A-3: cash europei come logging + gating qualitativo, fuori dal feature
+  tensor e fuori dal cromosoma — chiusa.
+
+**Verifica ambiguita' residue:** nessuna. Tutte le scelte di scope IN/OUT,
+i 12 capitoli della scaletta, i 6 Gap, i 10 Done criteria, le decisioni
+ratificate e i 4 Rollback criteria coprono il perimetro del task senza
+lasciare zone grigie:
+
+- la mappatura schema DAPI -> bundle frozen Portara (Done criterion #4) e'
+  obbligata dall'invariante `bar_synthetic` di Parte 8 Cap.40;
+- la regola "research = runtime" applicata all'adapter (Scope IN #8) e'
+  obbligata da Parte 8 Cap.37;
+- il gating cash europei (Q-A-3) e' obbligato da `config/gating_rules.yaml`
+  fuori dal GA e fuori dal cromosoma di Parte V Cap.22;
+- il vincolo "no esecuzione ordini" (Scope OUT, porta 10002) e' obbligato
+  da Parte I Cap.1 ("solo emissione, nessuna esecuzione").
+
+**Conclusione:** nessuna **Q-XX** nuova da aprire in `tasks/QUESTIONS.md`.
+Il task card e' eseguibile dal Developer senza ipotesi proprie. La pipeline
+parte: Developer v1 → Review v1 → eventuale punto di controllo supervisore
+sulla classificazione GA → fix → ... → PASS.
