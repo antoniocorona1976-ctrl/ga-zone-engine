@@ -1,3 +1,7 @@
+> **⚠️ SUPERSEDED dal 2026-05-27.** Parte 9 è stata ridefinita come **CAP-DATA-02 (DAPI runtime)**. Le Appendici A-G sono rinviate a Parte 10 o oltre (decisione del supervisore in sessione consulenza esterna). Vedere `tasks/SESSION_HANDOFF_CAP-DATA-01_to_CAP-DATA-02.md` per il flusso corrente.
+
+---
+
 # Handoff di sessione — chiusura CAP-DATA-01 (Parte 8) → apertura Parte 9 Appendici A-G
 
 **Emesso da**: Orchestratore sessione corrente (post-PASS Review v2 CAP-DATA-01)
