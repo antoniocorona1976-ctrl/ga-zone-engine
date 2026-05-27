@@ -1,500 +1,277 @@
-# TASK ATTIVO: CAP-07 -- Parte VII del documento metodologico v2 (Validazione OOS, frozen bundle, gate decisionali)
+# CAP-DATA-01 — Convenzione dati storici e politica di rollover
 
-**Assegnato da**: Planner
-**Output atteso**: `docs/methodology_v2/CAP_07_parte_VII.md`
-**Stato**: NUOVO
+**Status:** IN CORSO (apertura sessione 2026-05-27)
+**Tipo:** Parte 8 del nuovo doc metodologico v2 (`docs/methodology_v2/`)
+**Posizione nel documento:** Parte 8, immediatamente prima dell'Appendice (che diventa Parte 9)
+**Predecessor:** Parte 7 (CAP-07 v2 chiuso PASS Review v2 commit `b27c1e3` del 2026-05-27)
+**Successor:** Parte 9 (Appendici A-G)
+**Task operativo gemello (fuori doc metodologico):** CAP-DATA-02 — Specifica della richiesta tecnica a Portara
+**Owner deliverable:** Development agent (Claude Code)
+**Supervisore:** AC
 
-## Obiettivo
+<!-- ORCH-NOTE: NON RIMUOVERE — eccezione strutturale autorizzata dal supervisore -->
+## ⚠️ ATTENZIONE PER REVIEWER — eccezione alla regola "residui multi-indice = bloccante"
 
-Scrivere la Parte VII del documento metodologico v2: **procedura di validazione OOS finale del bundle candidato, Deflated Sharpe Ratio (DSR) come gate primario, Probability of Backtest Overfitting (PBO) via CSCV come gate di fragilita', bootstrap stazionario per intervalli di confidenza su DSR e metriche di lifecycle, processo di frozen bundle e regola di immutabilita', gate decisionali per il go-live**. Questa Parte risponde a: (1) come si trasforma un fronte di Pareto $\mathcal{F}_1$ prodotto dal walk-forward nested di Parte V in **uno specifico bundle candidato promosso a produzione** (Cap.31); (2) come si calcola, si stima e si interpreta il **Deflated Sharpe Ratio** come gate primario di significativita' della performance al netto del numero di prove condotte (Cap.32); (3) come si stima la **Probability of Backtest Overfitting via CSCV** come misura di fragilita' della scelta del bundle rispetto a partizioni alternative dei dati (Cap.33); (4) come si applica il **bootstrap stazionario** $B=2000$ con block length adattiva per produrre intervalli di confidenza sulle metriche aggregate del bundle frozen, sulle metriche di lifecycle, e per il **compute stress test** rinviato da Cap.23.6 di Parte V (Cap.34); (5) come si **congela il bundle** con hash di riferimento immutabile e quale regola governa la sua sostituzione (Cap.35); (6) quale **checklist deterministica** di gate (DSR positivo significativo, PBO sotto soglia, lifecycle stabile cross-regime, copertura compute, pipeline operativa) autorizza il go-live operativo (Cap.36).
+Il subagente `reviewer` (`.claude/agents/reviewer.md` riga 38) dichiara come regola assoluta:
 
-La Parte VII **chiude** il documento metodologico v2 sul versante della validazione finale: tutte le decisioni rinviate a Parte VII dalle Parti precedenti (selezione finale di $D$ EGARCH, finestra EGARCH effettiva, Cox vs Fine-Gray, eventuale floor $RR_{min}$, eventuale rollback hazard non-proporzionali, attivazione condizionale Cox time-varying coefficients M-16, riconsiderazione $\theta_{CV}=0,5$ di Cap.25.5 PV, riconsiderazione $K_{max}^{strict}=4$ Harrell-strict di Cap.26.7 PV, decisione operativa F=8 vs F~6 da Cap.23.6 / Cap.26.2 PV, default empirici dei 10 parametri di tuning operativo di Parte VI) trovano qui la **regola di decisione**. La Parte VII **non contiene** la pipeline di inference real-time (Parte VI, Cap.27-30), la specifica del cromosoma e degli operatori NSGA-II (Parte V, Cap.22-26), la geometria delle zone e dei target (Parte IV, Cap.16-21), il modello quantitativo (Parte III, Cap.12-15), il payload e la state machine (Parte II, Cap.6-11), il perimetro operatore (Parte I, Cap.1-5). La Parte VII **non contiene** alcuna logica di esecuzione ordini (eredita' 1 di Parte I) ne' alcuna logica di re-training del GA in production: la decisione di ritraining e' presente in Cap.36 come **regola condizionata agli alert di Cap.30.2 / 30.4 / 30.5 PVI** e al periodo trimestrale-semestrale di Cap.4 PI, ma il ritraining stesso **re-applica il protocollo Parte V su nuovo storico**, non e' attivita' di Parte VII.
+> "Specializzazione FIB N=1: ci sono residui di multi-indice (DCC, ADCC, BEKK, N>=8, covarianza cross-index)? Se si, e' un problema bloccante."
 
-**Impatto sul GA.** La Parte VII e' il **layer di decisione finale** che converte l'output del NSGA-II (un fronte di Pareto $\mathcal{F}_1$ di cromosomi non dominati) in **un singolo cromosoma promosso a bundle frozen di produzione**. Senza Cap.31 il fronte di Pareto resterebbe ambiguo (quale cromosoma scegliere?); senza Cap.32 / 33 mancherebbe la **prova statistica anti-overfitting** che il cromosoma scelto non e' un artefatto di overfitting al backtest; senza Cap.34 mancherebbero gli **intervalli di confidenza** che il supervisore usa per accettare il bundle in presenza di rumore di stima; senza Cap.35 il bundle non avrebbe **identita' immutabile** verificabile (hash di riferimento) e non sarebbe riproducibile; senza Cap.36 mancherebbe la **regola binaria di go-live / no-go** che governa il passaggio da backtest a produzione live. La Parte VII **non modifica** la fitness, **non modifica** il cromosoma, **non modifica** gli operatori GA; **filtra** l'output del GA secondo gate post-selezione e **congela** il sopravvissuto come artefatto immutabile di produzione, in coerenza con la separazione "fitness in-NSGA-II / gate post-NSGA-II" dichiarata in Cap.24.7 di Parte V (Lopez de Prado 2018, cap. 12).
+Questa regola e' stata scritta quando il doc v2 era esplicitamente single-instrument FIB. Il task CAP-DATA-01 §3.6 introduce **deliberatamente** DCC/ADCC/cDCC come **dichiarazione normativa PHASE-2**, decisione ratificata dal supervisore (AC) in conversazione del 2026-05-27, decisione (1): "dichiarazione normativa senza implementazione nel doc v2". Vedi commit `f497022` e file `tasks/SESSION_HANDOFF_CAP-07_to_CAP-DATA-01.md` §4.
 
-## Eredita' obbligatoria da CAP-01, CAP-02, CAP-03, CAP-04, CAP-05, CAP-06
+**Il Reviewer NON deve classificare come bloccanti** le citazioni cross-index in §3.6 e nelle sue sezioni collegate (fasizzazione PHASE-1/PHASE-2, `S_xidx`, quinta famiglia catalogo target, Realized GARCH come esempio futuro). Sono normative dichiarate, non residui da rimuovere.
 
-Tutte le eredita' qui elencate devono essere citate esplicitamente almeno una volta nei capitoli di Parte VII che le consumano. La mancata citazione in un capitolo pertinente e' un finding di Review.
+**La regola "residui multi-indice = bloccante" resta valida** per qualunque citazione cross-index al di FUORI di §3.6 (es. se il Developer inserisse DCC in §3.4 preprocessor griglia 1-min o in altre sezioni non legate alla fasizzazione PHASE-2).
 
-### Da CAP-01 (Parte I)
+Decisioni collegate ratificate (handoff §4):
+- (1) Cross-index DCC/ADCC/cDCC: dichiarazione normativa nel doc v2 SENZA implementazione
+- (2) Realized GARCH: estensione futura, non in Parte 8 (citare con cautela come esempio futuro o omettere se crea ambiguita')
+- (3) `S_xidx` + quinta famiglia catalogo target: estensione futura, non in Parte 8 (coerente con (1))
 
-1. **Vincolo "solo emissione, nessuna esecuzione"** (Cap.1 PI). Cap.36 dichiara che il gate go-live non include alcun test di execution. Tutte le metriche di Parte VII sono calcolate sui log di replay deterministico bit-exact (eredita' Cap.10 PII), non su fill effettivi del broker.
-2. **Profilo operatore retail mobile** (Cap.2 PI): 1 contratto/volta, esecuzione manuale, separazione segnale/gestione posizione. Cap.36 dichiara che la verifica di go-live non include test di mercato live: e' verifica di stabilita' metodologica sui dati storici.
-3. **Sessione operativa 8:00-22:00 CET** (Cap.1 PI). Cap.34 dichiara la coerenza della finestra di bootstrap stazionario con la finestra operativa (no campionamento overnight); Cap.36.2 verifica il target operativo asimmetrico per sessioni di 840 barre 1-min.
-4. **Infrastruttura locale PC i5-7200U/8GB + cloud AWS c5.4xlarge spot per training** (Cap.3-4 PI). Cap.34 dichiara esplicitamente che il calcolo di DSR/PBO via bootstrap stazionario $B=2000$ NON e' eseguibile in locale: gira su c5.4xlarge come **post-processing aggiuntivo del walk-forward nested di Parte V** che produce $\mathcal{F}_1$, all'interno del compute budget di Cap.4 PI (decisione di scope (e) sotto).
-5. **Storico Portara/CQG FIB 1-min 5 anni** (Cap.3 PI). Cap.31 dichiara la finestra OOS finale come l'intero storico OOS aggregato dei $F$ fold del walk-forward nested di Cap.25.1 PV, in coerenza con $W_{oos} \times F \approx 3$ mesi $\times 8 = 24$ mesi di OOS effettivo nel caso $F=8$ ideale (riducibile a $\approx 18$ mesi con $F=6$ atteso dal bundle parziale di Cap.26.2 PV rework v3).
-6. **Tick FIB = 5 punti** (Cap.5 PI). Cap.36 dichiara che il gate include verifica negativa: nessun livello del bundle frozen viola il vincolo tick (gia' garantito per costruzione da Cap.22.7 vincolo 5 PV, riverificato in produzione).
-7. **Filtro emissione $\geq 80$ pt** (Cap.5 PI). Cap.35 dichiara che il bundle frozen rispetta il vincolo $A_{range,min}=80$ pt e il vincolo $|\texttt{target\_1}-p_{ref}|\geq 80$ pt per costruzione (Cap.22.7 vincolo 2 PV); la verifica e' riapplicata sui segnali del fold OOS aggregato come sanity check pre-go-live.
-8. **Commissioni 5 EUR/op** (Cap.2 PI, $c=1$ pt FIB equivalente). Cap.32-33-34 dichiarano che tutte le metriche post-selezione sono calcolate su $R_{net}$ (eredita' $f_1$ Cap.24.1 PV); DSR/PBO/bootstrap operano sul net return.
-9. **Definizione operativa del successo** (Cap.5 PI): DSR positivo significativo + PBO sotto soglia + $E[R_{net}|executed] > 0$ + lifecycle stabile cross-regime + CVaR 95% + MDD intraday entro limiti dichiarati. Cap.36 sintetizza questa lista come **checklist di go-live binaria**; ogni voce e' uno **AC verificabile**.
-10. **Target operativo asimmetrico 500 pt/giorno OR 70% movimento strutturale** (Cap.1 PI). Cap.36 dichiara che la **verifica aggregata di sessione** (percentuale di sessioni del fold OOS aggregato in cui il bundle raggiunge i target) entra come metrica di reporting nella checklist di go-live, in coerenza con Cap.24.4 PV (target di sessione e' reporting, non obiettivo NSGA-II).
-11. **Compute budget cloud 21.000-41.500 min single-thread / $T_{budget}=80$ ore wall-clock** (Cap.4 PI + Cap.26.2 PV rework v3). Cap.34 conduce il **compute stress test** sulla copertura effettiva del walk-forward (F=8 target vs F~6 atteso) e dichiara la decisione operativa fra (i) riduzione F o (ii) parallelizzazione $>16$ vCPU o (iii) F~6 accettato (decisione di scope (d)).
-
-### Da CAP-02 (Parte II)
-
-12. **Payload immutabile 12 campi** (Cap.6.1 PII Iterazione 4). Cap.35 dichiara che il bundle frozen include la **definizione formale della tupla $\mathcal{S}$** come parte dell'identita' del bundle: nessuna variazione del payload puo' essere introdotta da un rilascio del bundle frozen senza nuovo ciclo Parte V + Parte VII.
-13. **State machine 1 non-terminale + 6 terminali** (Cap.7 PII). Cap.31 dichiara che la fonte canonica delle metriche di Parte VII sono i log di replay deterministico bit-exact, che registrano le transizioni di stato per ogni segnale del fold OOS aggregato.
-14. **Vincolo segnale unico attivo $|\mathcal{A}(t)|\leq 1$** (Cap.6.3 PII + Cap.28 PVI). Cap.34 dichiara che il bootstrap stazionario campiona blocchi temporali allineati per preservare la sequenza degli stati attivi (no double-counting di segnali simultanei artificiali nel campionamento).
-15. **Replay deterministico bit-exact** (Cap.10 PII). Cap.31-32-33-34 calcolano tutte le metriche sui log di replay del walk-forward nested di Parte V; Cap.35 dichiara che il bundle frozen include il **seed PRNG NSGA-II e il seed bootstrap stazionario** come parte dell'identita' del bundle.
-16. **Submacchina position lifecycle post-target_1** (Cap.11 PII + Cap.24.3 PV): $\pi_{t_2|t_1}$, MFE, MAE post-target_1, $f_{stop|t_1}$. Cap.31 dichiara che queste metriche entrano nella **selezione del bundle dal fronte di Pareto** come criterio secondario (Cap.24.3 PV: "entrano nella fitness del cromosoma per la selezione del bundle frozen in Parte VII, non nel NSGA-II di Parte V").
-
-### Da CAP-03 (Parte III)
-
-17. **EGARCH(1,1) con $D$ via AIC/BIC e finestra rolling $W=210.000$** (Cap.13 PIII + Cap.26.5 PV + Cap.26.3-26.4 PV). Cap.31 chiude la decisione di Parte V su $D$ (Student-t default vs GED rollback) e su window EGARCH (rolling $W=210.000$ default vs alternative del M-5 protocollo Cap.25.3 PV) sulla base del **rapporto di fold in cui ciascuna scelta domina** (M-5 normativo + Cap.26.3 PV protocollo selezione).
-18. **Classificazione regime calmo/turbolento** (Cap.14 PIII). Cap.31 dichiara che il bundle frozen include i quantili calibrati ($\bar{\sigma}_s$, $p=0,75$, $N_{reg}=20$, $T_{persist}=10$) dell'ultimo fold di calibrazione del walk-forward; Cap.36 verifica la **stabilita' della distribuzione cross-regime** del fold OOS aggregato come AC di go-live.
-19. **Catalogo 37 feature causali + selezione $\mathbf{s}\in\{0,1\}^{37}$ con $K_{max}=6$** (Cap.15.2 PIII + Cap.22.6 PV + Cap.26.7 PV rework v3). Cap.31 chiude la decisione condizionale Harrell-strict $K_{max}^{strict}=4$: se il monitoraggio fold-per-fold di $N_{eventi}^{strato}$ effettivo (Cap.25.5 PV nota rework v3) mostra che il rapporto $N_{eventi}^{strato}/K_{max}<10$ in maggioranza dei fold, e/o se il $CV(\hat{\boldsymbol{\beta}}_{j,R})>\theta_{CV}=0,5$ sistematico, il fallback Harrell-strict $K_{max}=4$ si attiva nel ciclo successivo di training (eredita' Cap.26.7 PV).
-
-### Da CAP-04 (Parte IV)
-
-20. **Geometria zone, target strutturali/sintetici, stop strutturali/sintetici, Cox cause-specific, filtri Cap.20** (Cap.16-20 PIV). Cap.31 dichiara che il bundle frozen di Parte VII include la **specifica completa dei parametri congelati** della tabella Cap.26.5 PV + i geni del cromosoma vincente del fronte di Pareto.
-21. **Modello Cox cause-specific stratificazione regime** (Cap.19 PIV + Cap.25.5 PV opzione b default). Cap.31 chiude le **3 decisioni condizionali** di Parte V:
-    - **Cox vs Fine-Gray** (M-9 Cap.25.7 PV): se il rapporto di fold con `flag_fine_gray_preferito=True` $> 0,5$, il bundle frozen adotta Fine-Gray come modello primario; altrimenti resta Cox. La regola e' di Parte VII (Cap.31).
-    - **Stratificazione vs interaction term** (M-14 Cap.25.5 PV): se $CV(\hat{\boldsymbol{\beta}}_{j,R})>\theta_{CV}=0,5$ in maggioranza dei fold, fallback a opzione (a) interaction term. Riconsiderazione di $\theta_{CV}=0,5$ stesso e' rinviata a Cap.31.5 sotto.
-    - **Cox time-varying coefficients** (M-10 Cap.25.8 PV + M-16 OPEN-CONDIZIONALE): se la violazione di Schoenfeld $p<0,05$ e' sistematica in $>50\%$ dei fold, l'estensione a time-varying coefficients $\boldsymbol{\beta}_j(\tau)$ o stratificazione su intervalli di $\tau$ si attiva nel ciclo successivo di training (eredita' Cap.25.8 PV + M-16 CARRYOVER).
-
-### Da CAP-05 (Parte V)
-
-22. **Output NSGA-II = fronte di Pareto $\mathcal{F}_1$** (Cap.23.1 PV + Cap.24.1 PV). Cap.31 consuma $\mathcal{F}_1$ come input: il fronte di Pareto contiene cromosomi non dominati su $M=5$ obiettivi ($f_1$ net return, $f_2$ target_1 hit rate, $f_3$ invalidation rate, $f_4$ MDD, $f_5$ stabilita' cross-regime).
-23. **Aggregazione mediana cross-fold di Cap.24.6 PV**. Cap.31-34 trattano la **robustezza al variare di F effettivo**: la mediana cross-fold di Cap.24.6 e' robusta a fold mancanti (caso F~6 atteso di Cap.26.2 PV rework v3); Cap.34 conduce il **compute stress test** che decide F=8 vs F~6 empiricamente.
-24. **Walk-forward nested $F=8$ fold provvisori** (Cap.25.1 PV): $W_{in}=105.840$ barre, $W_{oos}=52.920$ barre, $P_{purge}=4.200$, $P_{emb}=4.200$. Cap.31 dichiara il **fold OOS aggregato** come concatenazione dei $W_{oos}$ degli $F$ fold effettivamente completati (escludendo $P_{purge}$ e $P_{emb}$); Cap.34 produce intervalli di confidenza bootstrap su questa finestra aggregata.
-25. **Tabella congelati Cap.26.5 PV**. Cap.35 dichiara che il bundle frozen e' costituito da (i) tutti i parametri della tabella Cap.26.5 PV, (ii) i geni del cromosoma vincente di $\mathcal{F}_1$ selezionato in Cap.31, (iii) i seed PRNG (Cap.26.8 PV), (iv) gli hash di identita' (Cap.35.2 sotto).
-26. **No incorporazione DSR/PBO come obiettivi diretti** (Cap.24.7 PV, eredita' Cap.5 PI). Cap.32-33 dichiarano esplicitamente che DSR/PBO sono **gate post-selezione applicati al fronte di Pareto $\mathcal{F}_1$**, non obiettivi diretti del NSGA-II; la motivazione (Lopez de Prado 2018 cap. 12) e' citata.
-27. **Seed bundle frozen** (Cap.26.8 PV). Cap.35 dichiara che il bundle frozen include tutti i seed (NSGA-II, EGARCH MLE, Cox MLE, bootstrap stazionario) come parte dell'identita' immutabile, in coerenza con Cap.10 PII.
-28. **Compute budget $T_{budget}=80$ ore di Cap.26.2 PV rework v3 + bundle parziale F~6 atteso**. Cap.34 contiene il **compute stress test obbligatorio**: misura empirica del tempo wall-clock effettivo del walk-forward + post-processing DSR/PBO/bootstrap su c5.4xlarge 16 vCPU; decide F=8 (con riduzione $t_{eval}$ o parallelizzazione $>16$ vCPU) vs F~6 (accettando varianza inflated cross-fold). La decisione e' di Parte VII (Cap.34.4). Riferimenti incrociati: Cap.23.6 PV riga 223 (raccomandazione F=2-3 storica vs Cap.26.2/26.5 PV F~6 atteso, O-v4-1 Review v4 NEUTRO) sono riconciliati empiricamente in Cap.34.4.
-29. **Diagnostica survival fold-per-fold registrata nel log di calibrazione** (Cap.25.6 PV Cox-Snell+KS + Schoenfeld stratificato; Cap.25.7 PV Brier+Diebold-Mariano; Cap.25.8 PV Schoenfeld hazard prop.). Cap.31 consuma i flag fold-per-fold come **input deterministico** per le 3 decisioni condizionali di eredita' 21.
-
-### Da CAP-06 (Parte VI)
-
-30. **Pipeline di inference real-time + Cap.27.5 cadenza EGARCH + Cap.30 monitoraggio live** (Cap.27-30 PVI). Cap.36 dichiara che il go-live richiede che la **pipeline Cap.27 PVI sia operativa** (no execution layer, vincolo "solo emissione" verificato) e che la dashboard Cap.30.6 PVI sia attiva con tutti gli alert di Cap.30.2 / 30.3 / 30.4 / 30.5 PVI configurati e testati.
-31. **10 parametri di tuning operativo non congelati in Parte VI** ($T_{recal,EGARCH}, \theta_B, T_{B,persist}, W_B, W_{prod}, T_{drift,persist}, T_{emit,persist}, \epsilon_p, N_{reg,min}^{live}, \alpha_{f_5}$). Cap.36 dichiara la decisione di scope (c) sotto: **nessun congelamento empirico in Parte VII**; i 10 parametri rimangono starting point con i default proposti di Parte VI per il primo run di produzione, riconsiderati a 3-6 mesi di produzione live come carryover esplicito al monitoring post-go-live.
-32. **Bundle frozen come input invariante della pipeline di inference live** (Cap.27.3 PVI). Cap.35 dichiara che il processo di freezing produce l'artefatto consumato direttamente da Cap.27 PVI; la **regola di sostituzione** del bundle (Cap.35.3 sotto) governa la transizione fra bundle frozen successivi senza interruzione operativa della pipeline.
-
-## M-promemoria pertinenti CAP-07
-
-L'Orchestratore della sessione corrente verifica che ogni M-promemoria sotto sia trattato esplicitamente nel sotto-capitolo indicato. Un M-promemoria pertinente a CAP-07 non integrato nel Development e' un finding di Review.
-
-| M-ID | Origine | Contenuto | Pertinenza CAP-07 | Sotto-capitolo destinazione |
-|------|---------|-----------|-------------------|------------------------------|
-| M-2 | Review v1 CAP-02 | Verifica empirica latenza Telegram $L_{max}=30$s | **PARZIALE -- SI'** (vedi decisione di scope (a) sotto): Cap.31.1 cita la verifica empirica $L_{max}$ come **componente qualitativa della procedura OOS validation end-to-end** del bundle candidato; Cap.36 AC-GO-10 include la verifica funzionale della pipeline. La **verifica numerica empirica** $L_{max}$ effettivo resta carryover Appendice E. | Citazione qualitativa in Cap.31.1 + AC-GO-10 di Cap.36; nessuna risoluzione numerica nel documento |
-| M-16 OPEN-CONDIZIONALE | Review v1 CAP-05 (Cap.25.8 trigger) | Estensione a Cox time-varying coefficients se test Schoenfeld viola sistematicamente in $>50\%$ dei fold | **SI'** -- da chiudere in Parte VII | Cap.31.3 (regola di decisione condizionale con rapporto $r_{Schoenfeld}$ e attivazione/disattivazione + metadato bundle frozen `cox_time_varying_active`); carryover esplicito al ciclo successivo di training se attivata |
-
-Tutti gli altri M-promemoria storici (M-1 v2 CAP-03, M-4, M-5, M-6, M-7, M-8, M-9, M-10, M-11, M-12, M-13, M-14, M-15, M-2 v2 CAP-03) sono gia' CLOSED su CAP-04, CAP-05 o CAP-06 e non richiedono trattamento in Parte VII.
-
-### Decisioni di scope del Planner per CAP-07
-
-Cinque decisioni di scope sono prese qui dal Planner per evitare ambiguita' nel Development. Il Developer **non puo' deviare** da queste decisioni; eventuali divergenze sono finding di Review.
-
-**(a) Collocazione M-2 OPEN (verifica empirica latenza Telegram $L_{max}=30$s).** Decisione: **Cap.31.1 cita qualitativamente l'obiettivo di latenza end-to-end** nella procedura di validazione OOS (procedura completa = walk-forward nested + post-processing DSR/PBO/bootstrap + verifica catena pipeline Cap.27 PVI funzionante + verifica latenza Telegram qualitativa). La **verifica numerica empirica** $L_{max}$ effettivo resta **carryover Appendice E** (M-2 OPEN invariato): Cap.31 non risolve numericamente $L_{max}$, ma dichiara che la sua verifica empirica e' **componente del gate di go-live** (Cap.36 AC-GO-10) come AC sulla pipeline Cap.27-30 PVI funzionante. **Nessuna patch retroattiva** a CAP-02 o ad Appendice E e' introdotta da Parte VII.
-
-**(b) M-16 OPEN-CONDIZIONALE: Cox time-varying coefficients.** Decisione: **Cap.31.3 dichiara la regola di decisione**. Cap.31.3 contiene una sotto-sezione dedicata che:
-   (i) conta il rapporto di fold del walk-forward con `flag_schoenfeld_violation=True` ($p_{Schoenfeld}<0,05$, eredita' Cap.25.8 PV);
-   (ii) se il rapporto $> 0,5$ (maggioranza dei fold), dichiara che l'**estensione a Cox time-varying coefficients $\boldsymbol{\beta}_j(\tau)$** (riferimento bibliografico esplicito: Therneau e Grambsch 2000 "Modeling Survival Data: Extending the Cox Model", Springer, cap. 6, o alternativa equivalente di scelta del Developer con citazione esplicita) si attiva **nel ciclo successivo di training** (re-applicazione protocollo Parte V su nuovo storico con specifica Cox estesa);
-   (iii) se il rapporto $\leq 0,5$, dichiara M-16 CLOSED-CAP-07 senza attivazione, e nota nel log che il prossimo ciclo di training riapplichera' il monitoraggio dello stesso test;
-   (iv) la decisione di Cap.31.3 e' **registrata nel bundle frozen come metadato** (Cap.35.1 elemento 6): `cox_time_varying_active = True/False`.
-
-**(c) Congelamento default empirici dei 10 parametri di tuning operativo di Parte VI.** Decisione: **Cap.36.3 NON congela** i 10 parametri di tuning operativo di Cap.27-30 PVI (eredita' 31). Motivazione esplicita: i 10 parametri sono dichiarati in Parte VI come "non congelati in Parte VI, riconsiderati post-go-live"; il loro congelamento empirico richiede **dati di produzione live** che il backtest OOS Parte VII non possiede (le metriche live di Cap.30 PVI sono **counterpart live** delle metriche di Parte V, ma il backtest OOS non e' produzione live e non puo' calibrare empiricamente parametri di monitoring post-go-live come $T_{drift,persist}$ o $T_{emit,persist}$, che dipendono dalla distribuzione empirica degli alert sulla pipeline live, non sui log di replay). Cap.36.3 dichiara invece che i **default proposti** di Cap.27.5 / 30.1 / 30.2 / 30.3 / 30.5 / 30.4 PVI rimangono **starting point** per il primo run di produzione, **riconsiderati a 3-6 mesi di produzione live** sulla base degli esiti empirici. **Carryover esplicito al ciclo post-go-live** (non Parte VII): la riconsiderazione empirica dei 10 parametri e' attivita' di **monitoring post-go-live**, non di validazione OOS pre-go-live. Cap.36.3 cita questa separazione in modo esplicito.
-
-**(d) Robustezza al variare di F nel compute stress test di Cap.34.** Decisione: **Cap.34.4 conduce empiricamente il compute stress test** (misura wall-clock del walk-forward + post-processing DSR/PBO/bootstrap su c5.4xlarge) e dichiara la **regola di decisione deterministica** fra:
-   - **Opzione (i) -- F=8 completo con riduzione $t_{eval}$**: ottimizzazione del calcolo della fitness per cromosoma (es. caching aggressivo dei residui EGARCH, vettorializzazione del replay state machine) per rientrare in $T_{budget}=80$h con $F=8$. Aritmetica esplicita: target $t_{eval} < (80 \cdot 16) / (17.408 \cdot 8) \approx 0,919$ min/cromosoma per coprire il caso medio del caching $r_{cache}=0,10$; sotto il bound inferiore del range $[0,74; 1,47]$ di Cap.23.6 PV, opzione (i) e' fattibile.
-   - **Opzione (ii) -- F=8 completo con parallelizzazione $>16$ vCPU**: passaggio a c5.9xlarge (36 vCPU, $\sim 0,765$ USD/h spot) o c5.18xlarge (72 vCPU, $\sim 1,53$ USD/h spot). Cap.34.4 stima il differenziale di costo (es. c5.9xlarge 107h ottimo $\to \sim 82$ USD vs c5.4xlarge 80h $\to \sim 27$ USD, differenziale $\sim 55$ USD/run; espresso in EUR al tasso corrente).
-   - **Opzione (iii) -- F~6 atteso accettato**: bundle parziale a $F$ effettivo $\sim 6$ con varianza inflated cross-fold della mediana di Cap.24.6 PV. Cap.34.4 quantifica empiricamente la varianza inflated via bootstrap stazionario sui $\sim 6$ fold ottenuti.
-
-La regola di selezione deterministica: se opzione (i) e' empiricamente fattibile sotto vincolo $t_{eval}<0,919$ min/cromosoma, scegliere (i); altrimenti se differenziale di costo opzione (ii) $\leq \theta_{cost}=100$ USD/run (parametro di tuning provvisorio), scegliere (ii); altrimenti opzione (iii) con varianza inflated dichiarata e accettata. Il Developer **non deve inventare numeri di test empirici**: deve dichiarare la **regola di decisione** + le **soglie quantitative** + la **conseguenza operativa per il bundle frozen** (Cap.35: il bundle frozen registra come metadato `F_effective` del ciclo che lo ha prodotto).
-
-**(e) Cloud per bootstrap stazionario di Cap.34.** Decisione: **bootstrap stazionario $B=2000$ NON e' eseguibile in locale** (i5-7200U/8GB) entro tempi ragionevoli. Cap.34.4 dichiara esplicitamente che il calcolo di bootstrap stazionario sui log di replay del walk-forward gira su c5.4xlarge **come post-processing aggiuntivo del walk-forward stesso**, all'interno del compute budget di Cap.4 PI e Cap.26.2 PV ($T_{budget}=80$h). Il **costo computazionale stimato** del bootstrap stazionario $B=2000$ su finestra OOS aggregata $W_{oos}\cdot F$ deve essere dichiarato in Cap.34.4 come **frazione del compute budget totale**: $O(B \cdot n_{segnali})$ con $n_{segnali}$ totale segnali eseguiti cross-fold $\sim 1.500$-$3.000$ (eredita' Cap.25.5 PV $N_{eventi} \in [120; 380]$ per fold $\times F \in \{6, 7, 8\}$). Per 13 metriche bootstrappate (Cap.34.3), $\sim 26.000 \cdot n_{segnali}$ operazioni elementari totali $\sim 5\cdot 10^7$-$10^8$ -- trascurabile rispetto al training NSGA-II ($\sim 10^9$ operazioni per fold). La **frazione di compute budget assorbita dal bootstrap** e' dichiarata $<5\%$ del totale: il bootstrap **non aggrava** significativamente il compute stress test.
-
-## Capitoli da produrre (~8 pagine totali in italiano formale)
-
-### Capitolo 31 -- Procedura di validazione OOS (~1,5 pp)
-
-**Scope.** Definire la procedura formale che, dato il fronte di Pareto $\mathcal{F}_1$ prodotto dal NSGA-II di Parte V con i diagnostici fold-per-fold del walk-forward nested, produce **uno specifico bundle candidato** promosso a "produzione". La procedura include: (i) regole di selezione dal fronte di Pareto; (ii) chiusura delle 3 decisioni condizionali di Parte V (Cox vs Fine-Gray, stratificazione vs interaction term, time-varying coefficients M-16); (iii) chiusura M-5 (window EGARCH effettiva) e Cap.26.3-26.4 PV (D distribuzione + inizializzazione EGARCH); (iv) carryover esplicito di riconsiderazione $\theta_{CV}$.
-
-**Contenuto obbligatorio.**
-
-- **31.1 Finestra OOS aggregata e fonte canonica delle metriche (~0,3 pp)**: definire la **finestra OOS aggregata** come concatenazione dei $W_{oos}$ degli $F$ fold effettivamente completati (con $F \in \{6, 7, 8\}$ atteso dipendente dall'esito del compute stress test Cap.34, eredita' 11 + 28). Citare $W_{oos}\cdot F$ in barre 1-min (es. $52.920 \cdot 6 = 317.520$ barre per F=6 atteso, $\equiv \sim 18$ mesi calendario; $52.920 \cdot 8 = 423.360$ barre per F=8 ideale, $\equiv \sim 24$ mesi calendario). Dichiarare i **log di replay deterministico bit-exact** (eredita' 15) come fonte canonica di tutte le metriche di Parte VII; nessuna metrica e' calcolata su fill effettivi del broker (eredita' 1). Citare qualitativamente $L_{max}$ Telegram (M-2 OPEN, decisione di scope (a)) come componente della procedura end-to-end di validazione, con rinvio Appendice E per la verifica numerica empirica.
-- **31.2 Selezione del bundle candidato dal fronte di Pareto $\mathcal{F}_1$ (~0,4 pp)**: regola deterministica di selezione del cromosoma vincente. Criteri ordinati (lessicograficamente, sui cromosomi non dominati di $\mathcal{F}_1$):
-  1. **Filtro DSR positivo**: cromosomi con $DSR_k > \theta_{DSR}=0,95$ (Cap.32) -- gate primario;
-  2. **Filtro PBO sotto soglia**: cromosomi con $PBO_k < \theta_{PBO}=0,5$ (Cap.33) -- gate fragilita';
-  3. **Filtro lifecycle stabile cross-regime**: cromosomi con $|f_5|<\theta_{f_5}=0,30$ -- $f_5$ aggregata su fold OOS aggregato secondo Cap.24.6 PV;
-  4. **Filtro IQR cross-fold normalizzata**: cromosomi con $IQR_{norm}(f_1)<\theta_{IQR}=0,40$ (Cap.24.6 PV);
-  5. **Filtro $\pi_{t_2|t_1}$ minimo**: cromosomi con $\pi_{t_2|t_1}^{aggregated} > \theta_{t_2}=0,30$ (eredita' 16);
-  6. **Selezione finale per massimizzazione $f_1$ aggregata**: fra i cromosomi sopravvissuti ai filtri 1-5, selezionare il cromosoma con $f_1^{global}$ (mediana cross-fold di Cap.24.6 PV) massima;
-  7. **Tie-break su $f_1^{global}$**: se due o piu' cromosomi sopravvissuti hanno $f_1^{global}$ entro tolleranza $\epsilon_{f_1}=10^{-6}$ pt FIB, applicare ordinamento lessicografico crescente su (i) $IQR_{norm}(f_1)$ minimo, (ii) $|f_5|$ minimo, (iii) hash deterministico del cromosoma.
-
-  Se **nessun cromosoma del fronte di Pareto sopravvive ai filtri 1-5**, dichiarare il run **fallito di go-live** e produrre il **report di fallimento** con motivazione esplicita per quale filtro ha eliminato tutti i candidati. Raccomandazione operativa post-fallimento: (i) re-applicazione del protocollo Parte V su nuovo storico (se la causa e' regime di mercato cambiato), oppure (ii) ritocco delle soglie $\theta_{PBO}, \theta_{f_5}, \theta_{IQR}, \theta_{t_2}$ (se la causa e' soglie troppo stringenti). La decisione di ricalibrazione delle soglie e' rinviata alla sessione operativa post-fallimento, non a un sotto-capitolo di Cap.31.
-- **31.3 Chiusura delle 3 decisioni condizionali di Parte V (~0,4 pp)** (eredita' 21 + 29 + M-16 OPEN-CONDIZIONALE, decisione di scope (b)):
-  - **Cox vs Fine-Gray** (M-9): conta del rapporto $r_{FG} = |\{k : \text{flag\_fine\_gray\_preferito}[k]=\text{True}\}| / F$. Se $r_{FG}>0,5$, bundle frozen adotta Fine-Gray (Cap.25.7 PV); altrimenti Cox cause-specific (Cap.25.5 PV default).
-  - **Stratificazione vs interaction term** (M-14): conta del rapporto $r_{CV} = |\{k : CV(\hat{\boldsymbol{\beta}}_{j,R})_k > \theta_{CV}=0,5\}| / F$. Se $r_{CV}>0,5$, fallback opzione (a) interaction term + **riconsiderazione di $\theta_{CV}=0,5$** registrata come carryover al ciclo successivo (Cap.31.5 sotto). Altrimenti stratificazione formale opzione (b) Cap.25.5 PV default.
-  - **Cox time-varying coefficients** (M-10 + M-16): conta del rapporto $r_{Schoenfeld} = |\{k : p_{Schoenfeld,k} < 0,05\}| / F$. Se $r_{Schoenfeld}>0,5$, **M-16 attivato** -- estensione a time-varying coefficients $\boldsymbol{\beta}_j(\tau)$ (Therneau-Grambsch 2000 cap. 6 o equivalente) **nel ciclo successivo di training** + registrazione `cox_time_varying_active=True` nel bundle frozen metadato (Cap.35.1 elemento 6); carryover Parte VII fra cicli. Altrimenti M-16 CLOSED-CAP-07 senza attivazione + monitoraggio Schoenfeld preservato nel ciclo successivo.
-- **31.4 Chiusura M-5 (window EGARCH) e Cap.26.3-26.4 PV ($D$ + init) (~0,3 pp)** (eredita' 17):
-  - **M-5 window EGARCH** (Cap.25.3 PV): conta del rapporto di fold in cui ciascuna delle 7 candidate windows (rolling 105.000/210.000/420.000 + expanding + EWMA $\lambda \in \{0,99; 0,995; 0,999\}$) domina secondo il criterio di rollback Inoue-Rossi $p<0,05$. Se rolling $W=210.000$ default domina o pareggia in $\geq 0,5$ dei fold, finestra confermata. Altrimenti **rollback alla finestra dominante in maggioranza dei fold**.
-  - **Cap.26.3 PV $D$ EGARCH**: conta del rapporto di fold in cui AIC/BIC + Ljung-Box tie-break favoriscono Student-t vs GED. Distribuzione adottata = quella prevalente in $\geq 0,5$ dei fold (Student-t default se tie).
-  - **Cap.26.4 PV inizializzazione EGARCH**: conta del rapporto di fold in cui Opzione A (ripresa fine sessione) vs Opzione B (varianza incondizionata) produce $\text{Var}(z_t)_{t\in[1,60]}$ piu' vicina al valore atteso unitario. Opzione adottata = quella prevalente in $\geq 0,5$ dei fold (Opzione A default se tie).
-- **31.5 Riconsiderazione di $\theta_{CV}=0,5$ di Cap.25.5 PV (~0,1 pp)** (eredita' 21): se la distribuzione empirica cross-fold di $CV(\hat{\boldsymbol{\beta}}_{j,R})$ e' sistematicamente fra 0,3 e 0,7 (regione di indeterminazione attorno alla soglia $\theta_{CV}=0,5$ provvisoria), Cap.31.5 raccomanda al ciclo successivo la **revisione formale di $\theta_{CV}$** basata sulla distribuzione empirica osservata (es. $\theta_{CV} =$ percentile 75% della distribuzione cross-fold). La decisione **non e' attivata in questo Cap.31** (richiede dati empirici): e' **carryover esplicito** al ciclo successivo come direzione metodologica. Stesso trattamento concettuale per $K_{max}^{strict}=4$ Harrell-strict di Cap.26.7 PV: se rapporto $N_{eventi}^{strato}/K_{max}<10$ in maggioranza dei fold con $K_{max}=6$, attivazione del fallback Harrell-strict $K_{max}=4$ nel ciclo successivo, carryover esplicito.
-
-**Vincoli trasversali Cap.31**: nessun valore numerico congelato di Parte VII nei parametri di selezione del bundle. I 5 parametri di tuning operativo introdotti ($\theta_{PBO}, \theta_{f_5}, \theta_{IQR}, \theta_{t_2}, \epsilon_{f_1}$) sono tutti dichiarati provvisori con default proposto. La selezione del bundle dal fronte di Pareto e' **deterministica** (lessicografica con tie-break esplicito) per garantire replay bit-exact (eredita' 15). Citazione esplicita Cap.23.1 PV (fronte $\mathcal{F}_1$), Cap.24.1 PV (5 obiettivi $f_1$-$f_5$), Cap.24.6 PV (mediana cross-fold + $IQR_{norm}$), Cap.25.3 PV (M-5), Cap.25.5-25.8 PV (3 decisioni condizionali), Cap.26.3-26.4-26.5 PV (D + init + tabella congelati), Cap.26.7 PV (K_max). Citazione **qualitativa** di Appendice E per M-2 OPEN ($L_{max}$ Telegram).
-
-### Capitolo 32 -- Deflated Sharpe Ratio (DSR) (~1,5 pp)
-
-**Scope.** Definire formalmente il **Deflated Sharpe Ratio** secondo Bailey e Lopez de Prado (2014) come gate primario di significativita' della performance del bundle al netto del numero di prove condotte. Calcolo, stima dei parametri di deflazione, soglia di accettazione, esempio numerico.
-
-**Contenuto obbligatorio.**
-
-- **32.1 Definizione formale del DSR (~0,5 pp)**: definire il Sharpe Ratio osservato $\widehat{SR}$ sulla finestra OOS aggregata (eredita' Cap.31.1) e il **Deflated Sharpe Ratio** secondo Bailey e Lopez de Prado (2014) "The Deflated Sharpe Ratio: Correcting for Selection Bias, Backtest Overfitting and Non-Normality", *Journal of Portfolio Management* 40(5), 94-107:
-  $$DSR = \Phi\!\Big(\frac{(\widehat{SR} - SR^*) \sqrt{n-1}}{\sqrt{1 - \hat{\gamma}_3 \widehat{SR} + \frac{\hat{\gamma}_4 - 1}{4} \widehat{SR}^2}}\Big)$$
-  dove $\Phi$ e' la CDF normale standard, $n$ e' il numero di osservazioni (segnali eseguiti aggregati cross-fold), $\hat{\gamma}_3, \hat{\gamma}_4$ sono skewness e curtosi empiriche di $R_{net}$, e $SR^*$ e' lo **Sharpe Ratio benchmark deflazionato** che corregge il bias di selezione:
-  $$SR^* = \sqrt{\text{Var}\big(\{\widehat{SR}_k\}_{k=1}^{N_{trials}}\big)} \cdot \big( (1 - \gamma_E) \Phi^{-1}(1 - 1/N_{trials}) + \gamma_E \Phi^{-1}(1 - (e \cdot N_{trials})^{-1}) \big)$$
-  con $\gamma_E$ Euler-Mascheroni constant $\approx 0,5772$, $N_{trials}$ numero di cromosomi candidati testati ($N_{trials}=|\mathcal{F}_1|$ del fronte di Pareto), $\{\widehat{SR}_k\}_{k=1}^{N_{trials}}$ distribuzione empirica degli Sharpe Ratio dei cromosomi del fronte.
-- **32.2 Calcolo del Sharpe Ratio osservato $\widehat{SR}$ (~0,2 pp)**: $\widehat{SR}=\bar{R}_{net} / \hat{\sigma}_{R_{net}}$ dove $\bar{R}_{net}$ e' la media empirica del net return per segnale eseguito e $\hat{\sigma}_{R_{net}}$ e' la deviazione standard empirica, entrambe calcolate sui **segnali eseguiti** ($t_{exec}$ esistente, eredita' Cap.24.1 PV $f_1=E[R_{net}|executed]$). **Nessuna annualizzazione**: lo Sharpe e' per-segnale, coerente con $f_1$ di Cap.24.1 PV. L'eventuale **conversione a SR annualizzato** ($\widehat{SR}_{annual} = \widehat{SR}\cdot\sqrt{n_{segnali}/anno}$) e' citata come reporting opzionale per confronto con benchmark di letteratura; il gate Cap.32 opera sullo SR per-segnale.
-- **32.3 Stima dei parametri di deflazione (~0,3 pp)**: stima empirica di skewness e curtosi su distribuzione di $R_{net}$ (formule di momento centrale di ordine 3 e 4):
-  $$\hat{\gamma}_3 = \frac{1}{n} \sum_{i=1}^{n} \Big(\frac{R_{net,i} - \bar{R}_{net}}{\hat{\sigma}_{R_{net}}}\Big)^3, \qquad \hat{\gamma}_4 = \frac{1}{n} \sum_{i=1}^{n} \Big(\frac{R_{net,i} - \bar{R}_{net}}{\hat{\sigma}_{R_{net}}}\Big)^4$$
-  $N_{trials} = |\mathcal{F}_1|$ del fronte di Pareto prodotto dal NSGA-II di Parte V; dichiarare $N_{trials}$ come metadato del bundle frozen (Cap.35.1 elemento 6). $\text{Var}(\{\widehat{SR}_k\})$ calcolata empiricamente sui cromosomi del fronte come varianza empirica degli Sharpe Ratio dei singoli cromosomi sul fold OOS aggregato.
-- **32.4 Soglia di accettazione del DSR (~0,3 pp)**: $DSR > \theta_{DSR}=0,95$ (test al 5% di significativita' contro $H_0: SR \leq SR^*$). Citare Bailey-Lopez de Prado 2014 sulla scelta del 95%. **Riconsiderazione della soglia**: $\theta_{DSR}=0,95$ e' valore di lavoro provvisorio non congelato in Parte VII (dichiarato come parametro di tuning di Cap.32, default proposto, dominio $(0,1)$, riconsiderato post-go-live se la distribuzione empirica di $DSR$ sul fronte di Pareto e' sistematicamente vicina a 0,9). Dichiarare il **comportamento ai bordi**: se $\widehat{SR}<0$ (cromosoma con net return atteso negativo), $DSR$ degenera a $\Phi(\text{numeratore negativo})\approx 0$; il cromosoma e' scartato automaticamente dal filtro 1 di Cap.31.2.
-- **32.5 Esempio numerico illustrativo (~0,2 pp)**: esempio **illustrativo** (chiaramente dichiarato come tale, non risultato empirico) con $\widehat{SR}=0,15$ per-segnale, $n=2.000$ segnali eseguiti aggregati cross-fold, $\hat{\gamma}_3=-0,3, \hat{\gamma}_4=5,2$ (eccesso di curtosi tipico FIB intraday), $N_{trials}=20$ cromosomi del fronte, $\text{Var}(\widehat{SR}_k)=0,01$. Calcolo numerico esplicito di $SR^*$ e di $DSR$, verifica pass/fail rispetto a $\theta_{DSR}=0,95$.
-
-**Vincoli trasversali Cap.32**: l'unico valore numerico introdotto e' $\theta_{DSR}=0,95$ dichiarato come parametro di tuning provvisorio. Citazione esplicita Bailey-Lopez de Prado 2014, Lopez de Prado 2018 cap. 12, Cap.24.1 PV ($f_1=E[R_{net}|executed]$), Cap.24.7 PV (no DSR/PBO in NSGA-II), Cap.31.1 (fold OOS aggregato), Cap.5 PI (eredita' 9).
-
-### Capitolo 33 -- Probability of Backtest Overfitting (PBO) via CSCV (~1,5 pp)
-
-**Scope.** Definire formalmente la **Probability of Backtest Overfitting** secondo Bailey-Borwein-Lopez de Prado-Zhu (2017) via **Combinatorially Symmetric Cross-Validation (CSCV)**, come gate di fragilita' della scelta del bundle rispetto a partizioni alternative dei dati. Procedura, scelta di $S$, soglia, esempio.
-
-**Contenuto obbligatorio.**
-
-- **33.1 Definizione formale del PBO via CSCV (~0,5 pp)**: definire il **CSCV** secondo Bailey-Borwein-Lopez de Prado-Zhu (2017) "The Probability of Backtest Overfitting", *Journal of Computational Finance* 20(4), 39-70. Procedura formale in 6 passi:
-  1. Partizionare la finestra OOS aggregata (eredita' Cap.31.1) in $S$ sotto-finestre temporalmente contigue di pari lunghezza ($S$ pari, valore di lavoro $S\in\{12, 16\}$ in funzione di $F$ effettivo).
-  2. Considerare tutte le $\binom{S}{S/2}$ combinazioni di $S/2$ sotto-finestre come "in-sample CSCV" e le rimanenti $S/2$ come "out-of-sample CSCV".
-  3. Per ciascuna combinazione $j$, calcolare per ciascun cromosoma $c$ del fronte di Pareto $\mathcal{F}_1$ il **rank di Sharpe Ratio** sull'in-sample CSCV (cromosoma con $\widehat{SR}^{IS}_{c,j}$ massimo riceve rank 1).
-  4. Per il cromosoma con rank 1 in-sample (cromosoma "vincente" della combinazione $j$), calcolare il **rank relativo** sul corrispondente OOS CSCV: $r_j = \text{rank}^{OOS}_{c^*_j, j} / |\mathcal{F}_1|$ con $c^*_j$ vincente in-sample della combinazione $j$.
-  5. Calcolare la **logit-rank**: $\lambda_j = \ln(r_j / (1 - r_j))$.
-  6. $PBO$ e' la **frazione di combinazioni con logit-rank negativa**: $PBO = |\{j : \lambda_j < 0\}| / \binom{S}{S/2}$. Equivalentemente, $PBO$ e' la probabilita' che il cromosoma vincente in-sample sia **sotto la mediana del fronte di Pareto in OOS** (cioe' overfit).
-- **33.2 Block-CSCV per finestra OOS temporalmente strutturata (~0,3 pp)**: la finestra OOS aggregata di Cap.31.1 e' **temporalmente strutturata** (concatenazione di $F$ fold $W_{oos}$); il CSCV standard a sotto-finestre contigue rispetta gia' la struttura temporale. Dichiarare che il **block size** delle sotto-finestre $S$ e' **allineato ai fold del walk-forward**: $S=16$ blocchi di lunghezza $W_{oos}/2 = 26.460$ barre 1-min per F=8 ideale (riducibile a $S=12$ blocchi per F=6 atteso con stessa lunghezza per blocco). La scelta di $S$ pari e' vincolo del CSCV (necessario per partizione simmetrica). Citare Bailey-Borwein-Lopez de Prado-Zhu 2017 sez. 3.
-- **33.3 Soglia di accettazione PBO (~0,3 pp)**: $PBO < \theta_{PBO}=0,5$ valore di lavoro provvisorio (dichiarato in Cap.33 come parametro di tuning, dominio $(0,1)$). Motivazione: $PBO=0,5$ significa che il cromosoma vincente in-sample e' OOS sotto la mediana nel 50% delle combinazioni CSCV, ovvero il bundle e' indistinguibile dalla casualita' della selezione. $PBO < 0,5$ indica che il vincente in-sample tende a essere sopra la mediana in OOS (segnale di non-overfitting). Bailey-Borwein-Lopez de Prado-Zhu 2017 raccomandano $PBO < 0,5$ come gate minimo + $PBO < 0,4$ come gate forte. Cap.33 adotta $\theta_{PBO}=0,5$ come **gate minimo**, riconsiderato post-go-live.
-- **33.4 Costo computazionale e dichiarazione $S$ provvisorio (~0,2 pp)**: per $S=16$, $\binom{16}{8}=12.870$ combinazioni; ogni combinazione richiede calcolo di SR per $|\mathcal{F}_1|$ cromosomi (max $\sim 128$ se tutti i cromosomi della popolazione finale NSGA-II entrano in $\mathcal{F}_1$, tipicamente $|\mathcal{F}_1|\sim 20$-$40$ per problemi a 5 obiettivi); ordine di grandezza $12.870 \cdot 30 \approx 386.100$ valutazioni di SR. Per F=6 atteso con $S=12$, $\binom{12}{6}=924$ combinazioni, $\sim 28.000$ valutazioni: significativamente piu' leggero. La scelta di $S$ bilancia granularita' della stima PBO e costo computazionale; $S=16$ default per F=8 ideale, $S=12$ default per F=6 atteso. Frazione del compute budget assorbita dal PBO < 5% del totale (coerente con la dichiarazione globale di Cap.34.4).
-- **33.5 Esempio numerico illustrativo (~0,2 pp)**: esempio **illustrativo** con $|\mathcal{F}_1|=30$ cromosomi, $S=16$, $\binom{16}{8}=12.870$ combinazioni. Cromosoma $c^*$ vincente in 8.500 combinazioni (sulle 12.870); rank OOS medio 7,5 (cromosoma a meta' fronte). PBO calcolato come frazione di combinazioni con logit-rank negativa $\sim 0,35 < 0,5$ -- bundle PASS PBO.
-
-**Vincoli trasversali Cap.33**: i 2 valori numerici introdotti ($\theta_{PBO}=0,5$, $S\in\{12, 16\}$) sono dichiarati come parametri di tuning provvisori. Citazione esplicita Bailey-Borwein-Lopez de Prado-Zhu 2017, Lopez de Prado 2018 cap. 11-12, Cap.23.1 PV ($\mathcal{F}_1$), Cap.24.7 PV (no PBO in NSGA-II), Cap.31.1 (fold OOS aggregato), Cap.5 PI (eredita' 9).
-
-### Capitolo 34 -- Bootstrap stazionario (~1,5 pp)
-
-**Scope.** Definire il **bootstrap stazionario** secondo Politis-Romano (1994) come strumento per produrre intervalli di confidenza su DSR, PBO, $f_1$-$f_5$, metriche di lifecycle. Condurre il **compute stress test** (decisione di scope (d)+(e)) che decide F=8 vs F~6 empiricamente.
-
-**Contenuto obbligatorio.**
-
-- **34.1 Definizione del bootstrap stazionario (~0,3 pp)**: Politis e Romano (1994) "The stationary bootstrap", *JASA* 89(428), 1303-1313. Procedura: dato un campione $\{X_1, \ldots, X_n\}$ con dipendenza temporale (i.e. $R_{net}$ dei segnali eseguiti del fold OOS aggregato), generare un campione bootstrap $\{X_1^*, \ldots, X_n^*\}$ campionando **blocchi di lunghezza geometrica** $L \sim Geom(p)$ con probabilita' $p=1/L_{avg}$, dove $L_{avg}$ e' la **block length media** (parametro del bootstrap). Il blocco $X_t, X_{t+1}, \ldots, X_{t+L-1}$ e' campionato a partire da $t$ uniforme; quando $t+L-1 > n$, si wrappa modulo $n$ (stationary). Si replica $B=2000$ volte (eredita' Cap.4 PI 11).
-- **34.2 Scelta della block length $L_{avg}$ (~0,3 pp)**: la block length media e' calibrata via **Politis-White (2004)** "Automatic block-length selection for the dependent bootstrap", *Econometric Reviews* 23(1), 53-70: $L_{avg}$ funzione dell'autocorrelazione empirica della serie $\{R_{net,i}\}_{i=1}^{n_{segnali}}$. Per FIB intraday, l'autocorrelazione di $R_{net}$ e' tipicamente bassa (il signal lifecycle e' multi-bar ma i $R_{net}$ per-segnale sono pseudo-iid sotto la fitness multi-fold); ordine di grandezza $L_{avg} \in [5, 20]$ segnali. Il valore di lavoro di default e' $L_{avg}=10$, riconsiderato empiricamente nel compute stress test. **Nessun congelamento numerico** di $L_{avg}$ in Parte VII; calibrazione automatica via Politis-White obbligatoria.
-- **34.3 Intervalli di confidenza bootstrap (~0,3 pp)**: per ogni metrica $\theta \in \{DSR, PBO, f_1, f_2, f_3, f_4, f_5, \pi_{t_2|t_1}, MFE_{aggregated}, MAE_{aggregated}, f_{stop|t_1}, CVaR_{95\%}, MDD_{intraday}\}$ (13 metriche totali, di cui $\pi_{t_2|t_1}, MFE, MAE, f_{stop|t_1}$ ereditati come metriche tracciate Cap.24.3 PV + Cap.11 PII), calcolare $\hat{\theta}^*_b$ su ciascuno dei $B=2000$ campioni bootstrap. Intervallo di confidenza al 95% via **percentile method**: $[\hat{\theta}^*_{2,5\%}, \hat{\theta}^*_{97,5\%}]$. Dichiarare che il **percentile method e' il default**; il **BCa (bias-corrected accelerated) di Efron (1987)** "Better bootstrap confidence intervals", *JASA* 82(397), 171-185, e' alternativa accettabile se la distribuzione bootstrap mostra skewness sistematica. La scelta del metodo e' demandata all'implementazione con citazione bibliografica esplicita nel codice di produzione.
-- **34.4 Compute stress test obbligatorio (~0,4 pp)** (eredita' 11 + 28 + decisione di scope (d)+(e)): misura empirica del tempo wall-clock del walk-forward nested di Parte V + post-processing DSR/PBO/bootstrap su c5.4xlarge 16 vCPU. **Regola di decisione deterministica** fra le 3 opzioni di scope (d):
-  - **Se opzione (i) F=8 con $t_{eval} < 0,919$ min/cromosoma** (sotto il bound inferiore del range $[0,74; 1,47]$ di Cap.23.6 PV nel caso di caching centrale $r_{cache}=0,10$) e' empiricamente fattibile dopo ottimizzazione del calcolo fitness via caching/vettorializzazione, **scegliere (i)**;
-  - **Altrimenti, se opzione (ii) F=8 con c5.9xlarge** produce differenziale di costo $\leq \theta_{cost}=100$ USD/run rispetto a c5.4xlarge (parametro di tuning provvisorio), **scegliere (ii)**;
-  - **Altrimenti, scegliere opzione (iii) F~6** con varianza inflated cross-fold della mediana di Cap.24.6 PV dichiarata e accettata. La varianza inflated e' **quantificata dal bootstrap di Cap.34.3** sui $\sim 6$ fold ottenuti.
-
-  Aritmetica esplicita per il vincolo $t_{eval}$ di opzione (i): partendo da $T_{budget} = 80$ ore wall-clock su 16 vCPU con $F=8$ fold sequenziali e $N_{eval}^{actual}=17.408$ valutazioni per fold (Cap.23.6 PV, caching centrale), il tempo medio per valutazione fitness deve essere $t_{eval,target} \leq (80 \cdot 60 \cdot 16) / (17.408 \cdot 8) \approx 0,55$ min/cromosoma single-thread; tenendo conto della parallelizzazione 16-vCPU non perfettamente lineare (es. coefficiente di efficienza 0,9), il vincolo reale e' $t_{eval} \leq 0,55 \cdot 0,9 \approx 0,5$ min/cromosoma. Sotto il caso ottimo del range di Cap.23.6 PV ($t_{eval}=0,74$), opzione (i) **non e' fattibile senza ottimizzazione**. La regola di decisione opera condizionalmente all'esito della **misura empirica del compute stress test**: il Developer dichiara la regola, non simula l'esito.
-
-  **Costo computazionale del bootstrap stesso (eredita' decisione di scope (e))**: $O(B \cdot n_{segnali})$ per metrica bootstrappata; per 13 metriche di Cap.34.3 e $n_{segnali}\sim 1.500$-$3.000$, $\sim 26.000 \cdot n_{segnali}\sim 5\cdot 10^7$-$10^8$ operazioni elementari totali. Trascurabile rispetto al training NSGA-II ($\sim 10^9$ operazioni per fold). **Frazione di compute budget assorbita dal bootstrap**: stimata $<5\%$ del totale; il bootstrap **non aggrava** significativamente il compute stress test (e non e' la causa del bundle parziale F~6 atteso, che e' dovuto al training NSGA-II stesso).
-- **34.5 Bootstrap stazionario e replay bit-exact (~0,2 pp)** (eredita' 15 + 27): il seed PRNG del bootstrap stazionario e' parte dell'identita' del bundle frozen (Cap.35.1 elemento 5). Due esecuzioni del bootstrap con stesso seed e stessi log di replay producono identici intervalli di confidenza al bit.
-
-**Vincoli trasversali Cap.34**: i 2 valori numerici introdotti ($\theta_{cost}=100$ USD/run e $L_{avg}=10$ default) sono dichiarati come parametri di tuning provvisori; $B=2000$ e' eredita' Cap.4 PI. Citazione esplicita Politis-Romano 1994, Politis-White 2004, Efron 1987 (BCa), Lopez de Prado 2018 cap. 12, Cap.4 PI (compute budget cloud), Cap.23.6 PV (compute calcolo + range $t_{eval}$), Cap.24.1-24.6 PV (metriche $f_1$-$f_5$ + $IQR_{norm}$), Cap.25.1 PV ($F=8$ provvisorio), Cap.26.2 PV ($T_{budget}=80$h + bundle parziale F~6 atteso).
-
-### Capitolo 35 -- Frozen bundle e immutabilita' (~1 pp)
-
-**Scope.** Definire il **processo di freezing** del bundle candidato selezionato in Cap.31, l'**hash di riferimento immutabile** come identita' del bundle, e la **regola di sostituzione** che governa la transizione fra bundle frozen successivi senza interruzione operativa della pipeline di inference live di Cap.27 PVI.
-
-**Contenuto obbligatorio.**
-
-- **35.1 Specifica formale del bundle frozen (~0,3 pp)** (eredita' 25 + 27 + 18): il bundle frozen e' un **artefatto digitale immutabile** costituito da:
-  1. **Tutti i parametri della tabella di congelamento di Cap.26.5 PV** (parametri del modello: EGARCH $W$, $D$, init; classificazione regime $\bar{\sigma}_s, p=0,75, N_{reg}=20, T_{persist}=10$; pivot detection $n_c=3, \delta_{pivot}=10$; trade_range; NSGA-II $\eta_c, \eta_m, p_m$; walk-forward $W_{in}, W_{oos}, P_{purge}, P_{emb}, F$; soglie diagnostica survival; $K_{max}=6$; tutte le altre voci della tabella).
-  2. **Geni del cromosoma vincente** di $\mathcal{F}_1$ selezionato in Cap.31.2 (geni geometrici $b, d_{inv}, d_{obsolete}, T_{min,session}$; geni emissione $\tau_{vol}, \tau_{liq}, \tau_{dist}^{\sigma}, \tau_{surv}$; geni target/stop $k_{t2}, d_{stop,\sigma}$; geni temporali $\Delta t_{cromosoma}, T_{touch}^{max}$; vettore selezione feature $\mathbf{s}\in\{0,1\}^{37}$ con cardinalita' $\leq K_{max}=6$).
-  3. **Modelli stimati**: coefficienti EGARCH $(\mu, \omega, \alpha, \gamma, \beta, \nu)$ stimati nell'ultimo fold di calibrazione del walk-forward; coefficienti Cox cause-specific $\boldsymbol{\beta}_{j,R}$ per ciascun strato $R\in\{\text{calmo}, \text{turbolento}\}$ e per ciascuna causa $j\in\{1,2\}$ (target_1_hit, stopped), baseline hazard $h_{0,j,R}(\tau)$ tabulate; quantili regime $\bar{\sigma}_s$ calibrati; alternativamente coefficienti Fine-Gray se eredita' 21 + Cap.31.3 hanno attivato il rollback.
-  4. **Definizione formale della tupla payload $\mathcal{S}$** (eredita' 12, Cap.6.1 PII Iterazione 4): 12 campi -- garantisce che modifiche future al payload richiedano nuovo ciclo Parte II + Parte V + Parte VII.
-  5. **Tutti i seed PRNG** (NSGA-II Cap.23.7 PV, EGARCH MLE, Cox MLE, bootstrap stazionario Cap.34.5): valori scalari interi 64-bit.
-  6. **Metadati di tracciabilita'**: $F$ effettivo del ciclo (`F_effective`, eredita' 28 + decisione Cap.34.4); rapporti $r_{FG}, r_{CV}, r_{Schoenfeld}$ delle 3 decisioni condizionali (eredita' 21 + Cap.31.3); flag `cox_time_varying_active = True/False` (Cap.31.3 chiusura M-16); finestra EGARCH effettiva del ciclo (Cap.31.4); distribuzione $D$ effettiva (Cap.31.4); opzione inizializzazione EGARCH effettiva (Cap.31.4); $N_{trials}=|\mathcal{F}_1|$ del fronte di Pareto (eredita' Cap.32.3); valori dei rapporti per la chiusura M-5 + Cap.26.3-26.4; timestamp di freezing; versione del codice produttore.
-- **35.2 Hash di riferimento immutabile (~0,2 pp)**: il bundle frozen include un **hash SHA-256** calcolato deterministicamente su tutto il contenuto di Cap.35.1 in **ordine canonico** (es. JSON canonical form o tupla lessicograficamente ordinata; la convenzione esatta e' specifica all'implementazione con citazione esplicita nel codice di produzione). L'hash e' **incorporato nel bundle stesso** come campo `bundle_hash` e validato a ogni caricamento del bundle in pipeline di inference live (Cap.27.3 PVI): se l'hash calcolato runtime sul contenuto del bundle non coincide con il campo `bundle_hash`, il caricamento fallisce e la pipeline si rifiuta di girare. La verifica di integrita' all'avvio protegge da corruzioni accidentali del bundle.
-- **35.3 Regola di sostituzione del bundle frozen (~0,3 pp)**: la sostituzione del bundle frozen in produzione e' governata da regole esplicite:
-  1. **Sostituzione pianificata trimestrale o semestrale** (eredita' Cap.4 PI compute budget cloud): nuovo ciclo Parte V + Parte VII con bundle aggiornato che sostituisce quello in produzione. La transizione **non interrompe la pipeline di inference live** di Cap.27 PVI: il nuovo bundle entra in vigore alla prossima emissione (cromosoma frozen + parametri del modello aggiornati); segnali in stato `active` al momento della transizione **continuano la propria state machine con il bundle precedente** fino al raggiungimento dello stato terminale (eredita' Cap.7 PII). Solo le **nuove emissioni** post-transizione usano il nuovo bundle.
-  2. **Sostituzione anticipata su trigger di deriva** (eredita' Cap.30.2-30.3-30.5 PVI alert + Cap.30.4 PVI alert break parametrico): se gli alert di deriva di Cap.30 PVI scattano in modo persistente, il ciclo di ritraining e' anticipato rispetto alla cadenza trimestrale/semestrale. La regola di anticipo e' di Cap.36.4 (vedi sotto).
-  3. **Sostituzione anticipata su Cox time-varying coefficients M-16 attivato**: se Cap.31.3 ha registrato `cox_time_varying_active=True`, il ciclo successivo applica il protocollo Parte V con specifica Cox estesa (Therneau-Grambsch 2000 cap. 6). Il nuovo bundle frozen registra `cox_time_varying_active` aggiornato in base al nuovo monitoraggio Schoenfeld.
-  4. **Sostituzione anticipata su fallimento di go-live** (eredita' Cap.31.2 se nessun cromosoma di $\mathcal{F}_1$ sopravvive ai filtri): re-applicazione protocollo Parte V con eventuale revisione delle soglie $\theta_{DSR}, \theta_{PBO}, \theta_{f_5}, \theta_{IQR}, \theta_{t_2}$.
-
-  La regola di sostituzione e' **registrata nel log di transizione** del bundle (timestamp di freezing del nuovo bundle, hash del bundle precedente sostituito, motivazione della sostituzione, segnali `active` al momento della transizione e loro state machine in corso).
-- **35.4 Versioning del bundle e tracciabilita' cross-bundle (~0,2 pp)**: ogni bundle frozen ha un **bundle_id** progressivo (es. `bundle_v1, bundle_v2, ...`) + l'hash SHA-256 calcolato in Cap.35.2. Il log di emissione (Cap.10 PII) include il `bundle_id` per ogni segnale emesso, garantendo tracciabilita' cross-bundle: e' sempre possibile risalire al bundle che ha prodotto un dato segnale. Una **tabella storica dei bundle** (`bundle_history`) registra: `bundle_id`, hash, timestamp di freezing, `F_effective`, metriche aggregate ($DSR, PBO, f_1$-$f_5$ medie + IC bootstrap), motivazione del freezing (sostituzione pianificata vs trigger).
-
-**Vincoli trasversali Cap.35**: nessun valore numerico congelato di Parte VII (il bundle stesso e' il prodotto del freezing, ma il *processo* di freezing e' regola, non parametro). Citazione esplicita Cap.6.1 PII (payload 12 campi), Cap.10 PII (replay bit-exact + log), Cap.26.5 PV (tabella congelati), Cap.26.8 PV (seed), Cap.27.3 PVI (input invariante pipeline), Cap.7 PII (state machine + transizione segnali active).
-
-### Capitolo 36 -- Gate decisionali per il go-live (~1 pp)
-
-**Scope.** Definire la **checklist deterministica di gate** che governa la decisione binaria di go-live del bundle frozen. La checklist e' la sintesi operativa di tutte le verifiche di Parte VII: DSR, PBO, lifecycle stabile, copertura compute, pipeline operativa.
-
-**Contenuto obbligatorio.**
-
-- **36.1 Checklist di go-live -- AC binari (~0,5 pp)** (eredita' 9): elenco ordinato di **AC binari verificabili** (OK / NOT OK):
-  1. **AC-GO-1**: $DSR > \theta_{DSR}=0,95$ (Cap.32) -- gate primario;
-  2. **AC-GO-2**: $PBO < \theta_{PBO}=0,5$ (Cap.33) -- gate fragilita';
-  3. **AC-GO-3**: $E[R_{net}|executed] > 0$ con intervallo di confidenza 95% bootstrap (Cap.34.3) escluso lo zero;
-  4. **AC-GO-4**: $|f_5|<\theta_{f_5}=0,30$ (Cap.31.2 filtro 3) -- lifecycle stabile cross-regime;
-  5. **AC-GO-5**: $IQR_{norm}(f_1)<\theta_{IQR}=0,40$ (Cap.31.2 filtro 4 + Cap.24.6 PV) -- stabilita' cross-fold;
-  6. **AC-GO-6**: $CVaR_{95\%}$ entro limite dichiarato (eredita' 9 + Cap.5 PI); valore di lavoro $\theta_{CVaR}=-100$ pt FIB provvisorio (CVaR per-segnale eseguito, in negativo, entro $-100$ pt);
-  7. **AC-GO-7**: $MDD_{intraday}$ entro limite dichiarato; valore di lavoro $\theta_{MDD}=200$ pt FIB provvisorio (MDD aggregato sul fold OOS, in positivo come modulo, entro $200$ pt);
-  8. **AC-GO-8**: $r_{emit}\in[E_{min}=0,2; E_{max}=5]$ segnali/sessione (eredita' Cap.24.2 PV + Cap.26.5 PV);
-  9. **AC-GO-9**: percentuale di sessioni del fold OOS aggregato che raggiungono il target operativo asimmetrico Cap.1 PI (500 pt OR 70% movimento strutturale) $> \theta_{sessions}=0,60$ provvisoria (eredita' 10);
-  10. **AC-GO-10**: pipeline Cap.27 PVI operativa -- verifica funzionale che la pipeline carica il bundle frozen, processa feed live (verifica con feed mock o test su storico recente), produce payload bit-exact identico a Cap.6.1 PII (Cap.27.4 PVI), pubblica Telegram entro vincolo qualitativo $L_{max}$ (M-2 OPEN qualitativo, verifica numerica empirica Appendice E);
-  11. **AC-GO-11**: dashboard Cap.30.6 PVI operativa -- tutte le metriche $f_1$-$f_4^{live}$ + $f_5^{live}$ + $B(t)$ + $r_{emit}^{live}$ tracciate; tutti gli alert di Cap.30.2 / 30.3 / 30.4 / 30.5 PVI configurati; lifecycle aggiuntivo Cap.30.3bis PVI tracciato come reporting;
-  12. **AC-GO-12**: bundle frozen ha hash SHA-256 (Cap.35.2) valido all'avvio della pipeline (Cap.27.3 PVI).
-
-  **Decisione di go-live**: se **tutti** i 12 AC sono OK, dichiarare GO; se anche uno e' NOT OK, dichiarare NO-GO con motivazione esplicita su quale AC e' fallito + raccomandazione operativa (ritocco soglie / re-applicazione Parte V su nuovo storico / ottimizzazione codice / etc.).
-
-- **36.2 Verifica aggregata di sessione e target operativo Cap.1 PI (~0,2 pp)** (eredita' 10): calcolo della **percentuale di sessioni del fold OOS aggregato** in cui il bundle frozen raggiunge il target operativo asimmetrico:
-  - Soglia assoluta **500 pt FIB profitto netto giornaliero**: somma dei $R_{net}$ dei segnali eseguiti nella sessione $\geq 500$ pt;
-  - **OR** soglia relativa **70% movimento strutturale intraday**: somma $R_{net}$ sessione $\geq 0,70 \cdot M_{structural,intraday}$ dove $M_{structural,intraday}$ e' la somma dei moduli degli swing fra pivot ancorato al primo min/max post-apertura (Cap.1 PI).
-
-  La percentuale di sessioni che soddisfa la condizione asimmetrica (OR) e' confrontata con $\theta_{sessions}=0,60$ (AC-GO-9). Reporting in tabella per regime calmo / turbolento separato.
-
-- **36.3 Carryover dei 10 parametri di tuning operativo di Parte VI al post-go-live (~0,1 pp)** (decisione di scope (c)): Cap.36.3 dichiara esplicitamente che i 10 parametri di tuning operativo non congelati di Parte VI ($T_{recal,EGARCH}, \theta_B, T_{B,persist}, W_B, W_{prod}, T_{drift,persist}, T_{emit,persist}, \epsilon_p, N_{reg,min}^{live}, \alpha_{f_5}$) **rimangono starting point con i default proposti di Parte VI per il primo run di produzione**. La riconsiderazione empirica avviene a **3-6 mesi di produzione live** sulla base degli esiti empirici dei segnali emessi, della distribuzione degli alert e della rate di ricalibrazione EGARCH effettiva. **Nessun congelamento empirico** dei 10 parametri in Parte VII: Cap.36.3 dichiara questa separazione come **carryover esplicito al monitoring post-go-live**, non come task di Parte VII.
-
-- **36.4 Regola di anticipo del ritraining su trigger di deriva (~0,1 pp)** (eredita' 30 + 31 + Cap.35.3.2): se in produzione gli alert di Cap.30.2 PVI (deriva $f_m^{live}$ fuori IQR cross-fold per $> T_{drift,persist}$ giorni) **oppure** Cap.30.3 PVI (deriva $f_5^{live}$ fuori $f_5^{global}\cdot(1+\alpha_{f_5})$ per $> T_{drift,persist}$ giorni) **oppure** Cap.30.4 PVI (break parametrico $B(t)>\theta_B$ per $> T_{B,persist}$ barre) **oppure** Cap.30.5 PVI (frequenza emissione fuori $[E_{min}, E_{max}]$ per $> T_{emit,persist}$ giorni) si attivano **in modo persistente**, il ciclo di ritraining e' anticipato rispetto alla cadenza pianificata trimestrale/semestrale. La **regola di persistenza** e' di Parte VI (parametri $T_{drift,persist}, T_{B,persist}, T_{emit,persist}$ definiti li' come tuning operativo); Cap.36.4 dichiara la **conseguenza operativa**: ritraining anticipato + sostituzione bundle frozen via Cap.35.3.2.
-
-- **36.5 Reporting finale del run Parte VII (~0,1 pp)**: il run Parte VII produce un **report finale** con:
-  - tabella checklist Cap.36.1 con esiti OK / NOT OK + valori numerici;
-  - tabella metriche aggregate ($DSR, PBO, f_1$-$f_5, \pi_{t_2|t_1}, MFE_{agg}/MAE_{agg}, f_{stop|t_1}, CVaR_{95\%}, MDD_{intraday}$) con intervalli di confidenza 95% bootstrap;
-  - tabella chiusura 3 decisioni condizionali Cap.31.3 ($r_{FG}, r_{CV}, r_{Schoenfeld}$, scelte adottate);
-  - tabella chiusura M-5 + Cap.26.3-26.4 PV Cap.31.4 (window EGARCH, $D$, init);
-  - bundle frozen artifact: hash SHA-256, bundle_id, F_effective, timestamp freezing;
-  - decisione finale GO / NO-GO + motivazione operativa.
-
-**Vincoli trasversali Cap.36**: i valori numerici introdotti in Cap.36 sono $\theta_{CVaR}=-100$ pt, $\theta_{MDD}=200$ pt, $\theta_{sessions}=0,60$; tutti dichiarati come parametri di tuning provvisori con default proposto, riconsiderati post-go-live. Citazione esplicita Cap.5 PI (definizione successo eredita' 9), Cap.1 PI (target operativo asimmetrico eredita' 10), Cap.24.1-24.2 PV ($f_1$-$f_5$ + $E_{min}, E_{max}$), Cap.27 PVI (pipeline), Cap.30 PVI (dashboard + alert), Cap.31-35 PVII (gate e bundle). Il **registro di criteri di successo** di Parte VII chiude la **definizione operativa del successo** di Cap.5 PI come checklist verificabile.
-
-## Acceptance criteria -- tutti devono essere soddisfatti per PASS in Review
-
-Acceptance criteria numerati e oggettivi, verificabili dal Reviewer in modo binario (OK / NOT OK).
-
-### Cap.31
-
-- **AC-31-1**: Cap.31.1 dichiara esplicitamente la finestra OOS aggregata come concatenazione $W_{oos}\cdot F$ degli $F$ fold effettivamente completati (eredita' 5 + 24), citando $W_{oos}=52.920$ barre + $F\in\{6, 7, 8\}$ atteso (eredita' 11 + 28).
-- **AC-31-2**: Cap.31.1 dichiara i log di replay bit-exact (eredita' 15) come fonte canonica delle metriche di Parte VII; nessuna metrica e' calcolata su fill effettivi del broker (eredita' 1). Citazione qualitativa $L_{max}$ Telegram (M-2 OPEN) con rinvio Appendice E.
-- **AC-31-3**: Cap.31.2 elenca i 6 filtri ordinati lessicograficamente di selezione dal fronte di Pareto $\mathcal{F}_1$ + criterio finale di massimizzazione $f_1$ + tie-break in 3 livelli, con tutte le soglie $\theta_{PBO}, \theta_{f_5}, \theta_{IQR}, \theta_{t_2}$ dichiarate come parametri di tuning provvisori non congelati (default proposto + dominio + marcatura "non congelato in Parte VII, riconsiderato post-go-live").
-- **AC-31-4**: Cap.31.2 dichiara esplicitamente il caso di **fallimento di go-live** (nessun cromosoma sopravvive ai filtri) con report di fallimento + raccomandazioni operative (re-applicazione Parte V o ritocco soglie).
-- **AC-31-5**: Cap.31.3 chiude le 3 decisioni condizionali di Parte V con regole di conteggio rapporto fold ($r_{FG}, r_{CV}, r_{Schoenfeld}$) e soglia $0,5$; M-16 e' trattato esplicitamente con regola di attivazione/disattivazione + carryover al ciclo successivo + metadato `cox_time_varying_active` (eredita' decisione di scope (b)).
-- **AC-31-6**: Cap.31.4 chiude M-5 (window EGARCH) + Cap.26.3 PV ($D$) + Cap.26.4 PV (init) con regole di conteggio rapporto fold + soglia $0,5$.
-- **AC-31-7**: Cap.31.5 dichiara la riconsiderazione di $\theta_{CV}=0,5$ di Cap.25.5 PV come carryover esplicito al ciclo successivo basato sulla distribuzione empirica osservata. Stesso trattamento per $K_{max}^{strict}=4$ Harrell-strict di Cap.26.7 PV (eredita' 19).
-- **AC-31-8**: nessun valore numerico congelato di Parte VII in Cap.31 tranne i parametri di tuning provvisori dichiarati ($\theta_{PBO}, \theta_{f_5}, \theta_{IQR}, \theta_{t_2}, \epsilon_{f_1}$).
-
-### Cap.32
-
-- **AC-32-1**: Cap.32.1 fornisce la definizione formale del DSR di Bailey-Lopez de Prado 2014 con tutte e 5 le componenti ($\widehat{SR}, SR^*, n, \hat{\gamma}_3, \hat{\gamma}_4$) e citazione bibliografica esplicita (paper + journal + anno + pagine).
-- **AC-32-2**: Cap.32.2 dichiara $\widehat{SR}$ per-segnale (no annualizzazione) coerente con $f_1$ di Cap.24.1 PV (eredita' su segnali eseguiti). Conversione annualizzata citata come reporting opzionale.
-- **AC-32-3**: Cap.32.3 dichiara la stima dei parametri di deflazione $\hat{\gamma}_3, \hat{\gamma}_4, N_{trials}, \text{Var}(\{\widehat{SR}_k\})$ con $N_{trials}=|\mathcal{F}_1|$ del fronte di Pareto NSGA-II di Parte V (eredita' 22), formule esplicite di momento centrale di ordine 3 e 4.
-- **AC-32-4**: Cap.32.4 dichiara la soglia $\theta_{DSR}=0,95$ come parametro di tuning provvisorio (default proposto, dominio $(0,1)$, motivazione Bailey-Lopez de Prado 2014 al 5%) + comportamento ai bordi ($\widehat{SR}<0$ degenera a $DSR\approx 0$).
-- **AC-32-5**: Cap.32.5 fornisce esempio numerico **illustrativo** (dichiarato come tale) con valori espliciti per $\widehat{SR}, n, \hat{\gamma}_3, \hat{\gamma}_4, N_{trials}, \text{Var}(\widehat{SR}_k)$ + calcolo numerico esplicito di $SR^*$ e $DSR$.
-- **AC-32-6**: Cap.32 cita esplicitamente Bailey-Lopez de Prado 2014, Lopez de Prado 2018 cap. 12, Cap.24.1 PV, Cap.24.7 PV, Cap.31.1, Cap.5 PI.
-
-### Cap.33
-
-- **AC-33-1**: Cap.33.1 fornisce la definizione formale del CSCV di Bailey-Borwein-Lopez de Prado-Zhu 2017 con i 6 passi della procedura (partizione $S$, combinazioni $\binom{S}{S/2}$, rank IS, rank OOS, logit-rank, frazione negativa).
-- **AC-33-2**: Cap.33.2 dichiara $S=16$ (per F=8 ideale) o $S=12$ (per F=6 atteso) come block size del CSCV temporalmente strutturato; allineamento ai fold del walk-forward esplicito; vincolo $S$ pari motivato.
-- **AC-33-3**: Cap.33.3 dichiara la soglia $\theta_{PBO}=0,5$ come gate minimo (parametro di tuning provvisorio); citazione Bailey-Borwein-Lopez de Prado-Zhu 2017 sulla raccomandazione $PBO<0,5$ minimo e $PBO<0,4$ forte.
-- **AC-33-4**: Cap.33.4 fornisce stima del costo computazionale con $\binom{S}{S/2}$ combinazioni + $|\mathcal{F}_1|$ valutazioni di SR per combinazione + ordine di grandezza wall-clock; frazione del compute budget $<5\%$.
-- **AC-33-5**: Cap.33.5 fornisce esempio numerico **illustrativo** con valori espliciti per $|\mathcal{F}_1|, S$, combinazioni vincenti, rank OOS medio + calcolo numerico di $PBO$.
-- **AC-33-6**: Cap.33 cita esplicitamente Bailey-Borwein-Lopez de Prado-Zhu 2017, Lopez de Prado 2018 cap. 11-12, Cap.23.1 PV, Cap.24.7 PV, Cap.31.1, Cap.5 PI.
-
-### Cap.34
-
-- **AC-34-1**: Cap.34.1 fornisce la definizione formale del bootstrap stazionario di Politis-Romano 1994 con block length geometrica $L \sim Geom(p)$ con $p=1/L_{avg}$ + wrap modulo $n$ (stationary) + $B=2000$ replicazioni.
-- **AC-34-2**: Cap.34.2 dichiara la block length media $L_{avg}$ calibrata automaticamente via Politis-White 2004; valore di lavoro default $L_{avg}=10$ segnali; ordine di grandezza $[5, 20]$ dichiarato per FIB intraday.
-- **AC-34-3**: Cap.34.3 elenca esplicitamente le **13 metriche bootstrappate** ($DSR, PBO, f_1$-$f_5, \pi_{t_2|t_1}, MFE_{aggregated}, MAE_{aggregated}, f_{stop|t_1}, CVaR_{95\%}, MDD_{intraday}$) con percentile method al 95% come default + BCa di Efron 1987 alternativo con citazione esplicita.
-- **AC-34-4**: Cap.34.4 contiene il **compute stress test obbligatorio** con la regola di decisione deterministica fra le 3 opzioni (i: F=8 con $t_{eval}<0,919$ min/cromosoma o $0,5$ min/cromosoma sotto vincolo parallelizzazione 16-vCPU al 0,9 di efficienza, ii: F=8 con c5.9xlarge / c5.18xlarge, iii: F~6 con varianza inflated). Aritmetica esplicita per ciascuna opzione con riferimento al range $[0,74; 1,47]$ min/cromosoma di Cap.23.6 PV. Soglia $\theta_{cost}=100$ USD/run dichiarata.
-- **AC-34-5**: Cap.34.4 dichiara la frazione di compute budget assorbita dal bootstrap stesso $<5\%$ del totale, con stima numerica ($O(B\cdot n_{segnali})\approx 2000\cdot n_{segnali}$ per metrica, $\sim 5\cdot 10^7$-$10^8$ operazioni totali per $n_{segnali}\sim 1.500$-$3.000$).
-- **AC-34-6**: Cap.34.5 dichiara il seed PRNG del bootstrap come parte dell'identita' del bundle frozen (eredita' 27 + 15 + Cap.35.1 elemento 5).
-- **AC-34-7**: Cap.34 cita esplicitamente Politis-Romano 1994, Politis-White 2004, Efron 1987 (BCa), Lopez de Prado 2018 cap. 12, Cap.4 PI, Cap.23.6 PV, Cap.24-26 PV.
-- **AC-34-8**: $B=2000$ ricampionamenti dichiarato esplicitamente (eredita' Cap.4 PI).
-
-### Cap.35
-
-- **AC-35-1**: Cap.35.1 elenca i 6 elementi del bundle frozen (tabella Cap.26.5 PV + cromosoma vincente + modelli stimati + payload Cap.6.1 PII + seed + metadati tracciabilita') con dettaglio per ciascun componente. I metadati di tracciabilita' includono esplicitamente: `F_effective`, $r_{FG}, r_{CV}, r_{Schoenfeld}$, `cox_time_varying_active`, finestra EGARCH effettiva, $D$ effettiva, opzione init effettiva, $N_{trials}=|\mathcal{F}_1|$, timestamp di freezing, versione del codice produttore.
-- **AC-35-2**: Cap.35.2 dichiara l'hash SHA-256 calcolato deterministicamente in **ordine canonico** + incorporamento nel bundle stesso come campo `bundle_hash` + verifica integrita' all'avvio pipeline (Cap.27.3 PVI con fallimento del caricamento in caso di mismatch).
-- **AC-35-3**: Cap.35.3 elenca le 4 regole di sostituzione (trimestrale/semestrale pianificata, trigger deriva Cap.30, M-16 attivato, fallimento go-live) + gestione segnali `active` al momento della transizione (eredita' Cap.7 PII state machine: continuano con bundle precedente fino a transizione terminale).
-- **AC-35-4**: Cap.35.4 dichiara versioning + `bundle_id` progressivo + tabella storica `bundle_history` con metriche aggregate e motivazione.
-- **AC-35-5**: Cap.35 cita esplicitamente Cap.6.1 PII (payload), Cap.10 PII (log replay), Cap.26.5 PV (tabella congelati), Cap.26.8 PV (seed), Cap.27.3 PVI (pipeline), Cap.7 PII (state machine).
-
-### Cap.36
-
-- **AC-36-1**: Cap.36.1 elenca la checklist di go-live in **12 AC binari** ordinati (AC-GO-1..AC-GO-12) con criteri di accettazione espliciti per ciascun AC + riferimento ai sotto-capitoli di provenienza.
-- **AC-36-2**: Cap.36.1 dichiara la **decisione binaria GO / NO-GO**: GO se tutti i 12 AC sono OK; NO-GO se anche uno e' NOT OK con motivazione + raccomandazione operativa.
-- **AC-36-3**: Cap.36.2 dichiara la **verifica aggregata di sessione** (500 pt OR 70% movimento strutturale) con $\theta_{sessions}=0,60$ provvisoria + reporting separato per regime calmo/turbolento (eredita' 10 + 18).
-- **AC-36-4**: Cap.36.3 dichiara esplicitamente la decisione di scope (c): i 10 parametri di tuning operativo di Parte VI rimangono starting point con default proposti di Parte VI; nessun congelamento empirico in Parte VII; riconsiderazione a 3-6 mesi di produzione live come carryover esplicito al monitoring post-go-live.
-- **AC-36-5**: Cap.36.4 dichiara la **regola di anticipo del ritraining** sulla base degli alert persistenti di Cap.30.2 / 30.3 / 30.4 / 30.5 PVI (eredita' 30); citazione esplicita Cap.35.3.2.
-- **AC-36-6**: Cap.36.5 dichiara il **report finale del run** con: tabella checklist; tabella metriche aggregate con IC bootstrap; tabella decisioni condizionali Cap.31.3; tabella chiusura M-5+Cap.26.3-26.4 Cap.31.4; bundle frozen artifact (hash + bundle_id + F_effective + timestamp); decisione GO/NO-GO + motivazione.
-- **AC-36-7**: Cap.36 cita esplicitamente Cap.5 PI (definizione successo eredita' 9), Cap.1 PI (target operativo eredita' 10), Cap.24.1-24.2 PV, Cap.27 PVI (pipeline), Cap.30 PVI (dashboard + alert), Cap.31-35 PVII.
-
-### Vincoli trasversali (AC-T)
-
-- **AC-T-1**: tutte le **32 eredita'** elencate nella sezione "Eredita' obbligatoria" sono citate esplicitamente almeno una volta nei capitoli pertinenti di Parte VII. Mancata citazione in un capitolo pertinente = finding di Review.
-- **AC-T-2**: i **2 M-promemoria pertinenti CAP-07** sono trattati come da decisioni di scope: M-2 OPEN qualitativo carryover Appendice E senza risoluzione numerica (citazione qualitativa in Cap.31.1 + AC-GO-10); M-16 OPEN-CONDIZIONALE chiuso in Cap.31.3 con regola di attivazione/disattivazione + metadato `cox_time_varying_active` nel bundle frozen.
-- **AC-T-3**: nessuna logica di execution e' introdotta in Parte VII; verifica negativa lessicale: nessuna occorrenza di "order routing", "fill" (eccetto "fill virtuale" come definizione Cap.7.3 PII), "slippage", "broker execution" in senso execution, "posizione netta" in senso execution.
-- **AC-T-4**: nessun re-training del GA in production e' attivato direttamente in Parte VII; Cap.35.3.2 + Cap.36.4 dichiarano la regola di anticipo del ritraining (parte di produzione, non parte di validazione OOS pre-go-live).
-- **AC-T-5**: tutti gli esempi numerici (Cap.32.5, Cap.33.5, esempi di Cap.36.2 se presenti) rispettano il tick FIB 5 pt (eredita' 6) per i livelli di prezzo; gli esempi di Cap.32.5 e Cap.33.5 sono **dichiarati illustrativi** (non risultati empirici).
-- **AC-T-6**: tutti i parametri di tuning provvisori introdotti in Parte VII sono dichiarati con dominio + default proposto + marcatura "non congelato in Parte VII, riconsiderato post-go-live". Elenco completo: $\theta_{PBO}=0,5$, $\theta_{f_5}=0,30$, $\theta_{IQR}=0,40$, $\theta_{t_2}=0,30$, $\epsilon_{f_1}=10^{-6}$, $\theta_{DSR}=0,95$, $\theta_{CVaR}=-100$ pt, $\theta_{MDD}=200$ pt, $\theta_{sessions}=0,60$, $S\in\{12, 16\}$, $L_{avg}=10$, $\theta_{cost}=100$ USD/run. Nessun congelamento numerico nuovo di Parte VII; la tabella di Cap.26.5 PV non viene modificata.
-- **AC-T-7**: lunghezza target ~8 pp totali = ~1,5 pp Cap.31 + ~1,5 pp Cap.32 + ~1,5 pp Cap.33 + ~1,5 pp Cap.34 + ~1 pp Cap.35 + ~1 pp Cap.36.
-- **AC-T-8**: italiano formale tecnico conciso; nessuna ridondanza vs Parti precedenti (cita ma non riscrive payload, state machine, EGARCH, regime, pivot, geometria zone, fitness $f_1$-$f_5$, walk-forward, cromosoma, pipeline Cap.27 PVI, monitoraggio Cap.30 PVI).
-- **AC-T-9**: `reports/REPORT_CAP_07.md` prodotto con le 5 sezioni del formato supervisore (Cosa e' stato prodotto, Ipotesi di partenza, Decisioni rilevanti, Misura prima/dopo, Domande aperte) + Criterio di rollback + tabella verifica AC.
-- **AC-T-10**: `docs/methodology_v2/00_indice.md` aggiornato Parte VII come "IN REVIEW" (o equivalente) con riferimento commit del documento.
-- **AC-T-11**: tutti i file modificati committati e pushati su `origin/main`; working tree pulito (salvo `.claude/scheduled_tasks.lock` ignorato).
-
-## Out-of-scope -- Development NON include queste cose in CAP-07
-
-- **Specifica del cromosoma e operatori NSGA-II**: gia' trattati in Cap.22-23 PV. Cap.31-36 PVII consumano $\mathcal{F}_1$ come input, non lo ricostruiscono.
-- **Pipeline di inference real-time**: gia' trattata in Cap.27 PVI. Cap.36 cita la pipeline come componente del gate go-live (AC-GO-10), non la riscrive.
-- **Politica anti-doppio-segnale e tie-break operativo**: gia' trattati in Cap.28 PVI. Cap.34 cita la regola di non-double-counting nel bootstrap, ma la regola operativa di Cap.28 PVI resta normativa.
-- **Layout mobile Telegram**: gia' trattato in Cap.29 PVI. Cap.36 cita Telegram come canale di output al cellulare (eredita' 9), non lo riformula.
-- **Monitoraggio live in produzione**: gia' trattato in Cap.30 PVI. Cap.36 cita la dashboard Cap.30.6 PVI e gli alert Cap.30.2-30.5 PVI come AC del gate go-live (AC-GO-11) e come trigger di anticipo ritraining (Cap.36.4), senza riformulare il monitoraggio.
-- **Verifica empirica numerica $L_{max}=30$s Telegram**: resta carryover Appendice E (M-2 OPEN), decisione di scope (a). Cap.31.1 e Cap.36 (AC-GO-10) citano $L_{max}$ qualitativamente come obiettivo della catena ingest-emissione-pubblicazione, non lo risolvono numericamente.
-- **Congelamento empirico dei 10 parametri di tuning operativo di Parte VI**: decisione di scope (c). Il congelamento empirico richiede dati di produzione live (non backtest OOS); rimane carryover al monitoring post-go-live, non e' task di Parte VII.
-- **Re-applicazione del protocollo Parte V con specifica Cox time-varying coefficients**: se M-16 e' attivato in Cap.31.3, l'estensione si applica nel **ciclo successivo di training**, non in Parte VII; Cap.31.3 registra `cox_time_varying_active=True` come metadato del bundle frozen, ma il training stesso e' Parte V.
-- **Attivazione fallback Harrell-strict $K_{max}^{strict}=4$**: stesso trattamento di M-16. Cap.31.5 registra come carryover; l'attivazione e' Parte V ciclo successivo, non Parte VII.
-- **Decisione di ricalibrazione delle soglie $\theta_{DSR}, \theta_{PBO}, \theta_{f_5}, \theta_{IQR}, \theta_{t_2}$ in caso di fallimento go-live**: Cap.31.2 dichiara il caso di fallimento ma rinvia la decisione di ricalibrazione delle soglie alla sessione operativa post-fallimento, non a un sotto-capitolo di Cap.31.
-- **Implementazione del codice di training, bootstrap, freezing, deployment**: e' attivita' di sviluppo software, non di metodologia. Parte VII descrive **la regola**, non l'implementazione.
-- **Setup operativo del bot Telegram e degli alert dashboard**: Appendici E + F (out-of-scope Parte VII).
-- **Specifica API Directa DAPI**: Appendice C (out-of-scope Parte VII).
-- **Specifica storico Portara/CQG**: Appendice D (out-of-scope Parte VII).
-- **Patch retroattive a CAP-01, CAP-02, CAP-03, CAP-04, CAP-05, CAP-06**: nessuna modifica retroattiva alle Parti gia' chiuse PASS. Eventuali incoerenze rilevate da Developer di Parte VII che richiedono mini-patch retroattive vanno segnalate come M-promemoria nuovi nel REPORT_CAP_07; la decisione di applicare la mini-patch spetta al supervisore in checkpoint Review.
-
-## Done when
-
-Il Reviewer dichiara PASS se il documento risponde in modo non ambiguo a queste domande operative:
-
-1. **Come si seleziona deterministicamente il cromosoma vincente dal fronte di Pareto $\mathcal{F}_1$ prodotto dal NSGA-II di Parte V?** -- Cap.31.2 (6 filtri lessicografici + tie-break esplicito + caso di fallimento).
-2. **Quale e' la formula del DSR e quale soglia di accettazione?** -- Cap.32.1, Cap.32.4.
-3. **Quale e' la procedura CSCV per stimare PBO e quale soglia di accettazione?** -- Cap.33.1, Cap.33.3.
-4. **Come si producono intervalli di confidenza bootstrap su DSR, PBO e metriche di lifecycle?** -- Cap.34.1-34.3.
-5. **Quale e' la decisione operativa fra F=8 completo e F=6 atteso? Come si misura empiricamente?** -- Cap.34.4 (regola deterministica fra le 3 opzioni i/ii/iii + soglia $\theta_{cost}=100$ USD/run).
-6. **Come si chiudono le 3 decisioni condizionali di Parte V (Cox vs Fine-Gray, stratificazione vs interaction term, time-varying coefficients M-16)?** -- Cap.31.3.
-7. **Come si chiudono M-5 (window EGARCH) e Cap.26.3-26.4 PV ($D$ + init)?** -- Cap.31.4.
-8. **Cosa contiene esattamente il bundle frozen e come e' identificato univocamente?** -- Cap.35.1, Cap.35.2.
-9. **Quando e come si sostituisce il bundle frozen in produzione?** -- Cap.35.3.
-10. **Quale e' la checklist deterministica binaria di gate per dichiarare GO/NO-GO al go-live?** -- Cap.36.1.
-11. **Come si gestiscono i 10 parametri di tuning operativo non congelati di Parte VI in Parte VII?** -- Cap.36.3 (rimangono starting point; nessun congelamento empirico in Parte VII; carryover monitoring post-go-live).
-12. **Come si attiva il ritraining anticipato in produzione?** -- Cap.36.4 + Cap.35.3.2.
-
-## Output files attesi
-
-1. `docs/methodology_v2/CAP_07_parte_VII.md` -- italiano formale, ~8 pp (target lunghezza 6 capitoli: Cap.31 ~1,5 pp + Cap.32 ~1,5 pp + Cap.33 ~1,5 pp + Cap.34 ~1,5 pp + Cap.35 ~1 pp + Cap.36 ~1 pp).
-2. `reports/REPORT_CAP_07.md` -- 5 sezioni formato supervisore:
-   - **Cosa e' stato prodotto**: sintesi dei 6 capitoli, scelte di scope applicate, eredita' citate.
-   - **Ipotesi di partenza**: eredita' 1-32 da CAP-01..CAP-06 + 2 M-promemoria pertinenti integrati/rinviati.
-   - **Decisioni rilevanti**: in particolare le 5 decisioni di scope del Planner ((a) M-2 OPEN qualitativo; (b) M-16 regola di chiusura; (c) no congelamento empirico 10 parametri Parte VI; (d) compute stress test regola deterministica; (e) bootstrap su cloud); la scelta delle soglie provvisorie ($\theta_{DSR}, \theta_{PBO}, \theta_{f_5}, \theta_{IQR}, \theta_{t_2}, \theta_{CVaR}, \theta_{MDD}, \theta_{sessions}, \theta_{cost}, S, L_{avg}, \epsilon_{f_1}$).
-   - **Misura prima/dopo**: cosa il GA puo' fare ora che Parte VII esiste rispetto al prima (sintesi: senza Parte VII il fronte di Pareto $\mathcal{F}_1$ resterebbe ambiguo, mancherebbe la prova anti-overfitting, mancherebbero IC bootstrap, mancherebbe l'identita' immutabile del bundle, mancherebbe la regola binaria di go-live; con Parte VII il fronte di Pareto si traduce in **uno specifico bundle frozen con hash SHA-256 + checklist binaria GO/NO-GO**).
-   - **Domande aperte**: (i) riconsiderazione $\theta_{CV}=0,5$ Cap.25.5 PV (Cap.31.5 carryover); (ii) riconsiderazione $K_{max}^{strict}=4$ Harrell-strict Cap.26.7 PV (Cap.31.5 carryover); (iii) attivazione condizionale Cox time-varying coefficients M-16 (Cap.31.3 con metadato bundle); (iv) congelamento empirico dei 10 parametri di tuning operativo di Parte VI (Cap.36.3 carryover post-go-live); (v) riconsiderazione delle soglie di Cap.32-33-36 in caso di fallimento o di distribuzioni empiriche borderline; (vi) decisione operativa F=8 vs F~6 (Cap.34.4 condizionata all'esito del compute stress test).
-   - **Criterio di rollback**: condizioni sotto cui Parte VII andrebbe rivista (es. se il compute stress test mostra che il bundle parziale F~6 ha varianza inflated $>2\times$ rispetto al caso F=8 ideale stimato analiticamente, valutare se opzione (iii) e' accettabile o se ridimensionare la popolazione NSGA-II in Cap.26.1 PV; se in produzione si rileva che $\theta_{DSR}=0,95$ e' troppo stringente e nessun bundle passa il gate ripetutamente, revisione di Cap.32.4; se l'hash SHA-256 di Cap.35.2 e' computazionalmente prohibitive per bundle di dimensione $\sim$ MB, valutare hash piu' leggero; se la regola di transizione di segnali `active` di Cap.35.3.1 produce inconsistenze nel log di replay cross-bundle, revisione di Cap.35.3).
-3. Aggiornamento `docs/methodology_v2/00_indice.md` -- Parte VII marcata "IN REVIEW v1" dopo Developer (lo stato cambia in PASS dopo Reviewer PASS in chiusura sessione).
-
-## Pipeline attesa
-
-Development v1 -> Review v1 -> [classificazione GA al supervisore se CONDITIONAL/FAIL] -> fix -> ... -> PASS
-
-L'Orchestratore della sessione corrente esegue il check post-Developer (6 controlli del CLAUDE.md) prima di chiamare Reviewer. La chiusura sessione richiede tutte e 7 le condizioni (CLAUDE.md), incluso l'aggiornamento di `tasks/CARRYOVER.md` con: chiusura M-16 (CLOSED-CAP-07 con condizione di attivazione registrata nel metadato bundle frozen) o riconferma OPEN-CONDIZIONALE se Cap.31.3 ha registrato `cox_time_varying_active=False`; chiusura M-2 OPEN qualitativamente (citazione in Cap.31.1 + AC-GO-10) o riconferma OPEN se il Reviewer rileva che la citazione non sostituisce la verifica empirica Appendice E.
-
-**Atteso numero di iterazioni**: 1-2 cicli. Parte VII e' la **chiusura del documento metodologico**: consuma eredita' da tutte le Parti precedenti (32 eredita') senza ridefinire architettura. Il primo ciclo Review v1 probabilmente trovera' 3-6 finding totali (BUG REALI + MIGLIORA + NEUTRO); la decisione del supervisore sui finding non-BUG seguira' la prassi standard del progetto.
-
-**Criterio di rollback in caso di fallimento**: se Review v2 trova ancora BUG REALI strutturali sui 6 capitoli di Parte VII (es. regola di selezione Cap.31.2 non deterministica, formula DSR non riproducibile dalla letteratura, procedura CSCV ambigua, compute stress test non operazionalizzabile, processo di freezing non verificabile, checklist Cap.36 incompleta), si valuta uno splitting di Parte VII in Parte VII.A (Cap.31-34 validazione statistica) e Parte VII.B (Cap.35-36 freezing + gate), con due cicli Review distinti. Decisione di rollback rinviata al supervisore al primo CONDITIONAL.
-
-Note di lavoro per il Developer:
-
-- **Niente numeri inventati di test empirici**. Cap.34.4 deve dichiarare la **regola di decisione** del compute stress test (algoritmo + soglie quantitative + aritmetica esplicita di soglia $t_{eval}$ e $\theta_{cost}$), non simulare i risultati di un test che non e' ancora stato eseguito. Tutti i numeri di esempio in Cap.32.5 e Cap.33.5 sono **illustrativi** (chiaramente dichiarati come tali).
-- **Replay deterministico**: tutti gli AC che richiedono replay bit-exact (selezione cromosoma vincente di Cap.31.2, ordering CSCV di Cap.33.1, campionamento bootstrap di Cap.34.5, hash bundle di Cap.35.2) devono dichiarare esplicitamente la dipendenza dal seed PRNG corrispondente.
-- **Coerenza eredita'**: ogni eredita' citata deve essere coerente con la versione corrente del documento di provenienza (no riferimenti a versioni storiche obsolete). In particolare: Cap.26.2 PV $T_{budget}=80$h e' la versione rework v3; Cap.25.5 PV $N_{eventi}$ "segnali eseguiti" e' la versione rework v3; Cap.26.7 PV $K_{max}=6$ + divergenza Harrell-strict e' la versione rework v3. Tutte le citazioni di Parte V devono essere conformi alla v4 PASS (commit `dcdcaee`). Tutte le citazioni di Parte VI devono essere conformi alla v2 PASS (commit `d082972`).
-- **Citazioni bibliografiche**: ogni metodo statistico nuovo (DSR, PBO/CSCV, bootstrap stazionario, BCa) richiede citazione esplicita di paper + journal + anno + pagine come prassi delle Parti precedenti. La citazione di Therneau-Grambsch 2000 per Cox time-varying coefficients (Cap.31.3) e' anch'essa esplicita.
-- **Coerenza con la struttura del documento**: il documento ha **6 capitoli** (31-36), non 5; il vincolo "~8 pp totali" mappa su lunghezza target ~1,5 pp per Cap.31-34 + ~1 pp per Cap.35-36. Eventuali sotto-sezioni nuove sono ammesse solo se motivate operativamente (es. Cap.31.5 e Cap.36.3 sono sotto-sezioni dedicate a carryover esplicito al ciclo successivo).
+<!-- ORCH-NOTE: fine eccezione -->
 
 ---
 
-# [APPENDICE AGGIUNTA 2026-05-27 dall'Orchestratore post-checkpoint supervisore] Finding di Review da risolvere (rework v2)
+## Dati di input recuperati dall'Orchestratore
 
-**Origine**: Review v1 CAP-07 (commit `640ed61` del 2026-05-27, verdetto **CONDITIONAL**) -- vedi `reviews/REVIEW_CAP_07_review.md`.
+Questa sezione contiene la tabella sessioni FIB recuperata dall'Orchestratore al passo STEP 2 della sequenza operativa via WebFetch/WebSearch su fonti ufficiali Borsa Italiana e archivi storici. **E' INPUT AUTORITATIVO** per il Developer (vedi memory `project-orchestrator-input-is-authoritative`): il Developer NON verifica nuovamente le date, NON propone modifiche, NON ridiscute orari. Copia i dati nel CSV normativo a 6 campi `data/sessions/fib_session_calendar.csv` rispettando lo schema del task card §3.5. Eventuali metadati di provenienza (URL fonte, data consultazione ISO, note di ambiguita') vanno SOLO in `data/sessions/README.md`, lasciando il CSV pulito.
 
-**Decisione del supervisore (checkpoint Orchestratore 2026-05-27)**: il supervisore ha ratificato l'opzione "Entrambi i MIGLIORA PERFORMANCE a Developer". Conseguenza:
+### Tabella sessioni FIB — schema normativo §3.5
 
-- **Finding #1 (BUG REALE)** -> Developer (obbligatorio)
-- **Finding #2 (MIGLIORA PERF, unita c5.4xlarge)** -> Developer (approvato supervisore)
-- **Finding #3 (MIGLIORA PERF, bibliografia Notices AMS)** -> Developer (approvato supervisore)
-- **Finding #4 (NEUTRO, esempio Cap.33.5 opaco)** -> ignorato (default classe NEUTRO)
-- **Finding #5 (NEUTRO, $|f_5|$ ridondante)** -> ignorato (default classe NEUTRO)
+| epoch_id | start_date | end_date | session_open_local | session_close_local | timezone |
+|----------|------------|----------|--------------------|--------------------|----------|
+| E1 | 1994-11-28 | 2010-11-07 | 09:15 | 17:30 | CET |
+| E2 | 2010-11-08 | 2015-11-22 | 09:00 | 17:40 | CET |
+| E3 | 2015-11-23 | 2017-07-02 | 09:00 | 17:50 | CET |
+| E4 | 2017-07-03 | 2020-02-16 | 09:00 | 20:30 | CET |
+| E5 | 2020-02-17 | 2026-05-27 | 08:00 | 22:00 | CET |
 
-I 3 finding sotto sono **vincolanti** per il rework v2 del Developer; chiusura formale richiede risoluzione documentata di ciascuno con riferimento puntuale (file:riga) nel REPORT v2 e tabella verifica AC v2 aggiornata. Nessun finding addizionale di consegna e' atteso (il check post-Developer del primo ciclo e' passato 6/6).
+**Note di interpretazione:**
+- `session_open_local` indica l'inizio della **sessione di negoziazione continua** (escludendo la fase di asta di apertura, che esiste in tutte le epoche ma con timing variabile e non rilevante per la semantica del segnale).
+- `session_close_local` indica la chiusura della sessione di negoziazione continua. Per E4 (2017-2020) gli orari sono single continuous session 09:00-20:30 con marcatore convenzionale di transizione fra "diurna" e "serale" alle 17:50, ma da Cap.10 PII del doc v2 in poi la sessione e' trattata come finestra continua singola; il marker 17:50 NON e' una pausa di mercato.
+- `end_date` indica l'ultimo giorno in cui l'epoca era in vigore (giorno PRIMA della data di entrata in vigore della epoca successiva). Per E5 la `end_date` e' la data corrente di consultazione (2026-05-27); la timeline va estesa quando emergeranno nuove epoche.
+- Tutti i timestamp sono in **CET**: la pipeline gestira' la conversione automatica CEST in vigore (ultima domenica di marzo → ultima domenica di ottobre) coerentemente con le convenzioni del task card §3.5 e della semantica eventi/timestamp del doc v2.
+- Tick FIB = 5 punti indice. Multiplier FIB pieno = 5 EUR/punto (miniFIB = 1 EUR/punto). Coerenti con preambolo `00_indice.md` e con [[project-fib-instrument]].
 
-## Finding #1 -- BUG REALE: contraddizione interna Cap.33.4 vs Cap.34.4 sulla frazione del compute budget assorbita dal PBO
+### Sotto-tabella fonti e ambiguita'
 
-**File:riga della review**: `reviews/REVIEW_CAP_07_review.md` righe 34-50 (CB-1).
+| epoch_id | fonte_url | data_consultazione_ISO | note_ambiguita |
+|----------|-----------|------------------------|----------------|
+| E1 (data inizio) | https://www.bankpedia.org/termine.php?c_id=20457 | 2026-05-27 | Lancio mercato IDEM 1994-11-28 confermato da bankpedia e Wikipedia IDEM; **prima negoziazione FIB30 quel giorno**. Sottostante: indice MIB30 (predecessore di FTSE MIB, transizione MIB30 → S&P/MIB → FTSE MIB avvenuta nel 2003-2004 e poi 2009; il **contratto FIB e' continuativo** nella serie Portara back-adjusted). |
+| E1 (orari) | https://www.borsaitaliana.it/borsaitaliana/ufficio-stampa/comunicati-stampa/2000/000613minifib.htm | 2026-05-27 | Orari **09:15-17:30 CET** confermati per il 2000 dal comunicato lancio miniFIB. **DATA DA VERIFICARE**: la fonte conferma gli orari nel 2000, NON il periodo intero 1994-2010. Possibili modifiche intermedie non documentate dalle fonti consultate. Si assume continuita' 1994-2010 in mancanza di evidenze contrarie. |
+| E1 (data fine) | https://www.thetradenews.com/borsa-italiana-derivatives-market-moves-to-sola-platform/ + Avviso Borsa n.15413 del 21/10/2010 | 2026-05-27 | Migrazione SOLA dichiarata per 2010-11-08 (Avviso n.15413: "IDEM - SOLA migration: postponement to 8th November 2010"). **DATA DA VERIFICARE**: l'associazione fra migrazione SOLA e cambio orari 09:15→09:00 / 17:30→17:40 e' un'**inferenza** non documentata esplicitamente nelle fonti consultate. Plausibile ma non confermata. |
+| E2 (orari) | https://www.borsaitaliana.it/borsaitaliana/ufficio-stampa/comunicati-stampa/2015/orarinegoziazione.htm | 2026-05-27 | Orari **09:00-17:40 CET** derivati per **inferenza inversa** dal comunicato Borsa Italiana del 2015 che cita "17:40 (IDEM - calcolato dalla differenza)" come orario precedente all'estensione a 17:50. L'orario di apertura 09:00 e' coerente con il modello IDEM noto e con il comunicato 2017 (`https://www.borsaitaliana.it/derivati/derivati/estensioneorarifibeminifib.en.htm`) che dichiara come orari pre-2017 "9 am to 5.50 pm CET". **DATA DA VERIFICARE**: la transizione 09:15→09:00 e 17:30→17:40 non e' documentata da un comunicato ufficiale diretto nei risultati delle ricerche. |
+| E3 (estensione 17:40 → 17:50) | https://www.borsaitaliana.it/borsaitaliana/ufficio-stampa/comunicati-stampa/2015/orarinegoziazione.htm | 2026-05-27 | Data **2015-11-23** confermata da comunicato Borsa Italiana ufficiale. Cita esplicitamente IDEM equity derivatives: "fase di negoziazione continua viene estesa fino alle 17.50" con "posticipamento di 10 minuti rispetto alla chiusura precedente" (17:40). |
+| E4 (estensione 17:50 → 20:30) | https://www.borsaitaliana.it/borsaitaliana/ufficio-stampa/comunicati-stampa/2017/idem.en.htm + https://www.borsaitaliana.it/derivati/derivati/estensioneorarifibeminifib.en.htm | 2026-05-27 | Data **2017-07-03** confermata da comunicato Borsa Italiana ufficiale: "As from today, IDEM ... has extended its trading hours" (data pubblicazione 2017-07-03). Orari: "continuous trading from 09:00 to 20:30" con sessione diurna 09:00-17:50 e serale 17:50-20:30, single continuous session (no pausa). |
+| E5 (estensione 20:30 → 22:00) | https://www.borsaitaliana.it/borsaitaliana/ufficio-stampa/comunicati-stampa/2020/estensioneorariidem.htm + https://www.borsaitaliana.it/derivati/nuovi-orari-di-negoziazione-fib-e-minifib.en.htm | 2026-05-27 | Data **2020-02-17** confermata da comunicato Borsa Italiana ufficiale: "a partire da oggi, 17 febbraio 2020". Orari: "Dalle 07:45 alle 8:00 la fase di asta di apertura (pre-asta, validazione, apertura) e dalle 8:00 fino alle 22:00 la negoziazione in continua". Per la metodologia (sessione = continuous trading), `session_open_local=08:00`. |
 
-**Posizione nel documento metodologico v1**:
-- `docs/methodology_v2/CAP_07_parte_VII.md` riga ~320 (Cap.33.4 paragrafo finale, dichiara "Frazione del compute budget assorbita dal PBO e dunque **inferiore al 5%** del totale").
-- `docs/methodology_v2/CAP_07_parte_VII.md` righe ~435-439 (Cap.34.4 post-processing aggregato, ammette "PBO ~1% per S=12, fino a ~10% per S=16, Cap.33.4").
+### Nota per il Developer su come usare questa tabella
 
-**Diagnosi del Reviewer**: i due paragrafi affermano cose incompatibili. La matematica esplicita di Cap.33.4 (7,7e8 / 8e9 ~= 10% per S=16) contraddice direttamente la sua stessa conclusione "<5%". Il Developer ha autodichiarato AC-33-4 come OK ma il calcolo interno mostra il contrario; **AC-33-4 dell'ACTIVE_TASK richiede esplicitamente "frazione del compute budget < 5%"**.
+> "La tabella sessioni FIB inserita in ACTIVE_TASK.md dalla sezione 'Dati di input recuperati dall'Orchestratore' e' INPUT AUTORITATIVO. NON verificare con fonti esterne. NON proporre modifiche. NON ridiscutere date o orari. Copia i dati nel CSV normativo a 6 campi `data/sessions/fib_session_calendar.csv` rispettando esattamente lo schema del task card §3.5 (epoch_id, start_date, end_date, session_open_local, session_close_local, timezone). Eventuali metadati di provenienza (URL fonte, data consultazione ISO, note di ambiguita') vanno SOLO in `data/sessions/README.md`, lasciando il CSV pulito."
 
-**Cosa il Developer DEVE fare nel rework v2**:
+Razionale: il Developer subagente non ha tools web (memory `project-developer-subagent-no-web`); inoltre le date sono gia' state verificate dall'Orchestratore nel passo STEP 2 contro le fonti ufficiali Borsa Italiana. Una doppia verifica da parte del Developer non aggiungerebbe valore e introdurrebbe rischio di divergenza fra dati in ACTIVE_TASK e dati nel CSV. Vedi memory `project-orchestrator-input-is-authoritative`.
 
-Riformulare il paragrafo finale di Cap.33.4 per coerenza interna con Cap.34.4. La forma raccomandata e' una delle due seguenti (Developer sceglie la piu' chiara, coerente con la matematica esplicita gia' presente):
+### Sintesi metadati ambiguita' per il Developer (riassunto README)
 
-- **Opzione (alpha)**: ammettere il range. "Frazione del compute budget assorbita dal PBO: ~1% per S=12 (~5,5e7 / 8e9), ~10% per S=16 (~7,7e8 / 8e9). Il range puo' essere ulteriormente ridotto via parallelizzazione su 16 vCPU (Cap.34.4); con $S=12$ il PBO entra in $<2\%$ effettivo, con $S=16$ entra in $\leq 10\%$ effettivo. Coerente con il totale post-processing dichiarato in Cap.34.4 ($\leq 15\%$)."
-- **Opzione (beta)**: riformulare assumendo il caso favorevole $S=12$ come scenario nominale. "Frazione del compute budget assorbita dal PBO con configurazione nominale $S=12$: ~1% (~5,5e7 / 8e9), confermato fattibile su c5.4xlarge in tempi << T_budget. Il caso $S=16$ assorbe ~10% (dettaglio in Cap.34.4)."
+Il `data/sessions/README.md` deve riportare esplicitamente:
+- per **E1**, **E2**: gli orari di queste epoche sono parzialmente derivati per inferenza (orari E1 verificati solo nel 2000; transizioni intermedie 09:15→09:00 e 17:30→17:40 non documentate da un comunicato ufficiale specifico)
+- la **data 2010-11-08** come confine E1/E2 e' inferita dalla migrazione SOLA (data documentata) ma non confermata come effettiva data di cambio orari
+- le **date 2015-11-23**, **2017-07-03**, **2020-02-17** sono confermate da comunicati Borsa Italiana ufficiali
+- il calendario completo va riesaminato in CAP-DATA-02 (richiesta tecnica a Portara) o in PHASE-B (acquisizione storico), che potrebbe fornire epoche piu' precise via roll log Portara
 
-Vincolo: il rework deve **non introdurre nuovi numeri inventati**, deve usare solo i numeri gia' presenti nella matematica esplicita di Cap.33.4 (5,5e7, 7,7e8, 8e9). La riformulazione di AC-33-4 nel REPORT v2 deve essere coerente (es. AC-33-4 verificato per il caso $S=12$ con frazione $\leq 5\%$, oppure AC-33-4 verificato con range esplicito 1%-10% a seconda di $S$).
+---
 
-**AC verificabile post-rework v2**: AC-33-4 promosso da PARZIALE a OK con citazione esplicita del paragrafo riformulato di Cap.33.4 (file:riga del rework).
+## Note tecniche T2/T3
 
-## Finding #2 -- MIGLIORA PERFORMANCE: errore di unita di misura sul prezzo spot di c5.4xlarge (2 occorrenze)
+### T2 — File `_build_order.yaml` citato nel task card §5
 
-**File:riga della review**: `reviews/REVIEW_CAP_07_review.md` righe 56-70 (O-1).
+Il task card §5 (Definition of Done) cita "_build_order.yaml (o equivalente) aggiornato: Parte 8 aggiunta in coda al corpo principale...". Il file `_build_order.yaml` **NON esiste** in questo repo (verificato con Glob al 2026-05-27 commit `f497022`). Il file "equivalente" che il progetto ha sempre usato e' `docs/methodology_v2/00_indice.md`. La condizione 4 della checklist di chiusura sessione (vedi `.claude/CLAUDE.md`) gia' richiede l'aggiornamento di `00_indice.md`.
 
-**Posizione nel documento metodologico v1**:
-- `docs/methodology_v2/CAP_07_parte_VII.md` riga ~426 (Cap.34.4 opzione ii: "rispetto a c5.4xlarge 80h (**15 USD/h spot** * 80h = ~12 USD/run di base, con margine)").
-- `docs/methodology_v2/CAP_07_parte_VII.md` riga ~441 (Cap.34.4 Cloud: "Il bootstrap gira su c5.4xlarge (16 vCPU, **~15 USD/h spot**)").
+**Implicazione per il Developer**: il riferimento "_build_order.yaml (o equivalente)" del task card §5 va letto come riferimento a `docs/methodology_v2/00_indice.md`. NON creare un nuovo file `_build_order.yaml`. Aggiornare `00_indice.md` aggiungendo la sezione "Parte 8 — ..." in coda al corpo principale e prima delle Appendici, con stato iniziale "IN REVIEW" (poi PASS Review v(N) con hash a chiusura sessione, come da decisione (d) ratificata).
 
-**Diagnosi del Reviewer**: $15$ USD/h $\times 80$ h $= 1.200$ USD/run, NON $12$ USD/run. Per chiudere l'aritmetica gia' presente nel testo (12 USD/run base + differenziale 24,4 USD/run vs c5.9xlarge), il prezzo deve essere $0,15$ USD/h spot (tipico spot pricing per c5.4xlarge: on-demand ~0,68 USD/h, spot ~0,15-0,27 USD/h). Errore di fattore 100 nell'unita di misura.
+### T3 — Directory `data/sessions/` non esistente
 
-**Cosa il Developer DEVE fare nel rework v2**:
+Il task card §3.5 richiede produzione di `data/sessions/fib_session_calendar.csv`. La directory `data/sessions/` **NON esiste** nel repo (verificato con Glob al 2026-05-27 commit `f497022`).
 
-Sostituire entrambe le occorrenze "15 USD/h spot" con "0,15 USD/h spot". Edit puntuali, no riscrittura strutturale del paragrafo. L'aritmetica successiva ($12$ USD/run base, differenziale $\leq \theta_{cost}=100$ USD/run -> opzione ii fattibile) resta invariata.
+**Implicazione per il Developer**: creare la directory `data/sessions/` come parte del deliverable §3.5 (in PowerShell: `New-Item -ItemType Directory -Force data/sessions`). Produrre dentro la directory due file:
+- `fib_session_calendar.csv` — CSV normativo a 6 campi conforme allo schema task card §3.5 (epoch_id, start_date, end_date, session_open_local, session_close_local, timezone)
+- `README.md` — note non normative su fonti, ambiguita' (vedi "Sintesi metadati ambiguita' per il Developer" sopra)
 
-**AC verificabile post-rework v2**: nessun AC specifico (errore di consegna documentale, non viola direttamente un AC del task), ma il Developer documenta nel REPORT v2 Sezione (iii) la correzione con file:riga.
+---
 
-## Finding #3 -- MIGLIORA PERFORMANCE: errore bibliografico Bailey-Borwein-Lopez de Prado-Zhu Notices AMS
+## 0. Note di integrazione nel doc v2
 
-**File:riga della review**: `reviews/REVIEW_CAP_07_review.md` righe 72-83+ (O-2).
+- CAP-DATA-01 è una **Parte normativa del doc v2**, allo stesso rango delle Parti già scritte (1–7). Non è appendice, non è documento esterno, non è capitolo intercalato.
+- Si aggiunge **in coda** al corpo principale del doc v2, prima della Parte 9 (Appendice). **Non richiede rinumerazione** di nessuna Parte precedente.
+- Deve fare **riferimenti incrociati espliciti** alle Parti già scritte del doc v2 dove pertinente, in particolare:
+  - all'invariante `research semantics = runtime semantics` (Parte sulle decisioni normative hard-locked)
+  - alla gap semantics (Parte sull'execution gate / runtime)
+  - al protocollo OOS, purge ed embargo (Parte sulla validazione)
+  - al layer di covarianza cross-index (Parte sulla covarianza condizionale multi-indice)
+- I riferimenti incrociati usano i numeri di Parte definitivi del doc v2; se durante la stesura emergesse un'ambiguità sulla numerazione, Development chiede chiarimento prima di proseguire (non assume).
 
-**Posizione nel documento metodologico v1**:
-- `docs/methodology_v2/CAP_07_parte_VII.md` riga ~252 (Cap.33.1 paragrafo 1: "cfr. anche Bailey-Borwein-Lopez de Prado-Zhu **2016** working paper preliminare in Notices of the American Mathematical Society 61(5)").
+---
 
-**Diagnosi del Reviewer**: il volume 61, numero 5 di Notices of the AMS e' del **maggio 2014**, non del 2016. Il paper e' Bailey, Borwein, Lopez de Prado, Zhu (2014) "Pseudo-Mathematics and Financial Charlatanism: The Effects of Backtest Overfitting on Out-of-Sample Performance", Notices of the AMS 61(5), 458-471. E' un paper formale (non un working paper) e l'anno e' 2014 (non 2016).
+## 1. Obiettivo
 
-**Cosa il Developer DEVE fare nel rework v2**:
+Congelare nel doc metodologico v2 la convenzione ufficiale di:
+- scelta della serie storica per training GA
+- metodo di back-adjustment e ricostruzione delle convenzioni alternative
+- gestione del rollover e filtro pre-expiry
+- gestione della griglia temporale 1-min con barre mancanti
+- timeline delle sessioni FIB per epoca
+- esclusione esplicita di fonti alternative (MIB cash, vendor diversi da Portara/CQG)
+- replica della convenzione sul layer cross-index (DAX, ESTX50, ES)
 
-Sostituire la citazione errata con la versione corretta. Edit puntuale del paragrafo di Cap.33.1. Forma raccomandata:
+L'output di questa Parte è normativo: tutto il preprocessing dei dati storici, in tutte le fasi successive del progetto, deve rispettarlo. Qualunque deviazione successiva richiede ritorno al Planner.
 
-> Bailey, Borwein, Lopez de Prado e Zhu (2017) "The Probability of Backtest Overfitting", Journal of Computational Finance 20(4), 39-70 (cfr. anche Bailey, Borwein, Lopez de Prado, Zhu 2014 "Pseudo-Mathematics and Financial Charlatanism: The Effects of Backtest Overfitting on Out-of-Sample Performance", Notices of the American Mathematical Society 61(5), 458-471).
+---
 
-**AC verificabile post-rework v2**: AC-T-10 (citazioni bibliografiche conformi al formato delle Parti precedenti) resta OK; il Developer documenta nel REPORT v2 Sezione (iii) la correzione con file:riga.
+## 2. Input richiesti
 
-## Finding #4 e #5 -- NEUTRO (ignorati per default)
+- `ENGINE_ALGO_INTEGRATO_HARD_LOCKED.pdf` (capitoli 5, 6, 9, 12, 13, 14, 23, 24, 30)
+- Parti 1–7 del nuovo doc v2 già scritte (per coerenza terminologica e riferimenti incrociati)
+- Scambio email con Portara del 15/05/2026 (sintesi sotto)
+- Roadmap del progetto: PHASE-1 FIB-only, PHASE-2 cross-index (DAX+ESTX50+ES)
 
-**#4 (Cap.33.5 esempio PBO opaco)**: il salto logico fra "$c^*$ vince in 8.500/12.870 combinazioni" e "PBO = 4.500/12.870 = 0,35" e' opaco (le altre 4.370 combinazioni dove $\lambda_n^* > 0$ non sono esplicitate). Il Reviewer ha dichiarato che l'esempio e' **illustrativo**, quindi opacita' tollerabile. **Nessuna azione richiesta**.
+### Sintesi vincoli operativi noti da Portara
+- Serie disponibile dal 1995 (FIB pieno, non miniFIB)
+- Back-adjustment default: Panama-additive su base settle
+- Disponibili in CSV: `Date, Time, O, H, L, C, V, TickCount, ContractName, UnadjustedClose, RollSpread, CumulativeSpread` + roll log allegato
+- Roll rule default: 3 giorni prima della scadenza (da chiarire se calendario o trading — vedi CAP-DATA-02)
+- Timestamps default: SOB exchange time
+- Barre senza trade: omesse (no zero-volume bar fill)
+- Volume reale dal 2000 in poi
+- Nessuna marcatura di sessione nel file
 
-**#5 (\|$f_5$\| ridondante nei filtri)**: $f_5$ e' gia' non-negativa per costruzione (Cap.24.1 PV), quindi $|f_5|$ e' tautologicamente $f_5$. **Nessuna azione richiesta**.
+---
 
-Il Developer **non** modifica questi 2 punti nel rework v2. Se per pulizia decide di togliere comunque $|\cdot|$ ridondante (Finding #5), va dichiarato nel REPORT v2 Sezione (iii) come correzione opportunistica fuori scope dei finding ratificati. **Non vincolante**.
+## 3. Acceptance criteria
 
-## Iterazione v2: aspettative operative
+La Parte 8 è accettata se contiene, congelato in forma normativa, **tutti** i punti seguenti.
 
-- **Output atteso**: 4 file modificati (`docs/methodology_v2/CAP_07_parte_VII.md` v2, `reports/REPORT_CAP_07.md` v2, `docs/methodology_v2/00_indice.md` aggiornato voce Parte VII a "IN REVIEW Review v2", `tasks/DEV_STATUS.md = READY_FOR_REVIEW`).
-- **Stile delle correzioni**: Edit puntuali, non riscritture strutturali. Finding #1 e' la modifica piu' sostanziale (riformulazione del paragrafo finale di Cap.33.4); #2 e #3 sono sostituzioni di una-due parole/numeri.
-- **Tabella AC v2 nel REPORT**: aggiornare la tabella v1 dei 64 AC con AC-33-4 promosso da PARZIALE a OK (riferimento al paragrafo riformulato) e nuove righe AC-T (eventuali, ma non sono attesi nuovi AC trasversali). Le righe AC-T-10 e nessun-AC-specifico per #2 #3 restano con nota in Sezione (iii) del REPORT v2.
-- **CARRYOVER**: nessun M-promemoria nuovo (la Review ha dichiarato esplicitamente "Nessun M-promemoria nuovo introdotto dalla Review v1"). Il Developer NON modifica `tasks/CARRYOVER.md` nel rework v2.
-- **Commit messages suggerito**: `[DEV] CAP-07 v2 rework: 1 BUG REALE + 2 MIGLIORA PERF risolti` (oppure equivalente con il prefisso `[DEV]`).
-- **Atteso ciclo Review v2**: PASS (il documento e' sostanzialmente solido secondo la Review v1; la correzione dei 3 finding chiude il CONDITIONAL).
+### 3.1 Scelta della serie ufficiale di training
+- **Decisione:** FIB pieno back-adjusted Portara/CQG come unica fonte ufficiale per il training del GA su strumento target
+- **Razionale documentato:**
+  - rendimenti log e struttura di volatilità di FIB e miniFIB sono numericamente equivalenti (stesso sottostante, stesso tick, stesso exchange)
+  - FIB ha storia di liquidità più profonda e continua del miniFIB sull'intero periodo 1995–oggi
+  - esecuzione su miniFIB è solo questione di moltiplicatore, non altera la semantica del segnale
+- **Esclusione esplicita di MIB cash come fonte training**, con razionale ancorato al principio `research semantics = runtime semantics`: cash differisce su orari, microstruttura, basis, gap di apertura e non corrisponde allo strumento di esecuzione
 
-## Cosa il Developer NON DEVE fare nel rework v2
+### 3.2 Convenzione di back-adjustment ufficiale
+Vanno congelate **tre serie derivabili** dal file Portara, ciascuna con uso specifico:
 
-- Non riscrivere CAP_07_parte_VII.md da zero. Solo Edit puntuali sui finding sopra.
-- Non modificare i 12 parametri di tuning provvisori dichiarati non congelati in Parte VII (sono stati ratificati dalla Review v1).
-- Non modificare le 5 decisioni di scope del Planner (sono state ratificate dalla Review v1, 5/5 OK).
-- Non aggiungere nuovi capitoli o sotto-sezioni.
-- Non chiudere i 2 NEUTRO (#4 #5) come BUG REALI nel REPORT v2.
-- Non aprire nuovi M-promemoria (non sono emersi nuovi rinvii nella Review v1).
+| Serie | Formula | Uso |
+|---|---|---|
+| **Ratio-adjusted (ufficiale per training)** | `P_t = P_t^unadj × Π_{r∈rolls, r<t} (P_r^next / P_r^curr)` | input a tutti i modelli che operano su rendimenti log (GARCH/EGARCH/DCC/quantili condizionali, survival hazard) |
+| **Panama-additive (ufficiale per audit monetario)** | fornita direttamente da Portara come back-adjusted settle | audit PnL in €/punto, sanity check visivo, replay |
+| **Unadjusted concatenata** | `UnadjustedClose` riga per riga, con marker di roll | sanity check contratto-per-contratto, validazione recente |
+
+Va specificato che la **ratio-adjusted** è ricostruita in preprocessing da `UnadjustedClose + RollSpread + roll log`, non richiesta direttamente a Portara (loro forniscono solo Panama).
+
+### 3.3 Filtro pre-expiry
+- **Regola:** rimozione delle ultime **N giorni di trading** prima della scadenza di ciascun contratto dal training set
+- **Default normativo:** N = 3 giorni di trading (allineato al roll Portara, da confermare in CAP-DATA-02)
+- **Razionale documentato:** il basis tra front e next month diverge meccanicamente nell'ultima settimana, contaminando i quantili condizionali e la dinamica EGARCH; il filtro elimina la finestra in cui la serie back-adjusted è strutturalmente meno informativa
+- **Algoritmo formale:** dato `roll_log[k] = (contract_k, expiry_date_k, roll_date_k)`, esclusione delle barre con `bar_time ∈ [trading_day(roll_date_k - N), roll_date_k]` per ogni `k`
+- Va specificato che il filtro si applica a **training** e **outer valid**, ma **non** a outer test (per non alterare la verità OOS) — coerente con la Parte sul protocollo OOS del doc v2
+
+### 3.4 Preprocessor griglia 1-min regolare
+- **Problema:** Portara omette barre senza trade. La specifica del doc v2 assume input causalmente uniforme.
+- **Soluzione normativa:** preprocessor che produce griglia 1-min regolare su `[session_open, session_close]` per ogni giornata di sessione, con per ogni minuto mancante:
+  - `Open = High = Low = Close = Close_{t-1}` (forward-fill)
+  - `Volume = 0`
+  - `TickCount = 0`
+  - `bar_synthetic = True` (flag obbligatorio nello schema)
+- **Regola di uso a valle:**
+  - features di volatilità (EGARCH, Realized GARCH measurement equation) calcolate **solo su barre con `bar_synthetic = False`** ma con timestamp allineato alla griglia uniforme per il time-indexing
+  - features di prezzo (livelli, distanze da zone) usano la griglia uniforme completa
+  - il flag `bar_synthetic` entra nel feature schema persistito nel bundle frozen
+- Va specificato che il forward-fill su `Close` è una convenzione, **non** un'inferenza di path: nessun touch può essere dichiarato su una `bar_synthetic` (coerente con la gap semantics della Parte sull'execution gate del doc v2)
+
+### 3.5 Timeline ufficiale delle sessioni FIB
+Va prodotta una **tabella per epoca** con date di switch verificate dalla fonte ufficiale (`borsaitaliana.it`). Struttura minima:
+
+| Epoca | Periodo | Continuous trading | Note |
+|---|---|---|---|
+| E1 | 1995-XX-XX → 20YY-XX-XX | HH:MM–HH:MM CET | sessione singola |
+| E2 | 20YY-XX-XX → 20YY-XX-XX | HH:MM–HH:MM CET | introduzione sessione serale |
+| ... | ... | ... | ... |
+| En | 20YY-XX-XX → presente | 09:00–22:00 CET | sessione attuale |
+
+**Le date esatte vanno verificate da fonte ufficiale durante l'esecuzione del task, non assunte.** Tutti i timestamp dichiarati `CET` includono la conversione automatica CEST quando in vigore (per coerenza con la Parte sulla semantica eventi/timestamp del doc v2).
+
+Output: tabella nella Parte 8 + file `data/sessions/fib_session_calendar.csv` con schema `(epoch_id, start_date, end_date, session_open_local, session_close_local, timezone)`.
+
+### 3.6 Convenzione cross-index (PHASE-2)
+Stessa convenzione (ratio-adjusted ufficiale, Panama per audit, filtro N=3, preprocessor griglia 1-min, calendario sessione per epoca) applicata identicamente a:
+- **DAX** (FDAX, Eurex)
+- **EuroStoxx 50** (FESX, Eurex)
+- **S&P 500 mini** (ES, CME)
+
+Va specificato esplicitamente che:
+- ciascuna serie ha il **proprio** roll calendar e calendario sessione
+- la stima DCC/ADCC/cDCC opera su **timestamp intersezione** delle griglie regolari (coerente con la Parte sulla covarianza condizionale multi-indice del doc v2), non su forward-fill cross-asset
+- i giorni di festività di un singolo exchange escludono quella riga dal calcolo cross-index per quel giorno
+
+**Vincolo di fasizzazione (PHASE-1 vs PHASE-2):** va dichiarato esplicitamente nella Parte 8 che la convenzione cross-index è normativa, ma la sua attivazione operativa è prevista in PHASE-2 del progetto. PHASE-1 (FIB-only) è una fasizzazione esplicita e dichiarata, non una semplificazione silenziosa. Va elencato esplicitamente cosa la fasizzazione PHASE-1 implica:
+- `sigma_sys` cross-index ridotta a `sigma_local` (degradazione documentata)
+- feature tensor privo dei canali cross-index obbligatori del doc v2 (regime di funzionamento esplicito)
+- `S_xidx` dello score strutturale non calcolabile, quinta famiglia del catalogo target ("proiezioni cross-index coerenti") esclusa
+- report per regime privo della riga "Contagio cross-index"
+
+La fasizzazione **non sostituisce** la spec, la istanzia in modo parziale per PHASE-1 con costi noti.
+
+### 3.7 Procedura di sanity validation
+- Su una finestra di **ultimi 18–24 mesi**, replicare la pipeline contratto-per-contratto sulla serie **unadjusted concatenata** (senza adjustment)
+- Confrontare le seguenti metriche tra `ratio-adjusted` e `unadjusted-stitched`:
+  - distribuzione dei rendimenti log a 1-min, 5-min, 60-min (quantili 1/5/25/50/75/95/99)
+  - autocorrelazione dei rendimenti al lag 1, 5, 30
+  - autocorrelazione dei rendimenti quadrati al lag 1, 5, 30
+  - σ giornaliera realized
+- **Criterio di accettazione:** differenze entro **3σ bootstrap** per ciascuna metrica. Discrepanze superiori richiedono indagine prima del go-ahead training
+- **Out-of-scope di questo task:** l'implementazione del check (è task separato di Development, vivrà in FASE-D del roadmap); va specificata solo la procedura normativa
+
+### 3.8 Esclusione esplicita di fonti alternative
+Va inserita una sottosezione di chiusura che elenca cosa **non** è ammesso come fonte training:
+- MIB cash (razionale: invariante `research = runtime`)
+- Dati vendor diversi da Portara/CQG senza nuovo task Planner
+- Mix di vendor diversi per cross-index (DAX da X, ESTX50 da Y) — tutto Portara/CQG
+- Dati ricostruiti da CFD broker
+- Dati intraday liberi (Yahoo, Investing, ecc.) — non usabili nemmeno come benchmark di confronto, coerente con la data-matching policy di Portara
+
+---
+
+## 4. Out-of-scope
+
+- Implementazione Python del preprocessor (è task Development separato a valle, FASE-D del roadmap)
+- Download/parsing del CSV Portara (è task Development separato, dopo l'acquisto, FASE-B del roadmap)
+- Schema database / persistenza (è task separato, FASE-D)
+- Verifica empirica dei dati (richiede dati acquistati — quindi successiva a CAP-DATA-02 e a FASE-B)
+- Scelta di N diverso da 3 nel filtro pre-expiry — il default è 3, eventuali varianti sono ricerca esplorativa
+- Modifica di Parti già scritte del doc v2 (1–7): se durante la stesura di Parte 8 emergesse un conflitto con quelle Parti, **stop e ritorno al Planner**, non auto-modifica
+- Stesura di CAP-DATA-02 (è task gemello operativo, vive in `docs/operations/`, non in questa Parte)
+
+---
+
+## 5. Definition of Done
+
+**Nota Orchestratore (decisione (a) ratificata)**: push diretto a `origin/main` (no feature branch, no PR — deroga task card §5). Aggiornato di conseguenza.
+
+- File `docs/methodology_v2/CAP_08_parte_8.md` creato e completo degli otto punti 3.1–3.8 (naming β2 ratificato, decisione (b)+(c))
+- File `data/sessions/fib_session_calendar.csv` creato con tabella sessioni per epoca, dati copiati dalla sezione "Dati di input recuperati dall'Orchestratore" sopra
+- File `data/sessions/README.md` creato con note non normative su fonti, URL, ambiguita' (vedi "Sintesi metadati ambiguita'" sopra)
+- `docs/methodology_v2/00_indice.md` (vedi nota T2) aggiornato: Parte 8 aggiunta in coda al corpo principale, immediatamente prima dell'Appendice (che è/diventa Parte 9). Stato iniziale "IN REVIEW", poi PASS Review v(N) a chiusura sessione. Nessuna rinumerazione di Parti precedenti.
+- Tutti i riferimenti incrociati a Parti 1–7 verificati e citati con il numero di Parte definitivo (vedi Planner subagente per la mappatura eredita)
+- `reports/REPORT_CAP_08.md` generato secondo template supervisore (naming β2 ratificato, decisione (b)+(c)); contiene cosa è stato deciso, cosa è stato escluso, rollback criteria per ciascuna decisione
+- `tasks/DEV_STATUS.md` aggiornato a `READY_FOR_REVIEW`
+- Commit + push diretto a `origin/main`
+
+---
+
+## 6. Rollback criteria
+
+Ciascuna delle 8 decisioni del §3 ha un proprio criterio di reversibilità documentato nel `reports/REPORT_CAP_08.md`. In particolare:
+- decisione 3.2 (ratio-adjusted come ufficiale): reversibile se la sanity validation §3.7 rileva discrepanze >3σ → ritorno al Planner
+- decisione 3.3 (N=3 filtro pre-expiry): reversibile se Portara conferma roll rule diversa in CAP-DATA-02 → aggiornamento minore di Parte 8 senza ritorno al Planner
+- decisione 3.4 (forward-fill griglia 1-min): non reversibile senza nuovo task Planner (è invariante semantico, ancorato alla gap semantics del doc v2)
+- decisione 3.6 (fasizzazione PHASE-1/PHASE-2): non reversibile senza nuovo task Planner (è scelta di roadmap del progetto, non scelta tecnica isolata)
