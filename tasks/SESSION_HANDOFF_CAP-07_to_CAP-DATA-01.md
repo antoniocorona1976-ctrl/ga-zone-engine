@@ -76,17 +76,23 @@ CAP-DATA-01 (Parte VIII) **precede** la stesura delle Appendici (Parte IX). Razi
 Il supervisore può copiare e incollare il blocco qui sotto per aprire la sessione nuova. Le sezioni in `{{...}}` vanno valorizzate dal supervisore al momento dell'apertura.
 
 ```
-Sei l'Orchestratore del progetto ga-zone-engine, sessione NUOVA per CAP-DATA-01 (Parte VIII del documento metodologico v2: Convenzione dati storici e politica di rollover).
+Sei l'Orchestratore del progetto ga-zone-engine, sessione NUOVA per CAP-DATA-01 (Parte 8 del documento metodologico v2: Convenzione dati storici e politica di rollover).
 
 Stato iniziale:
-- CAP-07 v2 (Parte VII) chiuso PASS Review v2 (review commit b27c1e3 del 2026-05-27; chiusura sessione commit d6a7ee0). HEAD origin/main = d6a7ee0 al momento della chiusura.
+- CAP-07 v2 (Parte VII) chiuso PASS Review v2 (review commit b27c1e3 del 2026-05-27; chiusura sessione commit d6a7ee0; condizione 7 adempiuta in commit 353316d via file tasks/SESSION_HANDOFF_CAP-07_to_CAP-DATA-01.md).
 - Task CAP-DATA-01 in coda: file tasks/CAP-DATA-01.md committato in effbe5f.
-- ACTIVE_TASK.md ancora puntato storicamente a CAP-07 v2 rework (da sovrascrivere).
+- ACTIVE_TASK.md ancora puntato storicamente a CAP-07 v2 rework (da sovrascrivere come primo atto sostanziale).
 - DEV_STATUS.md vuoto.
-- Indice 00_indice.md riporta Parte VII = PASS Review v2; Parte VIII non ancora menzionata; Appendice (Parte IX) ancora senza numero di Parte.
+- Indice 00_indice.md riporta Parte VII = PASS Review v2; Parte 8 non ancora menzionata (verra' aggiunta a fine ciclo CAP-DATA-01 in chiusura sessione, come da decisione (d) ratificata); Appendice (Parte 9 nel nuovo ordinamento) ancora senza numero di Parte.
 - Documento metodologico v2 Parti I-VII formalmente COMPLETO.
-- M-2 OPEN preservato (verifica empirica L_max Telegram → carryover Appendice E in Parte IX).
+- M-2 OPEN preservato (verifica empirica L_max Telegram → carryover Appendice E in Parte 9).
 - M-16 CLOSED-CAP-07 (regola operativa in Cap.31.3 + metadato cox_time_varying_active in Cap.35.1).
+
+Convenzioni di naming RATIFICATE dal supervisore (decisione β2 del 2026-05-27):
+- File doc: docs/methodology_v2/CAP_08_parte_8.md (NON parte_08_convenzione_dati_storici.md del task card §5; NON CAP_08_parte_VIII.md romano)
+- File report: reports/REPORT_CAP_08.md (NON REPORT_CAP_DATA_01.md del task card §5)
+- Identifier interno: "Parte 8" (arabo, NON "Parte VIII" romano)
+- Branch: push diretto a origin/main, no feature branch, no PR (deroga task card §5)
 
 Leggi:
 - .claude/CLAUDE.md (regole orchestrazione, macchina a stati, 7 condizioni di chiusura, check post-Developer)
@@ -98,15 +104,15 @@ Leggi:
 
 Come primo atto:
 1. Verifica autoconsistenza delle 7 condizioni di chiusura sessione CAP-07 v2 (autocheck su file e su commit d6a7ee0). Tutte e 7 devono risultare adempiute. Se anche una sola fosse mancata, segnala al supervisore prima di procedere.
-2. Decisioni architetturali da prendere PRIMA di copiare CAP-DATA-01 in ACTIVE_TASK.md (chiedi al supervisore se non sono autoevidenti dal task card):
-   (a) **RATIFICATA dal supervisore in conversazione del 2026-05-27**: push diretto a `origin/main` (prassi storica del progetto, memory `project_push_policy`). Il task card §5 ("Commit firmato sul branch feature/parte-08-dati, PR aperta") viene DEROGATO su questo punto. Non aprire branch separato, non aprire PR. Il riferimento "Commit firmato" e' rispettato dal commit standard del Developer (no GPG signing aggiuntivo, prassi storica del repo).
-   (b) Naming file output: il task card §5 dichiara "docs/methodology_v2/parte_08_convenzione_dati_storici.md" come file di output, mentre la convenzione storica del progetto e' "CAP_XX_parte_NN.md". Conferma se il task card e' normativo sul naming (parte_08_*.md) oppure se mantieni la convenzione storica (CAP_08_*.md o similare). **Pendente**.
-   (c) Numero di Parte usato negli identificatori interni: le Parti precedenti usano "Parte I, II, ..., VII" (numeri romani); il task card usa "Parte 8" (numero arabo). Decidi se omogeneizzare a "Parte VIII" per coerenza o se rispettare la dicitura del task card. **Pendente**.
-   (d) Conferma supervisore sulla nuova posizione "Appendici = Parte IX": il task card dichiara Successor = Parte 9 (Appendice). Verifica se l'indice deve essere aggiornato preventivamente o se aggiornamento posticipato a fine ciclo CAP-DATA-01. **Pendente**.
-   (e) Il task card §3.5 richiede produzione del file data/sessions/fib_session_calendar.csv con date verificate da borsaitaliana.it (fonte web). Conferma con il supervisore: il Developer puo' accedere al web per la verifica delle date (richiede tool web), oppure il supervisore fornisce le date verificate offline? **Pendente**.
-3. Una volta chiarite le decisioni 2.(a)-(e), copia tasks/CAP-DATA-01.md in tasks/ACTIVE_TASK.md (sovrascrivendo l'attuale storico CAP-07). Committa "[ORCH] CAP-DATA-01 apertura sessione: ACTIVE_TASK aggiornato + ratifica decisioni branch/naming/Appendice". Push.
-4. Chiama subagente planner per leggere ACTIVE_TASK.md e produrre il piano operativo dettagliato della Parte VIII (8 sotto-decisioni §3.1-§3.8 + DoD + rollback) — il task card e' gia' molto specifico, ma il Planner aggiunge struttura: lista capitoli/sotto-capitoli, eredita' obbligatorie da Parti I-VII, M-promemoria pertinenti, AC verificabili, decisioni di scope. Alternativa: se ritieni che il task card sia gia' equivalente a un output Planner (DoD e rollback gia' definiti, acceptance criteria gia' dettagliati), chiama direttamente developer — chiedi al supervisore se preferisce questa via diretta.
-5. Procedi da li' come da CLAUDE.md (check post-Developer obbligatorio prima di chiamare Reviewer, ecc.).
+2. Decisioni architetturali RATIFICATE dal supervisore in conversazione del 2026-05-27 (NON ridiscutere, applicare direttamente):
+   (a) **Branch policy**: push diretto a `origin/main` (prassi storica + memory `project_push_policy`). Il task card §5 ("Commit firmato sul branch feature/parte-08-dati, PR aperta") e' DEROGATO. Non aprire branch separato, non aprire PR.
+   (b)+(c) **Naming file e numerazione interna (combinata)**: il nome file e' `docs/methodology_v2/CAP_08_parte_8.md` (NON `parte_08_convenzione_dati_storici.md` del task card §5; NON `CAP_08_parte_VIII.md` con numero romano). Identifier interno: "Parte 8" (arabo). Soluzione β2 della discussione del 2026-05-27: tutto arabo internamente, mantiene il prefisso `CAP_XX_` storico del progetto. Pattern equivalente nel report: `reports/REPORT_CAP_08.md` (NON `REPORT_CAP_DATA_01.md` del task card §5).
+   (d) **Aggiornamento indice**: NON aggiornare preventivamente. Aggiornamento di `00_indice.md` posticipato a fine ciclo CAP-DATA-01 (in chiusura sessione, condizione 4 della checklist). Dichiarazione di Parte 8 e Parte 9 (Appendici) avverra' al primo aggiornamento utile (chiusura sessione CAP-08 con PASS). Coerente con la prassi storica delle Parti precedenti.
+   (e) **Verifica date sessione FIB da borsaitaliana.it**: il subagente `developer` NON ha tools WebFetch/WebSearch. **L'Orchestratore** della sessione successiva recupera personalmente le date via WebFetch/WebSearch dalla fonte ufficiale `borsaitaliana.it`, le verifica, e le inserisce come dato di input verificato dentro `tasks/ACTIVE_TASK.md` PRIMA di chiamare il Developer. Il Developer poi cita la fonte e usa i dati gia' pronti (opzione e.1 della discussione del 2026-05-27).
+3. **Recupera date sessione FIB via WebFetch / WebSearch** dalla fonte ufficiale borsaitaliana.it (decisione (e.1) ratificata: l'Orchestratore lo fa direttamente perche' il subagente developer non ha questi tools). Cercare la pagina "ore di negoziazione" / "calendario di borsa" del segmento IDEM/FIB e ricostruire la timeline storica delle epoche di sessione (E1=1995, E2=introduzione serale, ..., En=09:00-22:00 attuale). Annotare URL e data consultazione. Se WebFetch fallisce o se le date non sono recuperabili da fonte ufficiale, segnala al supervisore PRIMA di procedere e chiedi fornitura offline (fallback e.2).
+4. Copia tasks/CAP-DATA-01.md in tasks/ACTIVE_TASK.md (sovrascrivendo l'attuale storico CAP-07). **Integra in ACTIVE_TASK.md la tabella date FIB recuperata al punto 3**, citando fonte URL e data verifica. Committa "[ORCH] CAP-DATA-01 apertura sessione: ACTIVE_TASK aggiornato + date FIB integrate da fonte borsaitaliana.it + decisioni (a)-(e) ratificate". Push diretto a origin/main.
+5. Chiama subagente planner per leggere ACTIVE_TASK.md e produrre il piano operativo dettagliato della Parte 8 (8 sotto-decisioni §3.1-§3.8 + DoD + rollback) — il task card e' gia' molto specifico, ma il Planner aggiunge struttura: lista capitoli/sotto-capitoli, eredita' obbligatorie da Parti I-VII, M-promemoria pertinenti, AC verificabili, decisioni di scope. Alternativa: se ritieni che il task card sia gia' equivalente a un output Planner (DoD e rollback gia' definiti, acceptance criteria gia' dettagliati), chiama direttamente developer — chiedi al supervisore se preferisce questa via diretta.
+6. Procedi da li' come da CLAUDE.md (check post-Developer obbligatorio prima di chiamare Reviewer, ecc.).
 
 Eredita' diretta da CAP-07 (Parte VII) e Parti precedenti pertinenti a CAP-DATA-01:
 - Invariante "research semantics = runtime semantics" (Cap.1 PI + Cap.10 PII replay bit-exact): CAP-DATA-01 §3.1 lo cita esplicitamente per escludere MIB cash come fonte training.
@@ -121,27 +127,53 @@ Eredita' diretta da CAP-07 (Parte VII) e Parti precedenti pertinenti a CAP-DATA-
 
 ## 4. Note operative per l'Orchestratore della sessione successiva
 
-### Disallineamenti potenziali fra task card CAP-DATA-01 e doc metodologico v2 esistente
+### Disallineamenti task card vs doc v2 — chiariti dal supervisore al 2026-05-27
 
-Durante la lettura del task card, l'Orchestratore della sessione nuova noterà che CAP-DATA-01 fa riferimento a concetti che **non sono presenti** nel doc v2 Parti I-VII finora scritto:
+I 3 disallineamenti potenziali fra CAP-DATA-01 e doc v2 Parti I-VII sono stati tutti chiariti. Riassunto delle decisioni:
 
-1. **"Layer di covarianza cross-index" (DCC/ADCC/cDCC)**: il doc v2 attuale è esplicitamente single-instrument FIB (il preambolo dell'indice dichiara `con rimozione dei layer multi-indice (DCC/ADCC/BEKK, covarianza cross-index, N>=8)`). CAP-DATA-01 §3.6 introduce DCC/ADCC/cDCC per la PHASE-2. Questa è un'**estensione dello scope rispetto al doc v2 originario**, non un'eredità del doc v2 corrente. Va segnalata al supervisore: si tratta di una decisione strategica di estendere il doc v2 a includere materiale che era stato esplicitamente escluso, o di trattare la convenzione cross-index come puramente normativa senza implementazione in Parti successive del doc v2?
+1. **Layer di covarianza cross-index (DCC/ADCC/cDCC)** — task card §3.6:
+   - Stato: il doc v2 Parti I-VII e' esplicitamente single-instrument FIB (preambolo `00_indice.md` dichiara rimozione layer multi-indice).
+   - **Decisione del supervisore**: **dichiarazione normativa SENZA implementazione nel doc v2**. CAP-DATA-01 §3.6 contiene la convenzione cross-index come specifica futura (PHASE-2) ma il doc v2 non sara' esteso con Parti aggiuntive per implementarla. La dichiarazione resta come obbligazione metodologica futura, non come specifica operativa.
+   - Implicazione per il Developer della sessione successiva: scrivere §3.6 in modo dichiarativo e non implementativo. Non introdurre formule DCC/ADCC nel doc v2. Citare la fasizzazione PHASE-1/PHASE-2 esplicitamente.
 
-2. **"Realized GARCH measurement equation"**: il doc v2 attuale (Cap.13 PIII) usa EGARCH(1,1), non Realized GARCH. CAP-DATA-01 §3.4 cita "EGARCH, Realized GARCH measurement equation" come esempi di feature di volatilità. Da chiarire se Realized GARCH va aggiunto in una Parte successiva o se è solo esempio illustrativo nel task card.
+2. **Realized GARCH measurement equation** — task card §3.4 (esempi feature volatilita'):
+   - Stato: doc v2 Cap.13 PIII usa solo EGARCH(1,1).
+   - **Decisione del supervisore**: **estensione futura**. Realized GARCH va citato con cautela come esempio futuro, non come parte dell'impegno corrente del doc v2.
+   - Implicazione per il Developer: nella stesura di §3.4 limitare gli esempi di feature di volatilita' a EGARCH (gia' nel doc v2) e marcare Realized GARCH come "es. eventuale estensione futura non corrente nel doc v2", o ometterlo dagli esempi se crea ambiguita'.
 
-3. **"S_xidx dello score strutturale" e "quinta famiglia del catalogo target proiezioni cross-index coerenti"**: questi termini sono coerenti con il documento `ENGINE_ALGO_INTEGRATO_HARD_LOCKED.pdf` (input richiesto al §2 del task card) ma NON sono presenti nel doc v2 Parti I-VII corrente. CAP-DATA-01 §3.6 li cita come "non calcolabili in PHASE-1". Verificare con il supervisore: sono concetti che entreranno in Parti successive del doc v2 (estensione) o sono retaggi del documento HARD_LOCKED che non sopravvivono nel doc v2 (errore nel task card)?
+3. **`S_xidx`, "quinta famiglia del catalogo target proiezioni cross-index coerenti"** — task card §3.6:
+   - Stato: termini coerenti con `ENGINE_ALGO_INTEGRATO_HARD_LOCKED.pdf` (input §2) ma non presenti nel doc v2 corrente.
+   - **Decisione del supervisore**: **estensione futura**, coerente con (1). I termini possono essere citati in §3.6 come oggetti futuri non implementati nel doc v2 corrente.
+   - Implicazione per il Developer: trattare `S_xidx` e "quinta famiglia catalogo target" come terminologia di riferimento PHASE-2, sempre dichiarando esplicitamente la non-implementazione nel doc v2 corrente.
 
-### Decisioni del supervisore — stato al 2026-05-27
+Le tre decisioni sono coerenti fra loro: tutto cio' che e' cross-index nel task card resta a livello di **dichiarazione normativa**, mai a livello di **implementazione** nel doc v2. La fasizzazione PHASE-1 / PHASE-2 di §3.6 e' lo strumento documentale per rendere esplicita questa scelta.
 
-| # | Decisione | Stato | Esito |
-|---|-----------|-------|-------|
-| (a) | Branch policy (feature branch + PR vs push diretto a main) | **RATIFICATA** | Push diretto a `origin/main`, prassi storica preservata. Task card §5 derogato su questo punto. |
-| (b) | Naming file output (`parte_08_*.md` vs `CAP_08_*.md`) | Pendente | — |
-| (c) | Numerazione interna (Parte 8 vs Parte VIII) | Pendente | — |
-| (d) | Aggiornamento preventivo indice (Parte VIII + Parte IX Appendici) | Pendente | — |
-| (e) | Accesso web Developer per date borsaitaliana.it | Pendente | — |
+### Decisioni del supervisore — stato finale al 2026-05-27 (tutte chiuse)
 
-L'Orchestratore della sessione successiva deve chiudere le decisioni (b)-(e) con il supervisore prima di chiamare il Planner/Developer.
+| # | Decisione | Esito |
+|---|-----------|-------|
+| (a) | Branch policy | **RATIFICATA**: push diretto a `origin/main` (deroga task card §5) |
+| (b)+(c) | Naming + numerazione | **RATIFICATA β2**: file `CAP_08_parte_8.md`; identifier "Parte 8" (arabo); report `REPORT_CAP_08.md` |
+| (d) | Aggiornamento indice | **RATIFICATA**: a fine ciclo CAP-DATA-01 (in chiusura sessione) |
+| (e) | Accesso web per date FIB | **RATIFICATA e.1**: Orchestratore recupera via WebFetch/WebSearch, inserisce in ACTIVE_TASK.md prima di chiamare Developer |
+| (1) | Cross-index DCC/ADCC/cDCC | **RATIFICATA**: dichiarazione normativa SENZA implementazione nel doc v2 (solo §3.6 di CAP-DATA-01) |
+| (2) | Realized GARCH | **RATIFICATA**: estensione futura — citare con cautela in task card, no impegno nel doc v2 |
+| (3) | `S_xidx` + quinta famiglia catalogo target | **RATIFICATA**: estensione futura — coerente con (1), citazione normativa senza implementazione |
+
+L'Orchestratore della sessione successiva NON deve riaprire queste decisioni. Le applica direttamente.
+
+### Implicazione operativa cruciale per la sessione successiva
+
+Per via della decisione (e.1), il **primo atto sostanziale** dell'Orchestratore della sessione successiva — DOPO l'autocheck delle 7 condizioni di chiusura CAP-07 — deve essere:
+
+1. **Recupero date sessione FIB** via WebFetch su `borsaitaliana.it` (cercare la pagina sulle "ore di negoziazione" / "calendario di borsa" del segmento IDEM/FIB). Ricostruire la timeline storica delle epoche di sessione:
+   - epoca E1: probabile 1995 → introduzione sessione serale (data esatta da verificare)
+   - epoca E2: introduzione sessione after-hours (da verificare)
+   - epoca successiva: estensione all'attuale 09:00-22:00 CET (data switch da verificare)
+2. **Annotare le fonti** consultate, gli URL e la data di consultazione nel campo "Sintesi vincoli operativi" o equivalente di ACTIVE_TASK.md.
+3. Se WebFetch fallisce o se le date non sono recuperabili da fonte ufficiale, segnalare al supervisore PRIMA di procedere e chiedere fornitura offline (fallback e.2).
+
+Solo DOPO aver completato questi passi (date verificate o fallback ratificato), l'Orchestratore della sessione successiva copia CAP-DATA-01 in ACTIVE_TASK.md (con le date integrate) e chiama il Planner (o Developer diretto se concordato).
 
 ---
 
