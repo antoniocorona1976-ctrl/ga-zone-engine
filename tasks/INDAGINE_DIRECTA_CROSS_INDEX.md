@@ -241,3 +241,109 @@ Tutti i link aperti il 2026-05-27.
 - conferma scritta che la sessione CME via DAPI copre tutta la finestra Globex;
 - eventuali rate-limit non documentati su CANDLE/CANDLERANGE;
 - throughput tick/s aggregato per 4 simboli paralleli.
+
+---
+
+# APPENDICE EMPIRICA — Probe diretto Darwin (2026-05-27)
+
+Dopo la pubblicazione dell'indagine documentale (commit `2661a2f`), il supervisore ha aperto DGo + Darwin in locale e ha autorizzato un probe diretto al gateway DAPI per verificare empiricamente i punti rimasti "da chiarire con supporto Directa". Il probe è stato eseguito da un client TCP Python ad-hoc (non committato, vive in `C:\Users\AN\AppData\Local\Temp\`) contro `127.0.0.1:10003` (storici) e `127.0.0.1:10001` (realtime) con account `B6086`, banner `DARWIN_STATUS;CONN_OK;TRUE;Release 2.5.1 build 04/02/2025`.
+
+## A.1 — Mappatura ticker DAPI canonical (verifica empirica)
+
+Pattern Directa verificato:
+- **Eurex futures**: `EU.<CODE><MONTH><YEAR>` — es. `EU.DJ50M6` = Euro Stoxx 50 future giugno 2026
+- **CME futures**: `CM.<CODE><MONTH><YEAR>` — es. `CM.ESM6` = S&P 500 e-mini standard giugno 2026
+- **IDEM futures**: `<CODE><YEAR><MONTH>` (FIB, MINI senza prefisso exchange) — es. `FIB6I`
+
+Mese codice Eurex/CME: H=Mar, M=Jun, U=Sep, Z=Dec, ecc. (codici standard). YEAR = ultima cifra anno.
+
+### Tabella ticker probati su porta 10003 con `CANDLERANGE` daily ultimi 20 giorni
+
+| Strumento richiesto dalla spec | Ticker DAPI VALIDO | Status | Volume D campione 2026-05-26 | Note |
+|---|---|---|---|---|
+| **FDAX** (DAX 40 future, 25 EUR/pt) | ❌ nessuno | `ERR;<sym>;1007` su tutte le varianti | — | NON abilitato su account `B6086` (vedi A.3) |
+| **FDXM** (Mini-DAX, 5 EUR/pt) | **`EU.FDXMM6`** | ✅ OK 14-15 candele D | ~27.945 contratti | proxy DAX accettabile per regime, moltiplicatore diverso |
+| **FDXS** (Micro-DAX, 1 EUR/pt) | **`EU.FDXSM6`** | ✅ OK | ~30.839 | secondo proxy DAX |
+| **FESX** (EuroStoxx 50 future, 10 EUR/pt) | **`EU.DJ50M6`** | ✅ OK 14 candele D | **455.505** | front-month liquidissimo. `DJ50` = Dow Jones EuroStoxx 50 |
+| **MFESX** (Mini-EuroStoxx 50, 1 EUR/pt) | **`EU.FSXEM6`** | ✅ OK | 2.288 | liquidità marginale |
+| **ES** (S&P 500 e-mini standard, 50 USD/pt) | **`CM.ESM6`** | ✅ OK 14 candele D | **1.342.222** | front-month liquidissimo |
+| **MES** (Micro E-mini S&P, 5 USD/pt) | **`CM.MESM6`** | ✅ OK | 1.449.786 | già usato negli exports |
+| **Positive controls (gia' negli exports)** | `FIB6F`, `FIB6I`, `MINI6F`, `EU.DJ50U6`, `EU.FSXEU6`, `CM.MESU6`, `DITAS`, `DGER`, `DSTX50` | ✅ tutti OK | — | confermano transport |
+
+**Sintesi**: FESX e ES esistono con ticker DAPI canonico `EU.DJ50<MONTH><YEAR>` e `CM.ES<MONTH><YEAR>`. **FDAX standard NON è disponibile su account corrente**.
+
+## A.2 — Profondità storica intraday verificata empiricamente
+
+Probe su `CM.ESM6` (porta 10003, `CANDLERANGE` con vari range):
+
+| Query | Periodo | Range richiesto | Candele ricevute | First timestamp | Last timestamp |
+|---|---|---|---|---|---|
+| daily 200gg | 86400 | 2025-11-08 → 2026-05-27 | 112 | **2025-12-17** | 2026-05-26 |
+| 5min 30gg | 300 | 2026-04-27 → 2026-05-27 | 6025 | 2026-04-27 12:00 | 2026-05-27 12:00 |
+| 1min 30gg | 60 | 2026-04-27 → 2026-05-27 | 30.120 | 2026-04-27 12:00 | 2026-05-27 12:00 |
+| **1min 150gg (oltre limite)** | 60 | 2025-12-28 → 2026-05-27 | 77.829 | **2026-02-16 00:00** | 2026-05-15 |
+
+**Conferma empirica limite 100 giorni intraday**: query a 150gg restituisce un first_timestamp coincidente con ~100 giorni prima del pull date (2026-05-27 − 2026-02-16 = ~100 giorni). Coerente con il wiki DAPI. Daily NON soffre il limite — risposta arriva su 5-6 mesi senza problemi.
+
+Probe analoghi su `EU.DJ50M6` (5M, 30gg = 4981 candele) e `EU.FDXMM6` (5M, 30gg = 4843 candele) confermano profondità intraday identica al FIB.
+
+## A.3 — Decodifica codici di errore DAPI osservati
+
+| Codice | Comando emittente | Significato dedotto |
+|---|---|---|
+| `ERR;<TICKER>;1007` | `CANDLERANGE` su porta 10003 | strumento non abilitato per l'account o ticker inesistente |
+| `ERR;INFO;1004` | `INFO <sym>` su porta 10001 | comando `INFO` non supportato nel protocollo realtime (codice "comando non valido") |
+| `ERR;<TICKER>;1030` | `SUB <sym>` su porta 10001 | market data realtime non sottoscritto per quel ticker — distinto da 1007 (storico) |
+| `ERR;UNSUB;1004` | `UNSUB` con simbolo mai sottoscritto | unsub non riconosciuto, irrilevante |
+
+**Implicazione operativa**:
+- Lo **storico** (porta 10003) è incluso nel DAPI base e funziona per tutti i ticker su cui l'account ha abilitazione operativa di trading (anche senza market data realtime).
+- Il **realtime** (porta 10001) richiede abilitazione market data esplicita: per cross-index serve Eurex 7,50 EUR/mese + CME 15 USD/mese, **non ancora attivata** sull'account `B6086`.
+
+## A.4 — Rate-limit DAPI osservato
+
+- **26 comandi `CANDLERANGE` sequenziali a 0,6s di gap su una sola connessione persistente**: tutti elaborati senza errori, transport stabile.
+- **14 connessioni TCP rapide aperte/chiuse ravvicinate**: dopo la 14ª il server ha cominciato a chiudere preventivamente (`ConnectionResetError 10054`) e poi a rifiutare nuove connessioni per ~30 secondi (`ConnectionRefusedError 10061`).
+- **Lezione operativa**: il pipeline runtime deve usare **una singola connessione persistente per ogni porta** (10001 e 10003), non aprire/chiudere per ogni comando. Il limite "100 simboli sottoscritti" sulla 10001 è ortogonale e ampiamente sotto soglia per 4 stream.
+
+## A.5 — Sessione e timezone osservate
+
+- `EU.DJ50M6` daily open timestamp `01:00:00` → sessione Eurex overnight 01:10–22:00 CET confermata via Darwin (la candela daily è bookend dall'inizio della sessione overnight).
+- `CM.ESM6` daily open timestamp `00:00:00` → sessione CME Globex normalizzata a mezzanotte locale Darwin.
+- `EU.FDXMM6` (Mini-DAX) idem `01:00:00` → stesso pattern Eurex.
+- L'intraday 5M e 1M su `CM.ESM6` copre 24h con candele attive anche durante la sessione overnight US (es. tick alle 12:00 CET = mezzogiorno italiano = mattino US off-hours) → conferma copertura Globex completa per CME via DAPI.
+
+## A.6 — Aggiornamento raccomandazione (con dato empirico)
+
+**Scenario B confermato e arricchito**. PHASE-2a cross-index runtime è tecnicamente fattibile da subito con i seguenti ticker DAPI già accessibili in storico, **previa attivazione market data realtime**:
+
+| Spec hard-locked | Implementazione concreta DAPI | Pro | Contro |
+|---|---|---|---|
+| **FDAX** standard | **NON disponibile** su account corrente | — | richiede abilitazione market data DAX standard Eurex (verifica con supporto) |
+| → workaround proxy DAX | `EU.FDXMM6` (Mini-DAX 5 €/pt) | già abilitato; sottostante identico (DAX 40); 27k contratti/day vol | moltiplicatore 5 vs 25 €/pt → non equivalente come strumento operativo ma sufficiente per **regime detection** intermarket |
+| **FESX** standard | `EU.DJ50M6` | ✅ abilitato, vol 455k/day, front-month liquido | da attivare market data realtime (Eurex 7,50 €/mese) |
+| **ES** standard | `CM.ESM6` | ✅ abilitato, vol 1.342k/day, front-month liquido | da attivare market data realtime (CME 15 USD/mese) |
+
+**Costo runtime PHASE-2a verificato**: solo le due abilitazioni market data Eurex+CME = ~21,50 EUR/mese (nessuna sorpresa rispetto all'indagine documentale). Per FDAX standard servirebbe **eventualmente** un'abilitazione aggiuntiva da chiedere al supporto Directa.
+
+**Costo storico training PHASE-2b confermato infattibile via DAPI**: il limite 100gg vincola tutti gli strumenti cross-index allo stesso modo del FIB — il vendor parallelo (Portara/Databento/IQFeed) resta necessario.
+
+## A.7 — Aggiornamento template email supporto Directa
+
+I 5 punti del template originale vanno aggiornati con quanto già verificato:
+
+1. ~~Ticker DAPI per cross-index~~ → **verificato empiricamente**: `EU.DJ50M6` (FESX), `CM.ESM6` (ES), `EU.FDXMM6` (Mini-DAX). Resta UN punto aperto: **attivazione DAX standard FDAX**: «è possibile abilitare il DAX Future standard (25 EUR/pt) sull'account `B6086`, attualmente abilitato solo a Mini-DAX e Micro-DAX? Se sì, modulistica e costo market data dedicato?»
+2. Profondità storico intraday → **verificato 100gg** identico al FIB. Punto chiuso.
+3. Sessione CME via DAPI → **verificato** indirettamente via intraday 5M/1M che coprono 24h. Punto chiuso (no email).
+4. Procedura attivazione market data Eurex 7,50 €/mese + CME 15 USD/mese → resta da chiedere (modulistica, tempi, fatturazione).
+5. Rate-limit CANDLE/CANDLERANGE → **verificato**: socket persistente OK, apertura ripetuta NO. Aggiungere: «c'è un limite documentato sul numero di connessioni TCP aperte/chiuse al minuto? Abbiamo osservato cooldown ~30s dopo 14 aperture rapide ravvicinate.»
+
+## A.8 — Implicazioni dirette per CAP-DATA-02 (futuro)
+
+1. **Catalogo simboli DAPI per il documento metodologico**: la mappa `EU.<CODE><MONTH><YEAR>` / `CM.<CODE><MONTH><YEAR>` / `<CODE><YEAR><MONTH>` va formalizzata nel cap. come "input contract" del pipeline di ingestion.
+2. **Conferma del limite 100gg**: ribadita empiricamente, già documentata in CAP-DATA-01 §3.6. Nessun cambio di scope necessario.
+3. **Errori 1007 / 1030**: il pipeline runtime deve riconoscerli e propagare warning espliciti (gap di abilitazione vs gap di market data).
+4. **Connessione persistente**: pattern architetturale da adottare nel consumer DAPI quando si estende da 1 a 4 stream.
+
+**Nessuna modifica alla roadmap PHASE-1 FIB-only** richiesta da queste evidenze. La PHASE-2 cross-index resta nello scenario B raccomandato, ora con ticker DAPI canonical noti e gap di abilitazione FDAX standard isolato come unico punto residuo da chiarire.
+
