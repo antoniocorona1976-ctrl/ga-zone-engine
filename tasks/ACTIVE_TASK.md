@@ -489,3 +489,68 @@ Il Planner ha confrontato il contenuto di `tasks/ACTIVE_TASK.md` (task card §1-
 Il Planner **non apre nuove Q-XX in `tasks/QUESTIONS.md`** per CAP-DATA-01. Il task card è sufficientemente dettagliato (8 AC normativi, ciascuno con regola operativa, default, razionale documentato) e le 7+3 decisioni del supervisore coprono tutte le scelte di scope/numerazione/cross-index. La pipeline Developer → Reviewer può procedere senza ulteriore intervento del supervisore in apertura di sessione.
 
 Se durante la stesura il Developer incontrasse un'ambiguità reale non risolvibile dai documenti del progetto, applicherà la regola del task card §0: "se durante la stesura emergesse un'ambiguità sulla numerazione, Development chiede chiarimento prima di proseguire (non assume)". In quel caso, l'Orchestratore aprirà una Q-XX e attenderà decisione del supervisore.
+
+---
+
+## Finding di Review da risolvere — rework v2
+
+Output del "Punto di controllo supervisore" (CLAUDE.md) post-Review v1 verdetto CONDITIONAL (commit `89c5364`). Decisione del supervisore ratificata in conversazione del 2026-05-27: **Opzione A (fix completo finding #1 + finding #2 con espansione 2a+2b)**. Finding #3 (NEUTRO) ignorato per default CLAUDE.md.
+
+### Finding #1 — BUG REALE non bloccante (obbligatorio per regola CLAUDE.md)
+
+**Localizzazione:** `docs/methodology_v2/CAP_08_parte_8.md` riga 190
+
+**Citazione attuale:**
+> "il numero di roll è sufficiente (sei rolls per anno sul FIB con scadenze trimestrali, dodici-quattordici roll nella finestra di 18-24 mesi)"
+
+**Problema:** incoerenza aritmetica interna. Con scadenze trimestrali (marzo / giugno / settembre / dicembre — convenzione standard FIB su IDEM) il numero di rolls per anno è **4**, non 6. Per coerenza con "dodici-quattordici roll in 18-24 mesi" servirebbero ~7-8 rolls/anno, valore che il FIB non ha sotto nessuna convenzione realistica. Il valore "sei rolls/anno + dodici-quattordici roll in 18-24 mesi" non torna sotto nessuna convenzione: o 4 rolls/anno (trimestrali) → 6-8 roll in 18-24 mesi; oppure 12 rolls/anno (mensili) → 18-24 roll in 18-24 mesi.
+
+**Fix richiesto:** correggere l'aritmetica a "quattro rolls per anno sul FIB con scadenze trimestrali, sei-otto roll nella finestra di 18-24 mesi" (o equivalente che torni internamente). Mantenere la giustificazione retorica della scelta finestra 18-24 mesi (sufficiente significatività statistica) — quel principio resta valido anche con 6-8 rolls invece di 12-14.
+
+**Impatto operativo sul GA:** nullo (procedura Cap.43 dichiarata out-of-scope FASE-D, r209). Incoerenza formale in documento normativo.
+
+### Finding #2 — MIGLIORA PERFORMANCE allargato (decisione supervisore: Opzione A espansione 2a+2b)
+
+**Localizzazione:** `docs/methodology_v2/CAP_08_parte_8.md` Cap.43 (r186-209), in particolare r199 (`L_avg`) ma il fix tocca anche la convenzione di sample selection del sanity check.
+
+**Contesto del finding:** Cap.43 definisce il sanity check come bootstrap stazionario (Politis-Romano 1994, B=2.000) su 4 metriche confrontate fra ratio-adjusted e unadjusted-stitched: (i) distribuzione rendimenti log 1/5/60-min (quantili 1/5/25/50/75/95/99), (ii) autocorrelazione rendimenti lag 1, 5, 30, (iii) autocorrelazione rendimenti quadrati lag 1, 5, 30, (iv) σ giornaliera realized. Criterio di accettazione: differenze entro 3σ bootstrap. Cap.43 ha **due lacune normative collegate ma distinte** sul bootstrap, entrambe da risolvere nel rework v2.
+
+#### Lacuna 2a — Selezione campioni (sample selection)
+
+Cap.43 **non specifica esplicitamente** se le 4 metriche operano sull'intera griglia 1-min regolare (incluse barre con `bar_synthetic = True` → zeri strutturali nei rendimenti log per costruzione forward-fill `Close_t = Close_{t-1}`) oppure solo sulle barre reali (`bar_synthetic = False`), per analogia con Cap.40 r92 che specifica questa regola SOLO per le feature di volatilità del modello EGARCH.
+
+**Fix richiesto (2a):** aggiungere esplicitamente in Cap.43 (prima della definizione delle metriche, o come clausola normativa subito dopo) che **tutte e 4 le metriche del sanity check sono calcolate sulla serie filtrata a `bar_synthetic = False`**, applicato **simmetricamente** su entrambe le serie (ratio-adjusted e unadjusted-stitched). Citare esplicitamente Cap.40 r92 come precedente metodologico (le metriche del sanity check sono concettualmente diagnostica di distribuzione/volatilità, quindi ereditano la convenzione di Cap.40 sulle feature di volatilità EGARCH). Senza filtro, gli zeri strutturali della griglia regolare distorcono distribuzione, autocorrelazione e σ realized in modo non rappresentativo della struttura di rendimenti reali.
+
+#### Lacuna 2b — Calibrazione L_avg (block length)
+
+Cap.43 r199 dichiara attualmente: *"La block length media `L_avg` del bootstrap stazionario è quella calibrata su dati FIB in Parte VII Capitolo 34.2; in mancanza di calibrazione operativa, il sanity check utilizza `L_avg` pari al valore di default congelato in Parte VII (vedi Capitolo 34.2 per il valore corrente)."*
+
+Cap.34.2 (Parte VII) calibra `L_avg = 10` via Politis-White (2004) sui rendimenti **per-segnale eseguito** della finestra OOS aggregata. La struttura di autocorrelazione dei rendimenti per-segnale (segnali rari, autocorrelazione tipicamente bassa) è strutturalmente diversa dalla struttura di autocorrelazione dei rendimenti per-barra-reale 1-min (post-filtro 2a), che ha effetti GARCH intraday persistenti su 60-120 min sul FIB. Il numero `L_avg = 10` non si trasferisce per principio del cambio di unità — si trasferisce per principio metodologico "calibra via Politis-White sulla serie effettiva".
+
+**Fix richiesto (2b):** sostituire r199 con dichiarazione che `L_avg` di Cap.43 è **calibrato indipendentemente** via Politis-White (2004) sulla serie filtrata 1-min (post-filtro 2a) della finestra di sanity validation (18-24 mesi), **NON ereditato** da Cap.34.2 (struttura di autocorrelazione diversa, unità diverse — Cap.34.2 calibra su segnali eseguiti, Cap.43 calibra su barre reali). `L_avg` è valore di lavoro non congelato, fissato al momento dell'implementazione (FASE-D del roadmap).
+
+**Impatto operativo sul GA:** nullo nel doc v2 corrente (Cap.43 implementazione out-of-scope FASE-D, r209). Su FASE-D senza fix: blocchi bootstrap troppo corti (struttura di dipendenza non rappresentativa) → sottostima della varianza bootstrap → intervalli di confidenza più stretti → falsi positivi sul criterio "differenza > 3σ" → rischio di bloccare incorrettamente il go-ahead training per cause spurie.
+
+#### Relazione 2a ↔ 2b
+
+Distinti concettualmente (2a = QUALI osservazioni nel campione; 2b = STRUTTURA del bootstrap su quel campione), ma tecnicamente collegati (il valore Politis-White di L_avg dipende dalla serie su cui calibra). Vanno risolti insieme nel rework v2: una volta deciso 2a (`bar_synthetic = False` simmetrico), 2b si specifica di conseguenza ("Politis-White sulla serie filtrata").
+
+### Finding #3 — NEUTRO (NON va a Developer per default CLAUDE.md)
+
+Finding NEUTRO della Review v1 ("descrizione testuale rendimento nullo alla barra del roll in Cap.38 r39") **NON va a Developer**. La formula matematica del Cap.38 r37 è corretta; la descrizione testuale è commento esplicativo, impatto operativo nullo. Lasciato invariato come da regola CLAUDE.md "NEUTRO non va mai a Developer".
+
+### Direttive operative al Developer per il rework v2
+
+**Modalità:** Edit chirurgico delle righe specifiche indicate sopra:
+- Fix #1: Edit puntuale di r190 di `CAP_08_parte_8.md` (correzione aritmetica)
+- Fix #2a: Edit/aggiunta in Cap.43 (1-2 righe) per specificare convenzione `bar_synthetic = False` simmetrico
+- Fix #2b: Edit puntuale di r199 di `CAP_08_parte_8.md` (sostituzione regola eredita L_avg)
+
+**NON riscrivere strutturalmente** Cap.38, Cap.40, Cap.43. **NON modificare** altri capitoli. **NON modificare** indice (Parte 8 resta IN REVIEW), CSV, README, ACTIVE_TASK.md (sezioni Orchestratore + Planner + Finding di Review sono input autoritativo).
+
+**Output deliverable rework v2:**
+- `docs/methodology_v2/CAP_08_parte_8.md` con fix #1 + fix #2a + fix #2b applicati
+- `reports/REPORT_CAP_08.md` aggiornato (sezione "Decisioni rilevanti" o equivalente) con sotto-sezione esplicita "Rework v2 — 3 finding ratificati dal supervisore via Opzione A" che documenta i 3 fix applicati con citazione r190, r199, e descrizione del fix 2a
+- `tasks/DEV_STATUS.md` aggiornato a `READY_FOR_REVIEW`
+
+**Commit + push** diretto a `origin/main` con messaggio: `"[DEV] CAP-DATA-01 v2 rework: fix #1 r190 aritmetica rolls + fix #2a bar_synthetic=False simmetrico + fix #2b L_avg Politis-White independent calibration"`. Push policy approvata (decisione (a) ratificata).
