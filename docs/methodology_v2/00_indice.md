@@ -61,6 +61,17 @@ Documento specializzato per FIB N=1, derivato da ENGINE_ALGO_INTEGRATO_HARD_LOCK
 - **Cap 35 — Frozen bundle e immutabilita'** (~1 pp): processo di freezing, hash di riferimento, regola di sostituzione.
 - **Cap 36 — Gate decisionali per il go-live** (~1 pp): checklist DSR positivo, PBO sotto soglia, lifecycle stabile su regime calmo e turbolento.
 
+## Parte 8 — Convenzione dati storici e politica di rollover (~10 pp) 🔄 IN REVIEW (v1 Developer 2026-05-27)
+
+- **Cap 37 — Scelta della serie ufficiale di training** (~1 pp): FIB pieno back-adjusted Portara/CQG come unica fonte ufficiale; razionale equivalenza FIB/miniFIB su rendimenti log e struttura di volatilita'; esclusione esplicita di MIB cash ancorata a `research = runtime`.
+- **Cap 38 — Convenzione di back-adjustment ufficiale** (~1.5 pp): tre serie derivabili (ratio-adjusted ufficiale per training, Panama-additive per audit monetario, unadjusted concatenata per sanity check); formule esplicite; ricostruzione ratio-adjusted in preprocessing da `UnadjustedClose + RollSpread + roll log`.
+- **Cap 39 — Filtro pre-expiry e gestione rollover** (~1 pp): rimozione delle ultime $N=3$ giorni di trading; algoritmo formale; applicazione a $W_{in}$ e outer valid del walk-forward, esclusione dal fold OOS finale di Parte VII Cap.31.1.
+- **Cap 40 — Preprocessor griglia 1-min regolare** (~1.5 pp): forward-fill su Close per barre senza trade, $\mathrm{Volume}=0$, flag `bar_synthetic`; uso differenziato a valle (volatilita' solo su barre reali, prezzo su griglia completa); nessun touch su barre sintetiche; flag persistito nel bundle frozen.
+- **Cap 41 — Timeline ufficiale delle sessioni FIB** (~1.5 pp): tabella per epoca E1-E5 (1994-2026); note di interpretazione (negoziazione continua, conversione CET/CEST); file normativo `data/sessions/fib_session_calendar.csv` a 6 campi.
+- **Cap 42 — Convenzione cross-index PHASE-2** (~1.5 pp): dichiarazione normativa senza implementazione nel doc v2 corrente; applicazione a DAX/ESTX50/ES (Portara/CQG); timestamp intersezione; vincolo di fasizzazione PHASE-1 con costi noti (`sigma_local` come proxy di `sigma_sys`, feature tensor privo dei canali cross-index, `S_xidx` non calcolabile, quinta famiglia catalogo target esclusa); Realized GARCH, DCC/ADCC/cDCC come estensioni future.
+- **Cap 43 — Procedura di sanity validation** (~1 pp): finestra ultimi 18-24 mesi, ratio-adjusted vs unadjusted-stitched; metriche (quantili rendimenti log 1/5/60-min, autocorrelazione rendimenti e rendimenti quadrati lag 1/5/30, $\sigma$ giornaliera realized); criterio $3\sigma$ bootstrap con $B=2.000$ replicazioni di Parte VII Cap.34; implementazione out-of-scope, vivra' in FASE-D del roadmap.
+- **Cap 44 — Esclusione esplicita di fonti alternative** (~0.5 pp): MIB cash, vendor non-Portara/CQG senza nuovo task Planner, mix vendor cross-index, CFD broker, dati intraday liberi (Yahoo, Investing).
+
 ## Appendici operative (~6 pp)
 
 - **Appendice A — Specifiche PC e ambiente Python**: dettagli i5-7200U, Anaconda base, requirements, repository del codice.
