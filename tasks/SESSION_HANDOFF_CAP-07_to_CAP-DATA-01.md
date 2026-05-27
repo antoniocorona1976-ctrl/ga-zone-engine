@@ -99,11 +99,11 @@ Leggi:
 Come primo atto:
 1. Verifica autoconsistenza delle 7 condizioni di chiusura sessione CAP-07 v2 (autocheck su file e su commit d6a7ee0). Tutte e 7 devono risultare adempiute. Se anche una sola fosse mancata, segnala al supervisore prima di procedere.
 2. Decisioni architetturali da prendere PRIMA di copiare CAP-DATA-01 in ACTIVE_TASK.md (chiedi al supervisore se non sono autoevidenti dal task card):
-   (a) Branch policy: il task card §5 dichiara "Commit firmato sul branch feature/parte-08-dati, PR aperta". La memory project_push_policy del repo dichiara "push diretto a origin/main dai subagenti developer/planner/reviewer e' prassi approvata". Conferma con il supervisore: branch separato + PR (come da task card §5), oppure push diretto a main (come prassi storica)?
-   (b) Naming file output: il task card §5 dichiara "docs/methodology_v2/parte_08_convenzione_dati_storici.md" come file di output, mentre la convenzione storica del progetto e' "CAP_XX_parte_NN.md". Conferma se il task card e' normativo sul naming (parte_08_*.md) oppure se mantieni la convenzione storica (CAP_08_*.md o similare).
-   (c) Numero di Parte usato negli identificatori interni: le Parti precedenti usano "Parte I, II, ..., VII" (numeri romani); il task card usa "Parte 8" (numero arabo). Decidi se omogeneizzare a "Parte VIII" per coerenza o se rispettare la dicitura del task card.
-   (d) Conferma supervisore sulla nuova posizione "Appendici = Parte IX": il task card dichiara Successor = Parte 9 (Appendice). Verifica se l'indice deve essere aggiornato preventivamente o se aggiornamento posticipato a fine ciclo CAP-DATA-01.
-   (e) Il task card §3.5 richiede produzione del file data/sessions/fib_session_calendar.csv con date verificate da borsaitaliana.it (fonte web). Conferma con il supervisore: il Developer puo' accedere al web per la verifica delle date (richiede tool web), oppure il supervisore fornisce le date verificate offline?
+   (a) **RATIFICATA dal supervisore in conversazione del 2026-05-27**: push diretto a `origin/main` (prassi storica del progetto, memory `project_push_policy`). Il task card §5 ("Commit firmato sul branch feature/parte-08-dati, PR aperta") viene DEROGATO su questo punto. Non aprire branch separato, non aprire PR. Il riferimento "Commit firmato" e' rispettato dal commit standard del Developer (no GPG signing aggiuntivo, prassi storica del repo).
+   (b) Naming file output: il task card §5 dichiara "docs/methodology_v2/parte_08_convenzione_dati_storici.md" come file di output, mentre la convenzione storica del progetto e' "CAP_XX_parte_NN.md". Conferma se il task card e' normativo sul naming (parte_08_*.md) oppure se mantieni la convenzione storica (CAP_08_*.md o similare). **Pendente**.
+   (c) Numero di Parte usato negli identificatori interni: le Parti precedenti usano "Parte I, II, ..., VII" (numeri romani); il task card usa "Parte 8" (numero arabo). Decidi se omogeneizzare a "Parte VIII" per coerenza o se rispettare la dicitura del task card. **Pendente**.
+   (d) Conferma supervisore sulla nuova posizione "Appendici = Parte IX": il task card dichiara Successor = Parte 9 (Appendice). Verifica se l'indice deve essere aggiornato preventivamente o se aggiornamento posticipato a fine ciclo CAP-DATA-01. **Pendente**.
+   (e) Il task card §3.5 richiede produzione del file data/sessions/fib_session_calendar.csv con date verificate da borsaitaliana.it (fonte web). Conferma con il supervisore: il Developer puo' accedere al web per la verifica delle date (richiede tool web), oppure il supervisore fornisce le date verificate offline? **Pendente**.
 3. Una volta chiarite le decisioni 2.(a)-(e), copia tasks/CAP-DATA-01.md in tasks/ACTIVE_TASK.md (sovrascrivendo l'attuale storico CAP-07). Committa "[ORCH] CAP-DATA-01 apertura sessione: ACTIVE_TASK aggiornato + ratifica decisioni branch/naming/Appendice". Push.
 4. Chiama subagente planner per leggere ACTIVE_TASK.md e produrre il piano operativo dettagliato della Parte VIII (8 sotto-decisioni §3.1-§3.8 + DoD + rollback) — il task card e' gia' molto specifico, ma il Planner aggiunge struttura: lista capitoli/sotto-capitoli, eredita' obbligatorie da Parti I-VII, M-promemoria pertinenti, AC verificabili, decisioni di scope. Alternativa: se ritieni che il task card sia gia' equivalente a un output Planner (DoD e rollback gia' definiti, acceptance criteria gia' dettagliati), chiama direttamente developer — chiedi al supervisore se preferisce questa via diretta.
 5. Procedi da li' come da CLAUDE.md (check post-Developer obbligatorio prima di chiamare Reviewer, ecc.).
@@ -131,13 +131,17 @@ Durante la lettura del task card, l'Orchestratore della sessione nuova noterà c
 
 3. **"S_xidx dello score strutturale" e "quinta famiglia del catalogo target proiezioni cross-index coerenti"**: questi termini sono coerenti con il documento `ENGINE_ALGO_INTEGRATO_HARD_LOCKED.pdf` (input richiesto al §2 del task card) ma NON sono presenti nel doc v2 Parti I-VII corrente. CAP-DATA-01 §3.6 li cita come "non calcolabili in PHASE-1". Verificare con il supervisore: sono concetti che entreranno in Parti successive del doc v2 (estensione) o sono retaggi del documento HARD_LOCKED che non sopravvivono nel doc v2 (errore nel task card)?
 
-### Decisioni del supervisore già pendenti
+### Decisioni del supervisore — stato al 2026-05-27
 
-Nelle conversazioni precedenti, il supervisore ha lasciato in sospeso (vedi messaggio del 2026-05-27 in cui ha incollato il task card):
-- **Branch policy** per CAP-DATA-01: feature branch + PR (come da task card §5) oppure push diretto a main (prassi storica)? — vedi prompt-template §2.(a)
-- **Naming convenzione** file output (parte_08_*.md vs CAP_08_*.md): vedi prompt-template §2.(b)
+| # | Decisione | Stato | Esito |
+|---|-----------|-------|-------|
+| (a) | Branch policy (feature branch + PR vs push diretto a main) | **RATIFICATA** | Push diretto a `origin/main`, prassi storica preservata. Task card §5 derogato su questo punto. |
+| (b) | Naming file output (`parte_08_*.md` vs `CAP_08_*.md`) | Pendente | — |
+| (c) | Numerazione interna (Parte 8 vs Parte VIII) | Pendente | — |
+| (d) | Aggiornamento preventivo indice (Parte VIII + Parte IX Appendici) | Pendente | — |
+| (e) | Accesso web Developer per date borsaitaliana.it | Pendente | — |
 
-L'Orchestratore della sessione successiva deve chiudere queste decisioni con il supervisore prima di chiamare il Planner/Developer.
+L'Orchestratore della sessione successiva deve chiudere le decisioni (b)-(e) con il supervisore prima di chiamare il Planner/Developer.
 
 ---
 
