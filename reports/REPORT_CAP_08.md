@@ -1,7 +1,7 @@
 # REPORT SUPERVISORE — CAP-DATA-01 (Parte 8)
 
 **Task**: CAP-DATA-01 — Convenzione dati storici e politica di rollover (Parte 8 del documento metodologico v2)
-**Stato**: COMPLETATO (iterazione v1 Developer, in attesa di Review)
+**Stato**: COMPLETATO (iterazione v2 Developer post-rework finding Review v1, in attesa di Review v2)
 **Sessione**: 2026-05-27
 **Predecessor**: Parte VII chiusa PASS Review v2 (commit `b27c1e3`)
 **Successor**: Parte 9 (Appendici A-G)
@@ -235,3 +235,94 @@ Ciascuna delle 8 decisioni normative di Parte 8 (§3.1-§3.8 del task card) ha u
 - **DEV_STATUS**: aggiornato a `READY_FOR_REVIEW` come ultimo step della pre-consegna checklist.
 
 Il Developer si ferma qui in attesa del check post-Developer dell'Orchestratore e dell'invocazione del Reviewer.
+
+---
+
+## Iterazione 2 — risposta ai finding di Review v1
+
+### Rework v2 — 3 finding ratificati dal supervisore via Opzione A
+
+Output del "Punto di controllo supervisore" (CLAUDE.md) post-Review v1 verdetto CONDITIONAL (commit `89c5364`). Decisione del supervisore ratificata in conversazione del 2026-05-27: **Opzione A (fix completo finding #1 + finding #2 con espansione 2a+2b)**. Finding #3 (NEUTRO) ignorato per default CLAUDE.md "NEUTRO non va mai a Developer". La sezione "Finding di Review da risolvere — rework v2" e' stata aggiunta in coda a `tasks/ACTIVE_TASK.md` (righe 495-556) come input autoritativo del rework.
+
+Modalita' chirurgica applicata: Edit puntuali delle righe specifiche indicate; nessuna riscrittura strutturale di Cap.38, Cap.40, Cap.43; nessuna modifica ad altri capitoli; nessuna modifica a `00_indice.md` (Parte 8 resta IN REVIEW), CSV, README, ACTIVE_TASK.md.
+
+#### Fix #1 — Aritmetica rolls (BUG REALE non bloccante, obbligatorio)
+
+**Localizzazione**: `docs/methodology_v2/CAP_08_parte_8.md`, Cap.43 paragrafo "Finestra di validazione" (riga 190 nello stato pre-rework).
+
+**Problema rilevato dalla Review v1**: incoerenza aritmetica interna. La formulazione precedente ("sei rolls per anno sul FIB con scadenze trimestrali, dodici-quattordici roll nella finestra di 18-24 mesi") era incoerente sotto ogni convenzione: con scadenze trimestrali il numero di rolls per anno e' 4, non 6; nessuna convenzione realistica produce "dodici-quattordici roll in 18-24 mesi" a partire da rolls trimestrali.
+
+**Citazione vecchio testo (pre-rework)**:
+> "il numero di roll e' sufficiente (sei rolls per anno sul FIB con scadenze trimestrali, dodici-quattordici roll nella finestra di 18-24 mesi)"
+
+**Citazione nuovo testo (post-rework)**:
+> "il numero di roll e' sufficiente (quattro rolls per anno sul FIB con scadenze trimestrali, sei-otto roll nella finestra di 18-24 mesi)"
+
+L'aritmetica e' ora internamente coerente: 4 rolls/anno x 1,5-2 anni = 6-8 rolls in 18-24 mesi. La giustificazione retorica della scelta della finestra 18-24 mesi (sufficiente significativita' statistica) e' mantenuta invariata: il principio resta valido anche con 6-8 rolls invece di 12-14.
+
+**Impatto operativo sul GA**: nullo (procedura Cap.43 dichiarata out-of-scope FASE-D del roadmap). L'incoerenza era formale in documento normativo, non operativa sul motore.
+
+#### Fix #2a — Selezione campioni (sample selection): `bar_synthetic = False` simmetrico (MIGLIORA PERFORMANCE espansione)
+
+**Localizzazione**: `docs/methodology_v2/CAP_08_parte_8.md`, Cap.43, nuova clausola normativa "Convenzione di selezione del campione (sample selection)" inserita fra "Finestra di validazione" e "Metriche di confronto".
+
+**Problema rilevato dalla Review v1**: Cap.43 non specificava esplicitamente se le 4 metriche del sanity check (distribuzione rendimenti log 1/5/60-min; autocorrelazione rendimenti lag 1, 5, 30; autocorrelazione rendimenti quadrati lag 1, 5, 30; $\sigma$ giornaliera realized) operassero sull'intera griglia 1-min regolare (incluse barre con `bar_synthetic = True` -> zeri strutturali nei rendimenti log per costruzione forward-fill) oppure solo sulle barre reali (`bar_synthetic = False`), per analogia con Cap.40 r92 che specifica questa regola SOLO per le feature di volatilita' EGARCH.
+
+**Fix applicato**: aggiunta in Cap.43 di una clausola normativa esplicita (testo nuovo, 8 righe) che dichiara:
+
+> "**Convenzione di selezione del campione (sample selection).** Tutte e quattro le metriche del sanity check definite di seguito sono calcolate sulla **serie filtrata a `bar_synthetic = False`** (esclusione delle barre sintetiche prodotte dal forward-fill di Cap.40), applicata **simmetricamente** alla serie ratio-adjusted e alla serie unadjusted-stitched sul medesimo intervallo della finestra di validazione. La convenzione eredita il precedente metodologico di Cap.40 (riga 92), che dichiara la regola `bar_synthetic = False` per le feature di volatilita' del modello EGARCH: il sanity check di Cap.43 e' concettualmente diagnostica di distribuzione e di volatilita' (quantili dei rendimenti log, autocorrelazione, $\sigma$ realized), pertanto eredita la stessa convenzione di selezione del campione. Senza il filtro, gli zeri strutturali della griglia regolare (per costruzione $r_t = \log(\mathrm{Close}_t / \mathrm{Close}_{t-1}) = 0$ su ogni barra con `bar_synthetic = True`) distorcerebbero la distribuzione dei rendimenti, l'autocorrelazione e la $\sigma$ giornaliera realized in modo non rappresentativo della struttura dei rendimenti reali del contratto."
+
+Inoltre, il preambolo del paragrafo "Metriche di confronto" e' stato esteso per esplicitare "con il filtro `bar_synthetic = False` applicato simmetricamente" come richiamo della convenzione di sample selection appena dichiarata.
+
+La citazione esplicita di **Cap.40 (riga 92)** come precedente metodologico e' inserita nel testo della clausola, conformemente alla direttiva del finding.
+
+**Impatto operativo sul GA**: nullo nel doc v2 corrente (Cap.43 implementazione out-of-scope FASE-D). Su FASE-D senza fix: gli zeri strutturali (in numero crescente sulla griglia 1-min, particolarmente densi nelle ore di bassa liquidita') avrebbero contaminato distribuzione, autocorrelazione e $\sigma$ realized, distorcendo il bootstrap stazionario e producendo intervalli di confidenza non rappresentativi della struttura di rendimenti reali. Rischio: falsi positivi sul criterio "differenza > 3$\sigma$" per cause spurie (zeri strutturali piuttosto che artefatti del back-adjustment).
+
+#### Fix #2b — Calibrazione $L_{avg}$ indipendente via Politis-White (2004) (MIGLIORA PERFORMANCE originale)
+
+**Localizzazione**: `docs/methodology_v2/CAP_08_parte_8.md`, Cap.43 paragrafo "Criterio di accettazione" (riga 199 nello stato pre-rework).
+
+**Problema rilevato dalla Review v1**: la regola precedente prescriveva l'**eredita'** di $L_{avg}$ dalla calibrazione di Cap.34.2 (Parte VII). Cap.34.2 calibra $L_{avg} = 10$ via Politis-White (2004) sui rendimenti **per-segnale eseguito** della finestra OOS aggregata. La struttura di autocorrelazione dei rendimenti per-segnale (segnali rari, autocorrelazione tipicamente bassa) e' strutturalmente diversa dalla struttura di autocorrelazione dei rendimenti per-barra-reale 1-min (post-filtro 2a), che ha effetti GARCH intraday persistenti su 60-120 min sul FIB. Il numero $L_{avg} = 10$ non si trasferisce per principio del cambio di unita'; si trasferisce solo il principio metodologico "calibra via Politis-White sulla serie effettiva".
+
+**Citazione vecchio testo (pre-rework)**:
+> "La block length media $L_{avg}$ del bootstrap stazionario e' quella calibrata su dati FIB in Parte VII Capitolo 34.2; in mancanza di calibrazione operativa, il sanity check utilizza $L_{avg}$ pari al valore di default congelato in Parte VII (vedi Capitolo 34.2 per il valore corrente)."
+
+**Citazione nuovo testo (post-rework)**:
+> "La block length media $L_{avg}$ del bootstrap stazionario di Cap.43 e' **calibrata indipendentemente** via la procedura di Politis e White (2004) sulla serie filtrata a `bar_synthetic = False` (post-filtro dichiarato nella "Convenzione di selezione del campione" sopra) della finestra di sanity validation (18-24 mesi). $L_{avg}$ **non eredita** il valore congelato di Parte VII Capitolo 34.2: la struttura di autocorrelazione e l'unita' temporale dei rendimenti su cui Cap.34.2 calibra (rendimenti per-segnale eseguito della finestra OOS aggregata, segnali rari con autocorrelazione tipicamente bassa) sono strutturalmente diverse dalla struttura di autocorrelazione e dall'unita' dei rendimenti su cui Cap.43 calibra (rendimenti per-barra-reale 1-min della finestra di sanity validation, con effetti GARCH intraday persistenti). Il numero $L_{avg}$ non si trasferisce per cambio di unita': si trasferisce solo il principio metodologico "calibra $L_{avg}$ via Politis e White (2004) sulla serie effettiva del bootstrap". $L_{avg}$ di Cap.43 e' valore di lavoro non congelato in Parte 8, fissato al momento dell'implementazione in FASE-D del roadmap del progetto."
+
+**Impatto operativo sul GA**: nullo nel doc v2 corrente (Cap.43 implementazione out-of-scope FASE-D). Su FASE-D senza fix: blocchi bootstrap calibrati con $L_{avg}$ troppo corto (mutuato da Cap.34.2 = 10 su segnali rari, applicato a barre 1-min con effetti GARCH persistenti su 60-120 min) -> struttura di dipendenza non rappresentativa -> sottostima della varianza bootstrap -> intervalli di confidenza piu' stretti del corretto -> falsi positivi sul criterio "differenza > 3$\sigma$" -> rischio di bloccare incorrettamente il go-ahead training per cause spurie.
+
+#### Finding #3 — NEUTRO (NON applicato per default CLAUDE.md)
+
+Il finding NEUTRO della Review v1 ("descrizione testuale rendimento nullo alla barra del roll in Cap.38 r39") **non e' stato applicato**. La formula matematica del Cap.38 r37 e' corretta; la descrizione testuale e' commento esplicativo con impatto operativo nullo. Lasciato invariato come da regola CLAUDE.md.
+
+### Relazione fra fix 2a e fix 2b
+
+Tecnicamente collegati: il valore Politis-White di $L_{avg}$ in fix 2b dipende dalla serie su cui si calibra, che fix 2a stabilisce essere la serie filtrata a `bar_synthetic = False` simmetrica. Il fix 2b cita esplicitamente "post-filtro dichiarato nella 'Convenzione di selezione del campione' sopra" per chiudere il cerchio fra le due clausole.
+
+### Verifica AC post-rework
+
+Tutti gli AC originari del task card (AC-3.1 ... AC-3.8 + AC-DoD-1 ... AC-DoD-8) restano OK con le evidenze aggiornate. Le righe di riferimento di Cap.43 si sono spostate per inserimento della clausola di sample selection: ora Cap.43 occupa righe 186-211 (era 186-209 pre-rework), variazione +2 righe.
+
+### Misura prima/dopo del rework v2
+
+| Metrica | Prima rework (Review v1 CONDITIONAL) | Dopo rework v2 | Delta |
+|---------|--------------------------------------|----------------|-------|
+| Coerenza aritmetica testo Cap.43 r190 | Incoerente (sei rolls/anno + dodici-quattordici roll in 18-24 mesi) | Coerente (quattro rolls/anno + sei-otto roll in 18-24 mesi) | Bug formale chiuso |
+| Specifica sample selection sanity check | Implicita (ambigua: griglia regolare completa vs solo barre reali) | Esplicita: `bar_synthetic = False` simmetrico sulle due serie, cita Cap.40 r92 come precedente metodologico | Lacuna normativa chiusa |
+| Calibrazione $L_{avg}$ bootstrap Cap.43 | Eredita da Cap.34.2 (incoerenza unita': rendimenti per-segnale vs rendimenti per-barra-reale 1-min) | Calibrata indipendentemente via Politis-White (2004) sulla serie filtrata 1-min della finestra di sanity validation | Lacuna normativa chiusa |
+| Numero finding Review v1 risolti | 0/3 | 2/2 BUG/MIGLIORA-PERFORMANCE (1 NEUTRO non in scope per default CLAUDE.md) | +2 risolti |
+| Rischio falsi positivi criterio $3\sigma$ in FASE-D | Doppio: zeri strutturali nel campione (2a) + $L_{avg}$ sottodimensionato (2b) | Mitigato per principio: campione filtrato + $L_{avg}$ calibrato sulla serie effettiva | Riduzione rischio downstream |
+
+### Criterio di rollback del rework v2
+
+Il rework v2 non introduce nuovi parametri congelati: $L_{avg}$ di Cap.43 e' dichiarato esplicitamente valore di lavoro non congelato, fissato in FASE-D. La clausola di sample selection `bar_synthetic = False` simmetrica e' invariante metodologico (eredita di Cap.40 r92) e non ha condizione di rollback specifica: un eventuale cambio richiederebbe riesame di Cap.40 stesso, con impatto cross-Parte (alto, vedi sezione "Rollback §3.4 / Cap.40" sopra). La correzione aritmetica di r190 (fix #1) e' definitiva: rolls trimestrali sono fatto di mercato, non scelta tecnica reversibile.
+
+### Output deliverable rework v2
+
+- `docs/methodology_v2/CAP_08_parte_8.md` modificato con i 3 Edit chirurgici (fix #1 + fix #2a + fix #2b), variazione netta ~+2 righe (clausola di sample selection inserita; r190 e r199 sostituite in-place).
+- `reports/REPORT_CAP_08.md` aggiornato con questa sezione "Iterazione 2 — risposta ai finding di Review v1" in coda.
+- `tasks/DEV_STATUS.md` aggiornato a `READY_FOR_REVIEW`.
+- Commit + push diretto a `origin/main` con messaggio convenzionale del task card.
+
+Il Developer si ferma qui in attesa del check post-Developer dell'Orchestratore e dell'invocazione del Reviewer v2.
