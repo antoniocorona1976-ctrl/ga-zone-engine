@@ -1,0 +1,114 @@
+{
+  "symbol": "MINI6F",
+  "requested_range": {
+    "start": "2025-12-23",
+    "end": "2026-04-02"
+  },
+  "connection": {
+    "host": "127.0.0.1",
+    "historical_port": 10003,
+    "account_code": "B6086",
+    "port_settings_path": "C:\\Users\\AN\\.directa\\engine\\APIPortSettings.txt",
+    "banner": "DARWIN_STATUS;CONN_OK;TRUE;Release  2.5.1 build 04/02/2025 11:00:00 more info at http://app1.directatrading.com/trading-api-directa/index.html"
+  },
+  "config": {
+    "config_path": "C:\\directa_history_parametric_export_overlay\\scripts\\directa_history_export_config.json",
+    "resolved_values": {
+      "symbol": "MINI6F",
+      "start": "2025-12-23",
+      "end": "2026-04-02",
+      "host": "127.0.0.1",
+      "historical_port": null,
+      "account_code": null,
+      "port_settings_path": "C:\\Users\\AN\\.directa\\engine\\APIPortSettings.txt",
+      "output_dir": null,
+      "timeout_seconds": 45.0,
+      "delimiter": ","
+    }
+  },
+  "timeframes": {
+    "D": {
+      "timeframe": "D",
+      "mode": "DIRECTA_86400",
+      "rows": 68,
+      "first_timestamp": "2025-12-23 08:00:00",
+      "last_timestamp": "2026-04-02 08:00:00",
+      "commands": [
+        "CANDLERANGE MINI6F 20251223000000 20260402235959 86400"
+      ],
+      "warnings": []
+    },
+    "W": {
+      "timeframe": "W",
+      "mode": "AGG_FROM_D",
+      "rows": 15,
+      "first_timestamp": "2025-12-23 08:00:00",
+      "last_timestamp": "2026-03-30 08:00:00",
+      "commands": [
+        "CANDLERANGE MINI6F 20251223000000 20260402235959 604800"
+      ],
+      "warnings": [
+        "Nessun weekly diretto ricevuto: ricostruisco dal daily."
+      ]
+    },
+    "1H": {
+      "timeframe": "1H",
+      "mode": "DIRECTA_3600",
+      "rows": 365,
+      "first_timestamp": "2025-12-23 12:00:00",
+      "last_timestamp": "2026-04-02 21:00:00",
+      "commands": [
+        "CANDLERANGE MINI6F 20251223000000 20260401235959 3600",
+        "CANDLERANGE MINI6F 20260402000000 20260402235959 3600"
+      ],
+      "warnings": []
+    },
+    "15M": {
+      "timeframe": "15M",
+      "mode": "DIRECTA_900",
+      "rows": 1035,
+      "first_timestamp": "2025-12-23 12:45:00",
+      "last_timestamp": "2026-04-02 21:45:00",
+      "commands": [
+        "CANDLERANGE MINI6F 20251223000000 20260401235959 900",
+        "CANDLERANGE MINI6F 20260402000000 20260402235959 900"
+      ],
+      "warnings": []
+    },
+    "5M": {
+      "timeframe": "5M",
+      "mode": "DIRECTA_300",
+      "rows": 2495,
+      "first_timestamp": "2025-12-23 12:55:00",
+      "last_timestamp": "2026-04-02 21:55:00",
+      "commands": [
+        "CANDLERANGE MINI6F 20251223000000 20260401235959 300",
+        "CANDLERANGE MINI6F 20260402000000 20260402235959 300"
+      ],
+      "warnings": []
+    }
+  },
+  "warnings": [
+    "Nessun weekly diretto ricevuto: ricostruisco dal daily."
+  ],
+  "generated_files": [
+    "C:\\directa_history_parametric_export_overlay\\exports\\directa_history\\MINI6F_20251223_20260402\\MINI6F_W.csv",
+    "C:\\directa_history_parametric_export_overlay\\exports\\directa_history\\MINI6F_20251223_20260402\\MINI6F_D.csv",
+    "C:\\directa_history_parametric_export_overlay\\exports\\directa_history\\MINI6F_20251223_20260402\\MINI6F_1H.csv",
+    "C:\\directa_history_parametric_export_overlay\\exports\\directa_history\\MINI6F_20251223_20260402\\MINI6F_15M.csv",
+    "C:\\directa_history_parametric_export_overlay\\exports\\directa_history\\MINI6F_20251223_20260402\\MINI6F_5M.csv",
+    "C:\\directa_history_parametric_export_overlay\\exports\\directa_history\\MINI6F_20251223_20260402\\MINI6F_ALL.csv",
+    "C:\\directa_history_parametric_export_overlay\\exports\\directa_history\\MINI6F_20251223_20260402\\MINI6F_manifest.json"
+  ],
+  "commands_sent": [
+    "CANDLERANGE MINI6F 20251223000000 20260402235959 86400",
+    "CANDLERANGE MINI6F 20251223000000 20260402235959 604800",
+    "CANDLERANGE MINI6F 20251223000000 20260401235959 3600",
+    "CANDLERANGE MINI6F 20260402000000 20260402235959 3600",
+    "CANDLERANGE MINI6F 20251223000000 20260401235959 900",
+    "CANDLERANGE MINI6F 20260402000000 20260402235959 900",
+    "CANDLERANGE MINI6F 20251223000000 20260401235959 300",
+    "CANDLERANGE MINI6F 20260402000000 20260402235959 300"
+  ],
+  "generated_at": "2026-04-03 00:28:13"
+}
