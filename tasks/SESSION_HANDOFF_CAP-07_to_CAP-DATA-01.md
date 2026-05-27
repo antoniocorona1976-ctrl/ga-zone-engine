@@ -110,7 +110,7 @@ Come primo atto:
    (d) **Aggiornamento indice**: NON aggiornare preventivamente. Aggiornamento di `00_indice.md` posticipato a fine ciclo CAP-DATA-01 (in chiusura sessione, condizione 4 della checklist). Dichiarazione di Parte 8 e Parte 9 (Appendici) avverra' al primo aggiornamento utile (chiusura sessione CAP-08 con PASS). Coerente con la prassi storica delle Parti precedenti.
    (e) **Verifica date sessione FIB da borsaitaliana.it**: il subagente `developer` NON ha tools WebFetch/WebSearch. **L'Orchestratore** della sessione successiva recupera personalmente le date via WebFetch/WebSearch dalla fonte ufficiale `borsaitaliana.it`, le verifica, e le inserisce come dato di input verificato dentro `tasks/ACTIVE_TASK.md` PRIMA di chiamare il Developer. Il Developer poi cita la fonte e usa i dati gia' pronti (opzione e.1 della discussione del 2026-05-27).
 3. **Recupera date sessione FIB via WebFetch / WebSearch** dalla fonte ufficiale borsaitaliana.it (decisione (e.1) ratificata: l'Orchestratore lo fa direttamente perche' il subagente developer non ha questi tools). Cercare la pagina "ore di negoziazione" / "calendario di borsa" del segmento IDEM/FIB e ricostruire la timeline storica delle epoche di sessione (E1=1995, E2=introduzione serale, ..., En=09:00-22:00 attuale). Annotare URL e data consultazione. Se WebFetch fallisce o se le date non sono recuperabili da fonte ufficiale, segnala al supervisore PRIMA di procedere e chiedi fornitura offline (fallback e.2).
-4. Copia tasks/CAP-DATA-01.md in tasks/ACTIVE_TASK.md (sovrascrivendo l'attuale storico CAP-07). **Integra in ACTIVE_TASK.md la tabella date FIB recuperata al punto 3**, citando fonte URL e data verifica. Committa "[ORCH] CAP-DATA-01 apertura sessione: ACTIVE_TASK aggiornato + date FIB integrate da fonte borsaitaliana.it + decisioni (a)-(e) ratificate". Push diretto a origin/main.
+4. Copia tasks/CAP-DATA-01.md in tasks/ACTIVE_TASK.md (sovrascrivendo l'attuale storico CAP-07). **In testa ad ACTIVE_TASK.md (subito sotto il titolo) inserisci** la sezione "## ATTENZIONE PER REVIEWER — eccezione alla regola residui multi-indice" (testo verbatim dal file handoff sezione "Nota tecnica T1"). **Integra anche la tabella date FIB recuperata al punto 3**, citando fonte URL e data verifica. Annota nel campo "Note tecniche" che `_build_order.yaml` non esiste, leggere come "00_indice.md" (T2), e che `data/sessions/` va creata dal Developer (T3). Committa "[ORCH] CAP-DATA-01 apertura sessione: ACTIVE_TASK aggiornato + date FIB integrate + eccezione cross-index per Reviewer + decisioni (a)-(e) ratificate". Push diretto a origin/main.
 5. Chiama subagente planner per leggere ACTIVE_TASK.md e produrre il piano operativo dettagliato della Parte 8 (8 sotto-decisioni §3.1-§3.8 + DoD + rollback) — il task card e' gia' molto specifico, ma il Planner aggiunge struttura: lista capitoli/sotto-capitoli, eredita' obbligatorie da Parti I-VII, M-promemoria pertinenti, AC verificabili, decisioni di scope. Alternativa: se ritieni che il task card sia gia' equivalente a un output Planner (DoD e rollback gia' definiti, acceptance criteria gia' dettagliati), chiama direttamente developer — chiedi al supervisore se preferisce questa via diretta.
 6. Procedi da li' come da CLAUDE.md (check post-Developer obbligatorio prima di chiamare Reviewer, ecc.).
 
@@ -147,6 +147,66 @@ I 3 disallineamenti potenziali fra CAP-DATA-01 e doc v2 Parti I-VII sono stati t
    - Implicazione per il Developer: trattare `S_xidx` e "quinta famiglia catalogo target" come terminologia di riferimento PHASE-2, sempre dichiarando esplicitamente la non-implementazione nel doc v2 corrente.
 
 Le tre decisioni sono coerenti fra loro: tutto cio' che e' cross-index nel task card resta a livello di **dichiarazione normativa**, mai a livello di **implementazione** nel doc v2. La fasizzazione PHASE-1 / PHASE-2 di §3.6 e' lo strumento documentale per rendere esplicita questa scelta.
+
+### Note tecniche critiche per la sessione successiva
+
+Tre punti operativi emersi dalla verifica del repo che l'Orchestratore della sessione successiva DEVE conoscere prima di copiare CAP-DATA-01 in ACTIVE_TASK.md.
+
+#### Nota tecnica T1 — Reviewer subagente e regola "residui multi-indice = bloccante"
+
+Il subagente `reviewer` (file `.claude/agents/reviewer.md`, riga 38) dichiara come regola assoluta:
+
+> "Specializzazione FIB N=1: ci sono residui di multi-indice (DCC, ADCC, BEKK, N>=8, covarianza cross-index)? Se si, e' un problema bloccante."
+
+Questa regola e' stata scritta quando il doc v2 era esplicitamente single-instrument FIB. Il task CAP-DATA-01 §3.6 introduce **deliberatamente** DCC/ADCC/cDCC come dichiarazione normativa PHASE-2 (decisione (1) ratificata dal supervisore al 2026-05-27).
+
+**Senza intervento, il Reviewer v1 di CAP-DATA-01 classifichera' §3.6 come BUG REALE bloccante** (regola attiva), producendo un falso FAIL.
+
+**Mitigazione obbligatoria**: l'Orchestratore della sessione successiva, quando copia tasks/CAP-DATA-01.md in tasks/ACTIVE_TASK.md, aggiunge in cima al file (subito sotto il titolo) una sezione esplicita:
+
+```
+## ATTENZIONE PER REVIEWER — eccezione alla regola "residui multi-indice = bloccante"
+
+Il subagente `reviewer` (.claude/agents/reviewer.md riga 38) dichiara bloccante
+ogni residuo multi-indice (DCC/ADCC/BEKK/N>=8/covarianza cross-index).
+
+**In questo task, §3.6 (Convenzione cross-index PHASE-2) introduce DELIBERATAMENTE
+DCC/ADCC/cDCC come dichiarazione normativa.** La decisione e' ratificata dal
+supervisore (AC) in conversazione del 2026-05-27, decisione (1): "dichiarazione
+normativa senza implementazione nel doc v2". Vedi commit f497022 e file
+tasks/SESSION_HANDOFF_CAP-07_to_CAP-DATA-01.md.
+
+**Il Reviewer NON deve classificare come bloccanti** le citazioni cross-index in
+§3.6 e nelle sue sezioni collegate (fasizzazione PHASE-1/PHASE-2, S_xidx, quinta
+famiglia catalogo target, Realized GARCH come esempio futuro). Sono normative
+dichiarate, non residui da rimuovere.
+
+**La regola "residui multi-indice = bloccante" resta valida** per qualunque
+citazione cross-index al di FUORI di §3.6 (es. se il Developer inserisse DCC in
+§3.4 preprocessor griglia o in altre sezioni non legate alla fasizzazione PHASE-2).
+```
+
+Alternativa scartata: modificare reviewer.md per aggiungere l'eccezione. Sconsigliata perche' modifica un file degli agenti che e' stato stabile per tutto il ciclo CAP-01..CAP-07, e perche' l'eccezione e' specifica di CAP-DATA-01.
+
+#### Nota tecnica T2 — File `_build_order.yaml` citato nel task card §5
+
+Il task card §5 (Definition of Done) cita:
+
+> "_build_order.yaml (o equivalente) aggiornato: Parte 8 aggiunta in coda al corpo principale..."
+
+Il file `_build_order.yaml` **non esiste** nel repo (verificato con Glob al 2026-05-27 commit f497022). Il file "equivalente" che il progetto ha sempre usato e' `docs/methodology_v2/00_indice.md`. La condizione 4 della checklist di chiusura sessione gia' richiede l'aggiornamento di 00_indice.md.
+
+**Implicazione**: l'Orchestratore della sessione successiva istruisce il Developer (via ACTIVE_TASK) di interpretare il riferimento "_build_order.yaml (o equivalente)" come `docs/methodology_v2/00_indice.md`. Non creare un nuovo file `_build_order.yaml`.
+
+#### Nota tecnica T3 — Directory `data/sessions/` non esistente
+
+Il task card §3.5 (Timeline ufficiale delle sessioni FIB) richiede produzione di:
+
+> "data/sessions/fib_session_calendar.csv con schema (epoch_id, start_date, end_date, session_open_local, session_close_local, timezone)"
+
+La directory `data/sessions/` **non esiste** nel repo (verificato con Glob al 2026-05-27 commit f497022). Il Developer dovra' crearla via `mkdir -p data/sessions` (o equivalente PowerShell `New-Item -ItemType Directory -Force data/sessions`) prima di scrivere il CSV.
+
+**Implicazione**: l'Orchestratore della sessione successiva nota questo gap nel commit di apertura ACTIVE_TASK ma NON crea la directory preventivamente (e' compito del Developer).
 
 ### Decisioni del supervisore — stato finale al 2026-05-27 (tutte chiuse)
 
