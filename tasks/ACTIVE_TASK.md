@@ -402,3 +402,99 @@ Note di lavoro per il Developer:
 - **Coerenza eredita'**: ogni eredita' citata deve essere coerente con la versione corrente del documento di provenienza (no riferimenti a versioni storiche obsolete). In particolare: Cap.26.2 PV $T_{budget}=80$h e' la versione rework v3; Cap.25.5 PV $N_{eventi}$ "segnali eseguiti" e' la versione rework v3; Cap.26.7 PV $K_{max}=6$ + divergenza Harrell-strict e' la versione rework v3. Tutte le citazioni di Parte V devono essere conformi alla v4 PASS (commit `dcdcaee`). Tutte le citazioni di Parte VI devono essere conformi alla v2 PASS (commit `d082972`).
 - **Citazioni bibliografiche**: ogni metodo statistico nuovo (DSR, PBO/CSCV, bootstrap stazionario, BCa) richiede citazione esplicita di paper + journal + anno + pagine come prassi delle Parti precedenti. La citazione di Therneau-Grambsch 2000 per Cox time-varying coefficients (Cap.31.3) e' anch'essa esplicita.
 - **Coerenza con la struttura del documento**: il documento ha **6 capitoli** (31-36), non 5; il vincolo "~8 pp totali" mappa su lunghezza target ~1,5 pp per Cap.31-34 + ~1 pp per Cap.35-36. Eventuali sotto-sezioni nuove sono ammesse solo se motivate operativamente (es. Cap.31.5 e Cap.36.3 sono sotto-sezioni dedicate a carryover esplicito al ciclo successivo).
+
+---
+
+# [APPENDICE AGGIUNTA 2026-05-27 dall'Orchestratore post-checkpoint supervisore] Finding di Review da risolvere (rework v2)
+
+**Origine**: Review v1 CAP-07 (commit `640ed61` del 2026-05-27, verdetto **CONDITIONAL**) -- vedi `reviews/REVIEW_CAP_07_review.md`.
+
+**Decisione del supervisore (checkpoint Orchestratore 2026-05-27)**: il supervisore ha ratificato l'opzione "Entrambi i MIGLIORA PERFORMANCE a Developer". Conseguenza:
+
+- **Finding #1 (BUG REALE)** -> Developer (obbligatorio)
+- **Finding #2 (MIGLIORA PERF, unita c5.4xlarge)** -> Developer (approvato supervisore)
+- **Finding #3 (MIGLIORA PERF, bibliografia Notices AMS)** -> Developer (approvato supervisore)
+- **Finding #4 (NEUTRO, esempio Cap.33.5 opaco)** -> ignorato (default classe NEUTRO)
+- **Finding #5 (NEUTRO, $|f_5|$ ridondante)** -> ignorato (default classe NEUTRO)
+
+I 3 finding sotto sono **vincolanti** per il rework v2 del Developer; chiusura formale richiede risoluzione documentata di ciascuno con riferimento puntuale (file:riga) nel REPORT v2 e tabella verifica AC v2 aggiornata. Nessun finding addizionale di consegna e' atteso (il check post-Developer del primo ciclo e' passato 6/6).
+
+## Finding #1 -- BUG REALE: contraddizione interna Cap.33.4 vs Cap.34.4 sulla frazione del compute budget assorbita dal PBO
+
+**File:riga della review**: `reviews/REVIEW_CAP_07_review.md` righe 34-50 (CB-1).
+
+**Posizione nel documento metodologico v1**:
+- `docs/methodology_v2/CAP_07_parte_VII.md` riga ~320 (Cap.33.4 paragrafo finale, dichiara "Frazione del compute budget assorbita dal PBO e dunque **inferiore al 5%** del totale").
+- `docs/methodology_v2/CAP_07_parte_VII.md` righe ~435-439 (Cap.34.4 post-processing aggregato, ammette "PBO ~1% per S=12, fino a ~10% per S=16, Cap.33.4").
+
+**Diagnosi del Reviewer**: i due paragrafi affermano cose incompatibili. La matematica esplicita di Cap.33.4 (7,7e8 / 8e9 ~= 10% per S=16) contraddice direttamente la sua stessa conclusione "<5%". Il Developer ha autodichiarato AC-33-4 come OK ma il calcolo interno mostra il contrario; **AC-33-4 dell'ACTIVE_TASK richiede esplicitamente "frazione del compute budget < 5%"**.
+
+**Cosa il Developer DEVE fare nel rework v2**:
+
+Riformulare il paragrafo finale di Cap.33.4 per coerenza interna con Cap.34.4. La forma raccomandata e' una delle due seguenti (Developer sceglie la piu' chiara, coerente con la matematica esplicita gia' presente):
+
+- **Opzione (alpha)**: ammettere il range. "Frazione del compute budget assorbita dal PBO: ~1% per S=12 (~5,5e7 / 8e9), ~10% per S=16 (~7,7e8 / 8e9). Il range puo' essere ulteriormente ridotto via parallelizzazione su 16 vCPU (Cap.34.4); con $S=12$ il PBO entra in $<2\%$ effettivo, con $S=16$ entra in $\leq 10\%$ effettivo. Coerente con il totale post-processing dichiarato in Cap.34.4 ($\leq 15\%$)."
+- **Opzione (beta)**: riformulare assumendo il caso favorevole $S=12$ come scenario nominale. "Frazione del compute budget assorbita dal PBO con configurazione nominale $S=12$: ~1% (~5,5e7 / 8e9), confermato fattibile su c5.4xlarge in tempi << T_budget. Il caso $S=16$ assorbe ~10% (dettaglio in Cap.34.4)."
+
+Vincolo: il rework deve **non introdurre nuovi numeri inventati**, deve usare solo i numeri gia' presenti nella matematica esplicita di Cap.33.4 (5,5e7, 7,7e8, 8e9). La riformulazione di AC-33-4 nel REPORT v2 deve essere coerente (es. AC-33-4 verificato per il caso $S=12$ con frazione $\leq 5\%$, oppure AC-33-4 verificato con range esplicito 1%-10% a seconda di $S$).
+
+**AC verificabile post-rework v2**: AC-33-4 promosso da PARZIALE a OK con citazione esplicita del paragrafo riformulato di Cap.33.4 (file:riga del rework).
+
+## Finding #2 -- MIGLIORA PERFORMANCE: errore di unita di misura sul prezzo spot di c5.4xlarge (2 occorrenze)
+
+**File:riga della review**: `reviews/REVIEW_CAP_07_review.md` righe 56-70 (O-1).
+
+**Posizione nel documento metodologico v1**:
+- `docs/methodology_v2/CAP_07_parte_VII.md` riga ~426 (Cap.34.4 opzione ii: "rispetto a c5.4xlarge 80h (**15 USD/h spot** * 80h = ~12 USD/run di base, con margine)").
+- `docs/methodology_v2/CAP_07_parte_VII.md` riga ~441 (Cap.34.4 Cloud: "Il bootstrap gira su c5.4xlarge (16 vCPU, **~15 USD/h spot**)").
+
+**Diagnosi del Reviewer**: $15$ USD/h $\times 80$ h $= 1.200$ USD/run, NON $12$ USD/run. Per chiudere l'aritmetica gia' presente nel testo (12 USD/run base + differenziale 24,4 USD/run vs c5.9xlarge), il prezzo deve essere $0,15$ USD/h spot (tipico spot pricing per c5.4xlarge: on-demand ~0,68 USD/h, spot ~0,15-0,27 USD/h). Errore di fattore 100 nell'unita di misura.
+
+**Cosa il Developer DEVE fare nel rework v2**:
+
+Sostituire entrambe le occorrenze "15 USD/h spot" con "0,15 USD/h spot". Edit puntuali, no riscrittura strutturale del paragrafo. L'aritmetica successiva ($12$ USD/run base, differenziale $\leq \theta_{cost}=100$ USD/run -> opzione ii fattibile) resta invariata.
+
+**AC verificabile post-rework v2**: nessun AC specifico (errore di consegna documentale, non viola direttamente un AC del task), ma il Developer documenta nel REPORT v2 Sezione (iii) la correzione con file:riga.
+
+## Finding #3 -- MIGLIORA PERFORMANCE: errore bibliografico Bailey-Borwein-Lopez de Prado-Zhu Notices AMS
+
+**File:riga della review**: `reviews/REVIEW_CAP_07_review.md` righe 72-83+ (O-2).
+
+**Posizione nel documento metodologico v1**:
+- `docs/methodology_v2/CAP_07_parte_VII.md` riga ~252 (Cap.33.1 paragrafo 1: "cfr. anche Bailey-Borwein-Lopez de Prado-Zhu **2016** working paper preliminare in Notices of the American Mathematical Society 61(5)").
+
+**Diagnosi del Reviewer**: il volume 61, numero 5 di Notices of the AMS e' del **maggio 2014**, non del 2016. Il paper e' Bailey, Borwein, Lopez de Prado, Zhu (2014) "Pseudo-Mathematics and Financial Charlatanism: The Effects of Backtest Overfitting on Out-of-Sample Performance", Notices of the AMS 61(5), 458-471. E' un paper formale (non un working paper) e l'anno e' 2014 (non 2016).
+
+**Cosa il Developer DEVE fare nel rework v2**:
+
+Sostituire la citazione errata con la versione corretta. Edit puntuale del paragrafo di Cap.33.1. Forma raccomandata:
+
+> Bailey, Borwein, Lopez de Prado e Zhu (2017) "The Probability of Backtest Overfitting", Journal of Computational Finance 20(4), 39-70 (cfr. anche Bailey, Borwein, Lopez de Prado, Zhu 2014 "Pseudo-Mathematics and Financial Charlatanism: The Effects of Backtest Overfitting on Out-of-Sample Performance", Notices of the American Mathematical Society 61(5), 458-471).
+
+**AC verificabile post-rework v2**: AC-T-10 (citazioni bibliografiche conformi al formato delle Parti precedenti) resta OK; il Developer documenta nel REPORT v2 Sezione (iii) la correzione con file:riga.
+
+## Finding #4 e #5 -- NEUTRO (ignorati per default)
+
+**#4 (Cap.33.5 esempio PBO opaco)**: il salto logico fra "$c^*$ vince in 8.500/12.870 combinazioni" e "PBO = 4.500/12.870 = 0,35" e' opaco (le altre 4.370 combinazioni dove $\lambda_n^* > 0$ non sono esplicitate). Il Reviewer ha dichiarato che l'esempio e' **illustrativo**, quindi opacita' tollerabile. **Nessuna azione richiesta**.
+
+**#5 (\|$f_5$\| ridondante nei filtri)**: $f_5$ e' gia' non-negativa per costruzione (Cap.24.1 PV), quindi $|f_5|$ e' tautologicamente $f_5$. **Nessuna azione richiesta**.
+
+Il Developer **non** modifica questi 2 punti nel rework v2. Se per pulizia decide di togliere comunque $|\cdot|$ ridondante (Finding #5), va dichiarato nel REPORT v2 Sezione (iii) come correzione opportunistica fuori scope dei finding ratificati. **Non vincolante**.
+
+## Iterazione v2: aspettative operative
+
+- **Output atteso**: 4 file modificati (`docs/methodology_v2/CAP_07_parte_VII.md` v2, `reports/REPORT_CAP_07.md` v2, `docs/methodology_v2/00_indice.md` aggiornato voce Parte VII a "IN REVIEW Review v2", `tasks/DEV_STATUS.md = READY_FOR_REVIEW`).
+- **Stile delle correzioni**: Edit puntuali, non riscritture strutturali. Finding #1 e' la modifica piu' sostanziale (riformulazione del paragrafo finale di Cap.33.4); #2 e #3 sono sostituzioni di una-due parole/numeri.
+- **Tabella AC v2 nel REPORT**: aggiornare la tabella v1 dei 64 AC con AC-33-4 promosso da PARZIALE a OK (riferimento al paragrafo riformulato) e nuove righe AC-T (eventuali, ma non sono attesi nuovi AC trasversali). Le righe AC-T-10 e nessun-AC-specifico per #2 #3 restano con nota in Sezione (iii) del REPORT v2.
+- **CARRYOVER**: nessun M-promemoria nuovo (la Review ha dichiarato esplicitamente "Nessun M-promemoria nuovo introdotto dalla Review v1"). Il Developer NON modifica `tasks/CARRYOVER.md` nel rework v2.
+- **Commit messages suggerito**: `[DEV] CAP-07 v2 rework: 1 BUG REALE + 2 MIGLIORA PERF risolti` (oppure equivalente con il prefisso `[DEV]`).
+- **Atteso ciclo Review v2**: PASS (il documento e' sostanzialmente solido secondo la Review v1; la correzione dei 3 finding chiude il CONDITIONAL).
+
+## Cosa il Developer NON DEVE fare nel rework v2
+
+- Non riscrivere CAP_07_parte_VII.md da zero. Solo Edit puntuali sui finding sopra.
+- Non modificare i 12 parametri di tuning provvisori dichiarati non congelati in Parte VII (sono stati ratificati dalla Review v1).
+- Non modificare le 5 decisioni di scope del Planner (sono state ratificate dalla Review v1, 5/5 OK).
+- Non aggiungere nuovi capitoli o sotto-sezioni.
+- Non chiudere i 2 NEUTRO (#4 #5) come BUG REALI nel REPORT v2.
+- Non aprire nuovi M-promemoria (non sono emersi nuovi rinvii nella Review v1).
