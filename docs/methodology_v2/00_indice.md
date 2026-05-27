@@ -72,6 +72,21 @@ Documento specializzato per FIB N=1, derivato da ENGINE_ALGO_INTEGRATO_HARD_LOCK
 - **Cap 43 — Procedura di sanity validation** (~1 pp): finestra ultimi 18-24 mesi, ratio-adjusted vs unadjusted-stitched; metriche (quantili rendimenti log 1/5/60-min, autocorrelazione rendimenti e rendimenti quadrati lag 1/5/30, $\sigma$ giornaliera realized); criterio $3\sigma$ bootstrap con $B=2.000$ replicazioni di Parte VII Cap.34; implementazione out-of-scope, vivra' in FASE-D del roadmap.
 - **Cap 44 — Esclusione esplicita di fonti alternative** (~0.5 pp): MIB cash, vendor non-Portara/CQG senza nuovo task Planner, mix vendor cross-index, CFD broker, dati intraday liberi (Yahoo, Investing).
 
+## Parte 9 — Pipeline runtime FIB su Directa DAPI (~8-10 pp) [IN REVIEW]
+
+- **Cap 45 — Premessa e collocazione**: cosa formalizza la Parte 9, relazione con CAP-DATA-01 / Parte 8, invariante research = runtime applicato all'adapter DAPI -> bundle frozen Portara.
+- **Cap 46 — Architettura del canale DAPI**: gateway Darwin loopback `127.0.0.1`, banner `Release 2.5.1`, triplo porte `10001/10002/10003`, `APIPortSettings.txt` come identificatore locale (Gap-1), uso esclusivo del canale (D-6), pattern socket persistente, rate-limit empirico (cooldown ~30s dopo 14 connessioni rapide).
+- **Cap 47 — Catalogo simboli FIB e cash europei**: ticker IDEM `FIB6F/FIB6I/MINI6F/MINI6I/MINI6C` (codice mese Directa-IDEM `I=settembre` verificato via ANAG), schemi `ANAG/BOOK_5/PRICE`, indici cash europei `DGER/DSTX50/DITAS/DFRA` con market data realtime gratuito DAPI base, derivazione front-month.
+- **Cap 48 — Format dati canonico runtime**: CSV BOM UTF-8 + manifest JSON, dominio `source ∈ {DIRECTA, AGG_FROM_60s, AGG_FROM_D}`, ruolo script `export_directa_history_parametric.py` come riferimento implementativo, test regressione exports (Gap-5).
+- **Cap 49 — Mappatura schema DAPI -> bundle frozen Portara**: tabella canonica `bar_open/bar_high/bar_low/bar_close/volume/tick_count/bar_synthetic`, regola `bar_synthetic=True` simmetrica fra runtime e training (Parte 8 Cap.40).
+- **Cap 50 — Gestione errori, recovery, riavvio Darwin**: decodifica codici `1004 / 1007 / 1030`, backoff esponenziale, riavvio mezzanotte con marker `RUNTIME_GAP_START` / `RUNTIME_GAP_END` (Gap-3), fallback `AGG_FROM_60s` / `AGG_FROM_D`, stato `RUNTIME_DEGRADED` su conflitto DGo / TradingView.
+- **Cap 51 — Warm-up stati condizionali all'avvio sessione**: lookback DAPI tipico ≤ 30 giorni (entro 100gg DAPI), fallback Portara per restart dopo downtime > 100 giorni, marker `WARMUP_COMPLETE`.
+- **Cap 52 — Sessione operativa runtime FIB 08:00-22:00 CET**: coerenza con epoca E5 di Parte 8 Cap.41, policy timezone CET/CEST con conversione automatica (Gap-2), allineamento timer state machine Parte II Cap.7, marker `SESSION_OPEN` / `SESSION_CLOSE`.
+- **Cap 53 — Decisione Q-A: gating cash europei**: verdetto Q-A-3 ratificato (logging operativo + gating qualitativo configurable fuori dal GA), perimetro vincolante (no feature tensor, no state machine, no cromosoma, no walk-forward), regola di gating in `config/gating_rules.yaml` versionata.
+- **Cap 54 — Audit log e retention**: JSON Lines append-only, eventi loggati (`HANDSHAKE` / `SUB` / `SIGNAL_*` / `GATING_*` / `RUNTIME_*`), retention minima 90 giorni rolling + retention permanente sui giorni di emissione segnale (Gap-4), soglia commissioni < 200 EUR/mese tollerata con notifica supervisore (Gap-6).
+- **Cap 55 — Punti aperti fuori scope**: abilitazione FDAX standard, lookup completa codici mese Directa-IDEM, vendor cross-index pluriennale, continuita' tape / recupero gap / riconciliazione canonica / storicizzazione strutturata rinviati a CAP-DATA-03 / Parte 10.
+- **Cap 56 — Tabella decisioni del capitolo**: 17 decisioni normative D-9-1..D-9-17 con motivazione 1 riga; criteri di rollback registrati.
+
 ## Appendici operative (~6 pp)
 
 - **Appendice A — Specifiche PC e ambiente Python**: dettagli i5-7200U, Anaconda base, requirements, repository del codice.
