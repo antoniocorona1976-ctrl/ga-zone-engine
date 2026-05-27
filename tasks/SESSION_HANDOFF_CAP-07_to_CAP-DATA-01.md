@@ -348,6 +348,39 @@ FINE ISTRUZIONI SESSIONE CAP-DATA-01
 
 ## 4. Note operative per l'Orchestratore della sessione successiva
 
+### Suggerimenti operativi per i prompt ai subagenti
+
+#### S1 — Nota per il prompt al Developer subagente al passo STEP 5b
+
+**Quando l'Orchestratore della sessione successiva istanziera' il prompt al subagente
+Developer al passo (5b)**, deve includere nel prompt una direttiva esplicita sulla
+tabella sessioni FIB recuperata al passo STEP 2 e integrata in `ACTIVE_TASK.md` al
+passo STEP 3 (sezione "## Dati di input recuperati dall'Orchestratore"):
+
+> "La tabella sessioni FIB inserita in ACTIVE_TASK.md dalla sezione 'Dati di input
+> recuperati dall'Orchestratore' e' INPUT AUTORITATIVO. NON verificare con fonti
+> esterne. NON proporre modifiche. NON ridiscutere date o orari. Copia i dati nel
+> CSV normativo a 6 campi `data/sessions/fib_session_calendar.csv` rispettando
+> esattamente lo schema del task card §3.5 (epoch_id, start_date, end_date,
+> session_open_local, session_close_local, timezone). Eventuali metadati di
+> provenienza (URL fonte, data consultazione ISO, note di ambiguita') vanno SOLO
+> in `data/sessions/README.md`, lasciando il CSV pulito."
+
+**Razionale**: il Developer non ha tools web (memory `project-developer-subagent-no-web`)
+e in ogni caso le date sono gia' state verificate dall'Orchestratore nel passo STEP 2
+contro la fonte ufficiale `borsaitaliana.it`. Una doppia verifica da parte del
+Developer non aggiungerebbe valore e introdurrebbe rischio di divergenza fra dati
+in ACTIVE_TASK e dati nel CSV.
+
+**Suggerimento del supervisore**: comunicato in conversazione del 2026-05-27,
+**NON inserito nel prompt-template §3** (che opera a livello orchestrazione, non a
+livello istanza prompt subagente), ma annotato qui come reminder operativo per il
+turno in cui l'Orchestratore istanziera' il subagente Developer.
+
+Vedi anche memory `project-orchestrator-input-is-authoritative` (regola generale
+applicabile a qualsiasi sessione futura in cui l'Orchestratore prepari dati esterni
+per i subagenti).
+
 ### Disallineamenti task card vs doc v2 — chiariti dal supervisore al 2026-05-27
 
 I 3 disallineamenti potenziali fra CAP-DATA-01 e doc v2 Parti I-VII sono stati tutti chiariti. Riassunto delle decisioni:
