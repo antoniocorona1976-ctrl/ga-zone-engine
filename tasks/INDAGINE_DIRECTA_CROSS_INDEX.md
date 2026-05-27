@@ -347,3 +347,91 @@ I 5 punti del template originale vanno aggiornati con quanto già verificato:
 
 **Nessuna modifica alla roadmap PHASE-1 FIB-only** richiesta da queste evidenze. La PHASE-2 cross-index resta nello scenario B raccomandato, ora con ticker DAPI canonical noti e gap di abilitazione FDAX standard isolato come unico punto residuo da chiarire.
 
+---
+
+# APPENDICE EMPIRICA B — Verifica REALTIME post-reconnect DGo (2026-05-27 14:05 CET)
+
+Dopo aver riconnesso DGo/Darwin, il supervisore ha autorizzato un secondo probe diretto sulla **porta realtime 10001** per verificare se il SUB risponde ora che la sessione è stata rigenerata. Probe eseguito inline via Python `socket`, comandi visibili nel transcript.
+
+## B.1 — Sintassi protocollo Darwin sulla 10001
+
+I comandi metadata risultano tutti rifiutati: `HELP`, `VER`, `STATUS`, `GETAVAILABLESTATUS`, `INFO` → `ERR;<cmd>;1004`. Il protocollo realtime accetta in pratica solo `SUB`/`UNSUB` + (presumibilmente) `BOOK_SUB`/`BOOK_UNSUB` documentati nel wiki API. Codice `1004` = "comando non valido o non supportato".
+
+## B.2 — SUB FIB6I (controllo positivo)
+
+`SUB FIB6I` ha restituito immediatamente sia anagrafica che book full:
+
+```
+ANAG;FIB6I;14:05:30;IT0024847870;FTSE MIB INDEX FUTURE SET26;50040.0;0.0;0
+BOOK_5;FIB6I;14:02:33;1;1;49715.0;1;1;49275.0;0;0;0.0;0;0;0.0;0;0;0.0;
+                                                                       1;1;50535.0;1;1;51115.0;0;0;0.0;0;0;0.0;0;0;0.0
+```
+
+**Letture chiave:**
+- **ISIN FIB6I**: `IT0024847870`
+- **Descrizione**: "FTSE MIB INDEX FUTURE SET26" → **FIB6I è il future FTSE MIB scadenza settembre 2026** (`SET26 = SETtembre 2026`).
+- Il codice mese Directa `I` quindi corrisponde a **settembre**, NON segue lo standard CME (U=Sep). La convenzione Directa-IDEM è proprietaria (`F`, `I`, ... → da decodificare). Per CAP-DATA-02 servirà una piccola lookup table tradotta dai metadata anagrafica.
+- Schema **`ANAG`**: `ANAG;<TICKER>;<HH:mm:ss>;<ISIN>;<descrizione>;<ref_price>;<flag>;<flag>`
+- Schema **`BOOK_5`**: `BOOK_5;<TICKER>;<HH:mm:ss>;<bid1_lots>;<bid1_ord>;<bid1_price>;<bid2..>;<bid3..>;<bid4..>;<bid5..>;<ask1_lots>;<ask1_ord>;<ask1_price>;<ask2..>;<ask3..>;<ask4..>;<ask5..>` (5 livelli BID + 5 livelli ASK).
+- Mercato IDEM a 14:05 CET in pieno orario di sessione, ma il book pubblicato è scarno (1+1 lotti su L1 a entrambi i lati, gli altri 4 livelli `0`) — coerente con un quasi-future a scadenza lontana settembre 2026 in giornata di scambi normale; **per il front-month giugno occorrerebbe SUB su `FIB6L`/`FIB6M` o sul codice mese Directa corrispondente a giugno**: nei prossimi probe vale identificarlo.
+
+## B.3 — SUB cross-index futures (FDXM, DJ50, ES) — confermato `1030`
+
+```
+SUB CM.ESM6     →  ERR;CM.ESM6;1030
+SUB EU.DJ50M6   →  ERR;EU.DJ50M6;1030
+SUB EU.FDXMM6   →  ERR;EU.FDXMM6;1030
+```
+
+**Conferma definitiva**: `ERR;<TICKER>;1030` = **market data realtime non sottoscritto** sull'account `B6086`. È un codice diverso da `1007` (storico/ticker non abilitato) e segnala specificamente la mancanza dell'abbonamento dati live.
+
+## B.4 — SUB indici cash europei — FUNZIONA gratis
+
+```
+SUB DGER  →  PRICE;dGER;14:05:41;25251.9;0;0;0;25244.9;25400.9
+              PRICE;dGER;14:05:47;25251.6;0;0;0;25244.9;25400.9
+SUB DITAS →  PRICE;dITAS;14:05:43;49859.22;2;2318;2129;49859.22;50129.22
+              PRICE;dITAS;14:05:53;49869.22;12;2330;2138;49859.22;50129.22
+```
+
+**Letture chiave:**
+- **Indici cash europei** (DGER=DAX, DITAS=FTSE MIB, presumibilmente anche DSTX50 e DFRA) hanno **realtime gratuito incluso nel DAPI base** — non serve abilitazione market data Eurex/CME extra.
+- Schema **`PRICE`**: `PRICE;<ticker>;<HH:mm:ss>;<last>;<volume_lot?>;<bid_qty?>;<ask_qty?>;<low_session>;<high_session>` (campi medi da chiarire).
+- Notare il **prefisso lowercase** nel ticker della risposta (`dGER`, `dITAS`) — pattern proprietario Directa per gli indici cash; nel SUB usiamo invece il ticker maiuscolo.
+- I tick arrivano in pubblicazione streaming continua (più righe sullo stesso simbolo a `:41`, `:47`, `:53`).
+
+## B.5 — Implicazioni concrete per scenario B
+
+L'evidenza realtime conferma e raffina la raccomandazione:
+
+| Componente PHASE-2a runtime | Stato attuale sull'account `B6086` | Cosa serve |
+|---|---|---|
+| Tick FIB (front + scadenze) | ✅ già funzionante | nulla |
+| Tick FDXM (Mini-DAX) | ❌ `ERR;1030` | attivare market data Eurex 7,50 EUR/mese (bid/ask) o 15 EUR (book 5) |
+| Tick DJ50 (FESX) | ❌ `ERR;1030` | come sopra (stesso pacchetto Eurex futures) |
+| Tick ES (CME standard) | ❌ `ERR;1030` | attivare market data CME 15 USD/mese (book 5) |
+| Tick MES (CME micro) | ❌ `ERR;1030` (atteso, stessa famiglia CME) | come sopra, stesso pacchetto |
+| **Tick DGER, DITAS, DSTX50, DFRA (indici cash)** | ✅ **gratuito già attivo** | nulla — **usabili da subito come feature intermarket low-cost** |
+
+**Nuovo elemento di valore strategico**: il pipeline può ingerire i tick degli **indici cash europei gratuitamente** mentre l'abilitazione futures cross-index è ancora pending. Per regime detection / coordinamento intermarket / feature qualitative, `dGER` (DAX cash) e `dSTX50` (Eurostoxx cash) tracciano lo stesso sottostante dei rispettivi future con tracking error ~0 sull'intraday. **PHASE-2a può partire con tick cash zero-cost prima ancora di attivare i market data future**.
+
+## B.6 — Aggiornamento template email supporto Directa (definitivo)
+
+Riducendo il template alla luce di quanto verificato, restano 3 punti aperti:
+
+1. **Abilitazione DAX standard FDAX (25 EUR/pt)** su account `B6086` — modulistica e costo aggiuntivo (se distinto dall'abbonamento Mini-DAX/Micro-DAX 7,50 EUR/mese).
+2. **Procedura attivazione market data Eurex 7,50 EUR/mese (bid/ask futures) e CME 15 USD/mese (book futures)** — tempi attivazione, fatturazione pro-rata vs mese intero, attivazione contestuale o sequenziale.
+3. **Decodifica codice mese Directa-IDEM**: lookup completa di `F`, `I`, ... ai mesi calendar per il FIB e il mini-FIB (constatato `I = Settembre`, `F` = ?). Utile per il pipeline che debba derivare il front-month automaticamente.
+
+Gli altri 2 punti del template originale sono **chiusi** dal probe:
+- ~~ticker DAPI cross-index~~ → identificati;
+- ~~rate-limit~~ → osservato: cooldown ~30s dopo 14 aperture TCP rapide ravvicinate, mentre 26+ comandi su connessione persistente sono OK.
+
+## B.7 — Tre commit della sessione di indagine
+
+| Commit | Contenuto |
+|---|---|
+| `2661a2f` | indagine documentale (agent web) — Q1-Q5, costi, scenari A/B/C, raccomandazione iniziale |
+| `b8f7273` | Appendice A — probe storico porta 10003: ticker DAPI canonical verificati, limite 100gg empirico, codici 1007/1004/1030 decodificati |
+| `[questo commit]` | Appendice B — probe realtime porta 10001: SUB FIB6I OK, cross-index futures `ERR;1030`, **indici cash europei realtime gratuito** |
+
