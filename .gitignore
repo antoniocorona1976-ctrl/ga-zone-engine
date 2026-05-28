@@ -18,3 +18,9 @@ Thumbs.db
 .idea/
 *.swp
 *~
+
+# Export Directa locali (riproducibili dal DAPI, non versionabili)
+exports/
+
+# Config utente personale (account_code reale)
+scripts/directa_history_export_config.json
