@@ -24,3 +24,6 @@ exports/
 
 # Config utente personale (account_code reale)
 scripts/directa_history_export_config.json
+
+# DAPI probe outputs (dati raw catturati localmente, non committabili)
+probe_out/
