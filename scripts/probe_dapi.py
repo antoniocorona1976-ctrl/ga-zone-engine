@@ -52,6 +52,14 @@ from collections import defaultdict
 from datetime import date, datetime, timedelta
 from pathlib import Path
 
+# Console Windows (cp1252) non sa codificare i caratteri non-ASCII usati nei
+# messaggi di log (es. "→"): forziamo UTF-8 su stdout/stderr per evitare
+# UnicodeEncodeError durante i run manuali del supervisore.
+for _stream in (sys.stdout, sys.stderr):
+    _reconf = getattr(_stream, "reconfigure", None)
+    if _reconf is not None:
+        _reconf(encoding="utf-8", errors="replace")
+
 HOST = "127.0.0.1"
 PORT_RT = 10001
 PORT_HIST = 10003
