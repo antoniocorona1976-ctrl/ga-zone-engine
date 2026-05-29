@@ -130,7 +130,7 @@ OnestÃ  obbligatoria: se un AC Ã¨ PARZIALE o MANCA, dichiararlo. Mentire qui
 
 ## Pre-consegna per output non-CAP (RM-4 opzione A) — obbligatoria prima del commit di probe/script/handoff
 
-Questa sezione è obbligatoria quando il commit corrente include **almeno un output non-CAP determinante** (definizione: cfr. `tasks/METODO.md` §RM-4 e `.claude/CLAUDE.md:118-122` — parsing payload di sistemi esterni, dichiarazione "fatti verificati" da citare in CAP successivi, asserzioni destinate a CARRYOVER). È l'**opzione A** del workflow RM-4: una self-review esplicita blindata dal tuo prompt. Se preferisci/devi opzione B (probe-review del Reviewer), scrivi `READY_FOR_PROBE_REVIEW <path>` in `tasks/DEV_STATUS.md` e fermati senza committare.
+Questa sezione è obbligatoria quando il commit corrente include **almeno un output non-CAP determinante** (definizione: cfr. `tasks/METODO.md` §RM-4 e `.claude/CLAUDE.md` §"Workflow per output non-CAP" — i 3 criteri OR: parsing payload di sistemi esterni, dichiarazione "fatti verificati" da citare in CAP successivi, asserzioni destinate a CARRYOVER). È l'**opzione A** del workflow RM-4: una self-review esplicita blindata dal tuo prompt. Se preferisci/devi opzione B (probe-review del Reviewer), scrivi `READY_FOR_PROBE_REVIEW <path>` in `tasks/DEV_STATUS.md` e fermati senza committare.
 
 ### Checklist vincolante (tutti i 5 punti)
 
@@ -149,7 +149,7 @@ Questa sezione è obbligatoria quando il commit corrente include **almeno un out
 
 4. **Fonti esterne RM-3 etichettate**. Ogni citazione di documentazione esterna nel blocco self-review (e nel documento non-CAP) è etichettata col suo livello: `[PROVA-EMPIRICA <data>]` (livello 1) / `[CODICE-EXISTENTE r.NNN]` (livello 2) / `[DOC-INTERNO <path>]` (livello 3) / `[WIKI-HINT, da verificare]` (livello 4). **Nessuna conclusione si appoggia solo a livello 4** (wiki/docs ufficiali) senza supporto da almeno un livello 1–3. Se la conclusione resta wiki-only, va riscritta come ipotesi da disambiguare, non come fatto.
 
-5. **Stato `DEV_STATUS.md`**. Se l'output non-CAP è una self-review opzione A completa, il blocco è in repo prima del commit e il segnale finale è `READY_FOR_REVIEW`. Se invece richiedi opzione B (probe-review formale del Reviewer), **non committare l'output**: scrivi `READY_FOR_PROBE_REVIEW <path>` in `tasks/DEV_STATUS.md` con il path dell'output candidato e fermati. La sede (Web/CLI) del Reviewer è decisa dall'Orchestratore secondo la matrice `tasks/METODO.md` §RM-4 / `.claude/CLAUDE.md:140-142`.
+5. **Stato `DEV_STATUS.md`**. Se l'output non-CAP è una self-review opzione A completa, il blocco è in repo prima del commit e il segnale finale è `READY_FOR_REVIEW`. Se invece richiedi opzione B (probe-review formale del Reviewer), **non committare l'output**: scrivi `READY_FOR_PROBE_REVIEW <path>` in `tasks/DEV_STATUS.md` con il path dell'output candidato e fermati. La sede (Web/CLI) del Reviewer è decisa dall'Orchestratore secondo la matrice `tasks/METODO.md` §RM-4 / `.claude/CLAUDE.md` §"Workflow per output non-CAP" — sotto-blocco "matrice di sede" (i 3 bullet Web / CLI locale / Entrambe che seguono "l'Orchestratore decide anche la sede del reviewer").
 
 ### Quando scegliere A vs B
 

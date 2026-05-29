@@ -27,9 +27,10 @@ Leggi i file di stato nell'ordine seguente e agisci sulla prima condizione vera.
 | Condizione | Azione |
 |------------|--------|
 | `tasks/ACTIVE_TASK.md` non esiste **OPPURE** è puntato a CAP-X chiuso PASS **E** `00_indice.md` riporta già Parte X come PASS (siamo in **nuova sessione** che apre CAP-(X+1)) | Chiama subagente **planner** per CAP-(X+1) |
-| La sessione corrente sta per produrre/committare **output non-CAP** che soddisfa uno dei criteri RM-4 (`:118-122` — parsing payload esterno, dichiarazione "fatti verificati" per CAP successivi, asserzioni destinate a CARRYOVER) | **Prima del commit** instrada il flusso nel "Workflow per output non-CAP" (`:114-144`): scegli opzione A (self-review blindata dall'autore secondo `developer.md` §"Pre-consegna per output non-CAP") o opzione B (probe-review del Reviewer). Nessun commit non-CAP determinante passa senza A o B documentate |
+| La sessione corrente sta per produrre/committare **output non-CAP** che soddisfa uno dei 3 criteri OR di RM-4 (vedi §"Workflow per output non-CAP", i 3 bullet — parsing payload esterno, dichiarazione "fatti verificati" per CAP successivi, asserzioni destinate a CARRYOVER) | **Prima del commit** instrada il flusso nel §"Workflow per output non-CAP": scegli opzione A (self-review blindata dall'autore secondo `developer.md` §"Pre-consegna per output non-CAP") o opzione B (probe-review del Reviewer). Nessun commit non-CAP determinante passa senza A o B documentate |
 | `tasks/DEV_STATUS.md` non esiste o è vuoto **E** `tasks/ACTIVE_TASK.md` descrive un task non ancora chiuso PASS | Chiama subagente **developer** |
 | `tasks/DEV_STATUS.md` contiene `READY_FOR_REVIEW` e non esiste ancora la review corrispondente in `reviews/` | Esegui **check post-Developer** (vedi sotto); se OK chiama subagente **reviewer**, altrimenti rilancia **developer** con prompt mirato ai gap |
+| `tasks/DEV_STATUS.md` contiene `READY_FOR_PROBE_REVIEW <path>` e non esiste ancora `reviews/PROBE_REVIEW_<nome>_*.md` per quel `<path>` | Determina la **sede** (Web/CLI) secondo la matrice del §"Workflow per output non-CAP" (sotto-blocco "matrice di sede", i 3 bullet Web / CLI locale / Entrambe), ricorda esplicitamente nel prompt i **divieti per sede** (`reviewer.md` — Web non dichiara "verificato empiricamente", CLI non fa probe massivi di zelo) e invoca il subagente **reviewer** in **modalità probe-review** sul `<path>` indicato. Nessun commit dell'output non-CAP finché la probe-review non emette PASS |
 | La review più recente contiene `CONDITIONAL` o `FAIL` | **Punto di controllo supervisore** (vedi sotto) |
 | La review più recente contiene `PASS` **E** `00_indice.md` **NON** riporta ancora Parte X come PASS (siamo nella **sessione corrente N** che lo ha appena emesso) | Esegui checklist **chiusura sessione** (7 condizioni, vedi sotto), notifica supervisore con prompt-template per nuova sessione, fermati |
 
@@ -132,8 +133,9 @@ Opzione **A — Self-review esplicita** (preferita per output veloci):
 - Se la self-review è assente, NON committare; rilanciare l'agente con prompt mirato
 
 Opzione **B — Review formale leggera dal reviewer**:
+- Trigger: il Developer (o l'autore dell'output non-CAP) scrive `READY_FOR_PROBE_REVIEW <path>` in `tasks/DEV_STATUS.md` e si ferma senza committare l'output. La macchina a stati (riga "`READY_FOR_PROBE_REVIEW <path>`") intercetta questo segnale e instrada qui.
 - Invocare il reviewer in modalità "probe-review" (NON CAP-review piena) — vedi `.claude/agents/reviewer.md` sezione "Probe-review (RM-4)"
-- L'output passa solo se il verdetto è PASS
+- L'output passa (e può essere committato) solo se il verdetto è PASS
 
 L'Orchestratore decide A o B con criteri meccanici (no discrezionalità):
 

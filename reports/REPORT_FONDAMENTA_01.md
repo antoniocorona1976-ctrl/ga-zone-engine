@@ -133,3 +133,72 @@ Conferma puntuale del push e dei commit prodotti: vedi sezione finale del messag
 Coerenza inter-prompt mantenuta: nessuna nuova RM-5+ introdotta, nessuna RM-1..RM-4 ridefinita nell'enunciato. Lavoro su agganci/esigibilità di quanto già definito.
 
 File NON toccati per assenza di finding approvati: `.claude/agents/planner.md` (escluso anche dal commit).
+
+---
+
+# Rework v3 — chiusura N1/N2/N3
+
+**Task**: AUDIT-FONDAMENTA-01 Iterazione 4 — chiusura dei 3 finding di `reviews/REVIEW_FONDAMENTA_01_v2_web.md` (verdetto v2: CONDITIONAL). Tutti e 3 i finding sono **MIGLIORA PROCESSO** (regressioni inter-prompt introdotte dal rework Iter.2 stesso). Nessun BUG REALE, nessun NEUTRO.
+
+**Decisione meta-ricorsiva adottata**: i 3 finding sono essi stessi rimandi di riga e gli edit spostano i numeri di riga. Come raccomandato dal Reviewer, **tutti i rimandi di riga incriminati sono stati sostituiti con rimandi per àncora di sezione** (immuni al churn), non con nuovi numeri di riga. Nessun rimando numerico verso `CLAUDE.md` resta nei due file editati (verificato con grep, vedi sotto).
+
+## v3.1) Cosa è stato modificato
+
+| File | Sezione toccata | Tipo modifica |
+|------|------------------|----------------|
+| `.claude/agents/developer.md` | `:152` (rimando matrice di sede, finding N1); `:133` (rimando 3 criteri OR, finding N2) | edit di contenuto — sostituzione rimando numerico → àncora di sezione |
+| `.claude/CLAUDE.md` | `:30` (riga macchina a stati, rimando 3 criteri OR, finding N2); nuova riga macchina a stati per `READY_FOR_PROBE_REVIEW` (finding N3); §"Workflow per output non-CAP" opzione B (citazione di `READY_FOR_PROBE_REVIEW` come trigger, finding N3) | edit di contenuto |
+
+File NON toccati per scelta esplicita (nessun finding N1/N2/N3 li coinvolge): `.claude/agents/reviewer.md`, `tasks/METODO.md`, `.claude/agents/planner.md`.
+
+## v3.2) Mappatura finding → patch
+
+### N1 — MIGLIORA PROCESSO (rimando matrice di sede fuori sincrono)
+**File:sezione**: `.claude/agents/developer.md` sez. "Pre-consegna per output non-CAP (RM-4 opzione A)" punto 5.
+**Prima**: "...secondo la matrice `tasks/METODO.md` §RM-4 / `.claude/CLAUDE.md:140-142`." (il range `:140-142` contiene i criteri A/B, non la matrice di sede).
+**Dopo**: "...secondo la matrice `tasks/METODO.md` §RM-4 / `.claude/CLAUDE.md` §\"Workflow per output non-CAP\" — sotto-blocco \"matrice di sede\" (i 3 bullet Web / CLI locale / Entrambe che seguono \"l'Orchestratore decide anche la sede del reviewer\")."
+**Forma del nuovo rimando**: àncora di sezione + frase-ancora testuale verbatim ("l'Orchestratore decide anche la sede del reviewer"), nessun numero di riga.
+
+### N2 — MIGLIORA PROCESSO (rimando 3 criteri OR fuori sincrono, replicato in 2 punti)
+**File:sezione (a)**: `.claude/agents/developer.md` sez. "Pre-consegna per output non-CAP" intro (definizione output non-CAP determinante).
+**Prima**: "(definizione: cfr. `tasks/METODO.md` §RM-4 e `.claude/CLAUDE.md:118-122` — parsing payload...)" (`:118-122` è titolo+intro, non i criteri).
+**Dopo**: "(definizione: cfr. `tasks/METODO.md` §RM-4 e `.claude/CLAUDE.md` §\"Workflow per output non-CAP\" — i 3 criteri OR: parsing payload...)".
+**File:sezione (b)**: `.claude/CLAUDE.md` sez. "Macchina a stati", riga trigger output non-CAP.
+**Prima**: "...soddisfa uno dei criteri RM-4 (`:118-122` — parsing payload esterno, ...)".
+**Dopo**: "...soddisfa uno dei 3 criteri OR di RM-4 (vedi §\"Workflow per output non-CAP\", i 3 bullet — parsing payload esterno, ...)". Eliminato anche il rimando numerico `:114-144` nello stesso riga in favore di "§\"Workflow per output non-CAP\"".
+**Forma del nuovo rimando**: àncora di sezione, nessun numero di riga.
+
+### N3 — MIGLIORA PROCESSO (macchina a stati non intercetta READY_FOR_PROBE_REVIEW)
+**File:sezione (a)**: `.claude/CLAUDE.md` sez. "Macchina a stati" — nuova riga aggiunta subito dopo la riga `READY_FOR_REVIEW`.
+**Nuovo testo**: "| `tasks/DEV_STATUS.md` contiene `READY_FOR_PROBE_REVIEW <path>` e non esiste ancora `reviews/PROBE_REVIEW_<nome>_*.md` per quel `<path>` | Determina la **sede** (Web/CLI) secondo la matrice del §\"Workflow per output non-CAP\" (sotto-blocco \"matrice di sede\", i 3 bullet Web / CLI locale / Entrambe), ricorda esplicitamente nel prompt i **divieti per sede** (`reviewer.md` — Web non dichiara \"verificato empiricamente\", CLI non fa probe massivi di zelo) e invoca il subagente **reviewer** in **modalità probe-review** sul `<path>` indicato. Nessun commit dell'output non-CAP finché la probe-review non emette PASS |".
+**File:sezione (b)**: `.claude/CLAUDE.md` sez. "Workflow per output non-CAP" — opzione B. Aggiunto un bullet "Trigger" che cita esplicitamente `READY_FOR_PROBE_REVIEW <path>` come segnale che la macchina a stati intercetta e instrada alla probe-review; precisato che l'output passa "(e può essere committato) solo se il verdetto è PASS".
+**Forma del rimando**: àncora di sezione per la matrice di sede; il rimando ai divieti per sede usa nome-file `reviewer.md` + parafrasi verbatim dei due divieti (no numero di riga, per immunizzare dal churn anche di `reviewer.md`).
+
+## v3.3) Verifica rimandi post-edit
+
+Verifica eseguita **dopo tutti gli edit** (requisito meta-ricorsivo del task):
+
+1. **Grep di assenza rimandi numerici stale** — `Grep "CLAUDE\.md:\d|118-122|140-142|149-153"` su `.claude/`: **0 match**. Nessun rimando numerico verso `CLAUDE.md` (né i range incriminati `:118-122`/`:140-142` né il range corretto candidato `:149-153`) sopravvive nei due file. I rimandi sono tutti per àncora di sezione → immuni allo spostamento di riga prodotto dall'aggiunta della nuova riga nella tabella.
+
+2. **Esistenza dei target d'àncora** — `Grep "Workflow per output non-CAP|decide anche la sede del reviewer|L'output è uno script/decoder che parsa"` su `.claude/CLAUDE.md`:
+   - `## Workflow per output non-CAP (probe, script, handoff) — RM-4` presente (header di sezione, target di N1/N2/N3).
+   - "L'output è uno script/decoder che parsa payload..." presente (primo dei 3 bullet OR, target di N2).
+   - "**Quando sceglie B (review formale leggera), l'Orchestratore decide anche la sede del reviewer**" presente (frase-ancora del sotto-blocco "matrice di sede", target di N1/N3).
+   Tutti i target citati dai nuovi rimandi esistono col testo verbatim citato.
+
+3. **Re-lettura riga di destinazione** — riletta la tabella della macchina a stati post-edit: la nuova riga `READY_FOR_PROBE_REVIEW` è ben formata (2 colonne) e collocata dopo la riga `READY_FOR_REVIEW`, prima della riga `CONDITIONAL/FAIL`. Le altre righe non sono state alterate.
+
+VERIFICA: i rimandi corretti in N1/N2/N3 puntano al contenuto giusto dopo l'edit.
+PROVE: grep di assenza rimandi numerici (0 match) + grep di presenza dei 3 target d'àncora (3/3 presenti col testo verbatim) + re-lettura della tabella post-edit.
+ALTERNATIVE COMPATIBILI ESCLUSE: rimando numerico stale residuo (escluso da grep 0-match); àncora di sezione inesistente (esclusa da grep di presenza 3/3); tabella malformata dall'inserimento (esclusa da re-lettura).
+ALTERNATIVE COMPATIBILI NON ESCLUSE: nessuna.
+
+## v3.4) Verifica working tree
+
+`git status --short` post-patch mostra modifiche di contenuto solo su `.claude/CLAUDE.md` e `.claude/agents/developer.md` (+ `reports/REPORT_FONDAMENTA_01.md`, questo file). `.claude/agents/planner.md` **non** compare (nessun churn EOL in questo giro). `.claude/scheduled_tasks.lock` resta untracked (file di lock estraneo, non committato). `reviewer.md` e `tasks/METODO.md` NON modificati.
+
+`git add` mirato sui soli file con modifica di contenuto: `.claude/CLAUDE.md`, `.claude/agents/developer.md`, `reports/REPORT_FONDAMENTA_01.md`. (`tasks/DEV_STATUS.md` committato a parte col segnale `READY_FOR_REVIEW`.)
+
+## v3.5) Verifica push
+
+`git push origin main` eseguito al termine del commit del rework v3. Post-push: `git status` non mostra `Your branch is ahead of origin/main`. Sha del commit riportato nel messaggio finale del Developer.
