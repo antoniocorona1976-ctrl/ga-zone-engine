@@ -35,6 +35,18 @@ L'Orchestratore della **nuova** sessione legge questo file come input obbligator
 | M-15 | Developer CAP-04 | Parametri di classificazione `trade_range` ($A_{range,min}=80$, $N_{osc}$, $n_{osc,min}$, soglie 4 condizioni) congelamento numerico | Parte V | CLOSED-CAP-05 (Cap.26.5/26.6: $A_{range,min}=80$ pt dichiarato non congelabile -- vincolo assoluto Cap.5 PI; $N_{osc}=60$, $n_{osc,min}=2$, $\epsilon_{osc}=5$ pt, $N_{break}=20$, $\delta_{break}=10$ pt come valori congelati di lavoro derivati da default PIV) |
 | M-16 condizionale | Review v1 CAP-05 (Cap.25.8 trigger) | Estensione a Cox time-varying coefficients se test Schoenfeld viola sistematicamente in >50% dei fold | Parte VII (calibrazione bundle frozen) | CLOSED-CAP-07 con condizione operativa (Cap.31.3 definisce la regola di decisione: se rapporto fold con `flag_schoenfeld_violation=True` > 0,5, attivazione Cox time-varying coefficients $\boldsymbol{\beta}_j(\tau)$ con riferimento Therneau-Grambsch 2000 nel ciclo successivo di training; altrimenti M-16 chiuso senza attivazione. Decisione registrata come metadato bundle frozen `cox_time_varying_active` $\in$ {True, False} in Cap.35.1 elemento 6. La regola metodologica e' definita in Parte VII; l'attivazione/disattivazione effettiva dipende dall'esito empirico del walk-forward nested di Parte V applicato al primo run. Il prossimo Planner del ciclo successivo di training riapplichera il monitoraggio Schoenfeld nel nuovo run e, se `cox_time_varying_active=True` nel bundle corrente, applichera Cox time-varying coefficients.) |
 
+## RACCOMANDAZIONI-METODO (namespace separato dai M-promemoria di capitolo)
+
+Registro delle raccomandazioni di processo emerse dalle Review di audit non-CAP (es. FONDAMENTA-XX). NON sono M-promemoria di capitolo. Non vincolano un CAP successivo: sono debito di manutenzione metodologica che il supervisore valuta quando opportuno.
+
+**Formato riga**: `| RACC-ID | origine | contenuto | stato |`
+
+| RACC-ID | Origine | Contenuto | Stato |
+|---------|---------|-----------|-------|
+| RACC-METODO-1 | Re-Review v3 FONDAMENTA-01 (`58cf81f`) | Permangono rimandi numerici **pre-esistenti** verso `.claude/agents/reviewer.md` e `tasks/METODO.md` (es. `→ METODO.md:28-33`, `→ reviewer.md:163-164`) che oggi risolvono correttamente ma sono soggetti allo stesso churn di riga che ha generato N1/N2/N3. Raccomandazione: de-numerizzare i rimandi residui convertendoli in àncore di sezione (come fatto nel rework v3 per `CLAUDE.md`/`developer.md`). Non bloccante, fuori scope FONDAMENTA-01. | OPEN |
+
+---
+
 ## Carryover pre-esistenti (storici, non ancora migrati a questo file)
 
 | Origine | Note |
