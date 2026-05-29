@@ -377,4 +377,36 @@ Output non-CAP attesi da questo task:
 
 ---
 
+## Finding di Review approvati per rework (Iter.2 — decisione supervisore 2026-05-29)
+
+**Verdetto Review v1**: CONDITIONAL (`reviews/REVIEW_CAP_DATA_01_RM_RETRO_review.md`, commit `8e0e334`).
+**Punto di controllo supervisore eseguito 2026-05-29 ~23:10 CET.** Decisione: **tutti i 7 finding a Developer** (2 BUG REALI obbligatori + 5 MIGLIORA PROCESSO tutti approvati). Nessun finding NEUTRO/RISCHIO PEGGIORAMENTO nella review.
+
+### BUG REALI (obbligatori) — chiusura con evidenza empirica preferita all'auto-downgrade
+
+| # | W-N | File:linea | Finding | Azione Developer v2 |
+|---|-----|-----------|---------|---------------------|
+| 1 | W4 | `scripts/probe_dapi.py:17-21`; `HANDOFF_PROBE_DAPI_20260528.md:54-61` | Semantica codici errore `1004/1007/1017/1030` dichiarata "fatto" senza enumerazione alternative né dump:timestamp; nessun supporto nel decoder di produzione (`is_error_line` non decodifica numerici) | Riscrivere come blocco 4-righe RM-1. **Se l'empirico CLI è disponibile** (DGo aperta), chiudere con `[PROVA-EMPIRICA 2026-05-29]`: per ogni codice il comando-trigger osservato + ≥2 permutazioni errate per disambiguare l'ampiezza di 1017. **Altrimenti** "verifica parziale" + Empirico-CLI. |
+| 2 | W6 | `scripts/probe_dapi.py:27-29`; `HANDOFF_PROBE_DAPI_20260528.md:69-71` | Cooldown "~30s dopo 14ª connessione" — due costanti precise da singola osservazione, alternative 13/15/timing non escluse | Riscrivere come blocco 4-righe RM-1. **Se empirico disponibile**: loop open/close su 10003 contando le connessioni, ≥3 ripetizioni per stabilire se la soglia è 14 esatta o varia + durata cooldown misurata. **Altrimenti** "verifica parziale: cooldown ~30s in prossimità della ~14ª, soglia non disambiguata" + Empirico-CLI. |
+
+### MIGLIORA PROCESSO approvati dal supervisore (tutti a Developer)
+
+| # | File:linea | Finding | Azione Developer v2 |
+|---|-----------|---------|---------------------|
+| 3 | `scripts/probe_dapi.py:14-16`; `HANDOFF:44-52` | `END CANDLES` + ordine arg CANDLERANGE corretti e corroborati da codice di produzione, ma enumerazione formale assente | Aggiungere etichetta `[CODICE-ESISTENTE r.228-230 / r.245]` ai due fatti. |
+| 4 | `scripts/probe_dapi.py:23-26` | Convenzione ticker Eurex/CME senza evidenza nel perimetro; appartiene canonicamente a Parte 9 | Annotare in C che IDEM è l'unico testato; Eurex/CME da confermare CLI e canonicizzare in Parte 9. Se empirico ANAG disponibile su un ticker Eurex/CME, allegare evidenza. |
+| 5 | `scripts/probe_dapi.py:44` vs `:169` | Banner: docstring dichiara stringa piena `DARWIN_STATUS;CONN_OK;TRUE`, decoder matcha solo prefisso `DARWIN_STATUS` | Allineare docstring al comportamento del decoder (o viceversa) dopo cattura banner reale. Banner catturabile anche a mercato chiuso → chiudere con evidenza. |
+| 6 | C, D (globale) | Etichette di fonte RM-3 (`[WIKI-HINT]`/`[CODICE-ESISTENTE]`/`[PROVA-EMPIRICA]`) assenti (file pre-RM); la sostanza RM-3 regge | Aggiungere le etichette nelle asserzioni toccate dal rework. |
+| 7 | C, D (globale) | Formato 4-righe RM-1 assente nelle asserzioni di C/D (file pre-RM) | Riformattare in 4-righe le asserzioni toccate (#1, #2 obbligatori; le altre dove pertinente). |
+
+### Nota operativa sull'esecuzione (constraint di sessione 2026-05-29 ~23:12 CET)
+
+- **Subagenti `developer`/`reviewer` non disponibili** in questo ambiente: il rework è eseguito da un agente `general-purpose` in **ruolo Developer** (stesso pattern già usato per il Reviewer di questo audit, cfr. review `:6`). La re-review Iter.3 sarà ugualmente in ruolo Reviewer general-purpose.
+- **Mercato chiuso** (sessione FIB 08:00–22:00, ora 23:12): il dato realtime tick NON è disponibile. **MA** W4 (codici errore via comandi-trigger) e W6 (cooldown = comportamento gateway) NON dipendono dal dato di mercato → disambiguabili ora con DGo aperta. Anche W8 (banner) e parte di W5/W4 (ANAG/codici) sono catturabili a mercato chiuso. Solo la cattura tick realtime resta rinviata a sessione di mercato aperto.
+- **Ordine empirico** (rispetto del cooldown M-5): prima W4 (poche connessioni), W6 (cooldown) per ultimo.
+
+**Commit message rework**: `[AUDIT-RETRO] patch C+D — chiusura 7 finding Review v1 (2 BUG REALI + 5 MIGLIORA PROCESSO)`.
+
+---
+
 **Fine del task card.**
