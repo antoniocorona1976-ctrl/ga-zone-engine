@@ -251,3 +251,31 @@ Il Developer corregge **solo** i file di perimetro indicati, applicando le patch
 - Commit message: `[METODO-RM] patch RM-N — <descr>` per `METODO.md`; `[AGENT-PROMPT] patch <ruolo> — <descr>` per i prompt agenti.
 - `git add` solo dei file con modifica di **contenuto** (autocrlf attiva → evitare di committare file con sola churn EOL/BOM).
 - Al termine: pre-consegna checklist, poi `READY_FOR_REVIEW` in `tasks/DEV_STATUS.md`.
+
+---
+
+## Finding di Review v2 approvati per rework (Iterazione 4 — rework v3)
+
+**Verdetto Review v2 (Re-Review Iter.3)**: CONDITIONAL (`reviews/REVIEW_FONDAMENTA_01_v2_web.md`, sede WEB).
+**Punto di controllo supervisore eseguito 2026-05-29.** Decisione del supervisore:
+**TUTTI e 3 i finding (N1, N2, N3) approvati per il Developer** (tutti MIGLIORA PROCESSO; nessun BUG REALE, nessun NEUTRO).
+
+Sono regressioni inter-prompt introdotte dal rework Iter.2 stesso: due cross-reference di riga fuori sincrono + un gap di transizione nella tabella decisionale dell'Orchestratore. Il Developer corregge **solo** i rimandi/transizioni indicati; NON riapre i finding v1 (#1..#10, già chiusi), NON ridefinisce le RM, NON introduce regole nuove.
+
+### MIGLIORA PROCESSO (approvati dal supervisore — obbligatori)
+
+| # | File:linea | Finding | Azione richiesta |
+|---|-----------|---------|------------------|
+| N1 | `developer.md:152` | Rimando alla "matrice di sede Web/CLI" punta a `CLAUDE.md:140-142`, che contiene invece i criteri A/B (a/b/c). La matrice di sede è a `CLAUDE.md:149-153`. | In `developer.md:152` correggere il riferimento `CLAUDE.md:140-142` → `CLAUDE.md:149-153`. Preferibile sostituire il rimando numerico con un'àncora di sezione ("§Workflow per output non-CAP — matrice di sede") per immunizzare dal churn di riga. |
+| N2 | `developer.md:133` + `CLAUDE.md:30` | Rimando ai "3 criteri OR" che qualificano un output non-CAP punta a `CLAUDE.md:118-122` (titolo + intro). I tre criteri OR sono ai bullet `CLAUDE.md:124-126`. Stesso off-by-range replicato in due punti. | Aggiornare entrambi i rimandi: `developer.md:133` e `CLAUDE.md:30` da `:118-122` → `:124-126`. Preferibile àncora di sezione ("§Workflow per output non-CAP — criteri OR"). |
+| N3 | `CLAUDE.md:27-33` | La macchina a stati dell'Orchestratore non ha una riga che intercetti `READY_FOR_PROBE_REVIEW` (prodotto da `developer.md:133,152,164,201`); gestisce solo `READY_FOR_REVIEW` (`CLAUDE.md:32`). Lo stato opzione-B introdotto da Iter.2 non ha transizione deterministica. | Aggiungere alla tabella `CLAUDE.md:27-33` una riga che intercetti `tasks/DEV_STATUS.md` = `READY_FOR_PROBE_REVIEW <path>` (quando non esiste ancora `reviews/PROBE_REVIEW_<nome>_*.md`): "determina la sede (Web/CLI) secondo la matrice `:149-153`, ricorda i divieti per sede (`reviewer.md:163-164`), invoca il **reviewer** in modalità probe-review sul `<path>`". Allineare la sezione "Workflow per output non-CAP" citando `READY_FOR_PROBE_REVIEW` come trigger. |
+
+### Vincoli per la rework Iterazione 4 (v3)
+
+- Modifiche **solo** ai file effettivamente coinvolti: `CLAUDE.md`, `developer.md`. (`reviewer.md`, `METODO.md`, `planner.md` NON sono coinvolti da N1/N2/N3 — non editarli né committarli.)
+- **Attenzione meta-ricorsiva**: questi finding SONO essi stessi rimandi di riga. Dopo aver applicato i fix, i numeri di riga di destinazione possono spostarsi. Verificare che i rimandi corretti puntino ancora al contenuto giusto **dopo** l'edit (rileggere le righe di destinazione a valle delle modifiche), oppure adottare i rimandi per àncora di sezione come suggerito dal Reviewer (più robusti).
+- Nessuna riapertura delle RM-1..RM-4 nel loro enunciato; nessuna riapertura dei finding v1 #1..#10.
+- Output Developer: prompt patchati su `origin/main` + aggiornamento di `reports/REPORT_FONDAMENTA_01.md` (aggiungere una sezione "Rework v3 — chiusura N1/N2/N3" col formato ridotto: Cosa è stato modificato, Mappatura finding→patch, Verifica rimandi post-edit, Verifica working tree, Verifica push).
+- Commit message: `[AGENT-PROMPT] patch <ruolo> — chiusura N1/N2/N3 rework v3`.
+- `git add` solo dei file con modifica di **contenuto** (autocrlf attiva → niente churn EOL/BOM, es. `planner.md`).
+- Al termine: pre-consegna checklist, poi `READY_FOR_REVIEW` in `tasks/DEV_STATUS.md`.
