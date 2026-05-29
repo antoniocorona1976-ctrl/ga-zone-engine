@@ -25,7 +25,7 @@ Verifica del trading e della pubblicazione tick real-time tramite Directa SIM e 
 Note:
 - Directa pubblica esplicitamente DAX, EURO STOXX 50, FBund, FOAT, FBobl, FBuxl, VSTOXX su Eurex; S&P 500 e-mini, Micro e-mini S&P, Nasdaq e-mini, Micro Nasdaq e-mini, e-micro FX, e-micro Gold sul CME.
 - Ticker "ufficiali" su pagine Directa: per Eurex usa codici di prodotto Eurex (DAX, FESX, FDXM, FDXS, FSXE, ...); per il DAPI il formato esatto del **ticker contratto-mese** non è documentato pubblicamente, ma il DAPI espone indici e azioni con `<TICKER>` maiuscolo (es. DAX listato esplicitamente nel datafeed API). **Verifica empirica raccomandata in fase implementativa**: connettersi a Darwin attivo e testare i comandi `INFO`/`SUB`/`CANDLE` con i ticker reali del contratto front-month (es. nel quarto-FDAX di giugno 2026 il simbolo potrebbe avere forma `FDAXM6` o `DAX 06/26`; l'esatta convenzione DAPI è confermabile solo via supporto o test su account abilitato — vedi template email in coda).
-- Lo schema candle DAPI (`CANDLE;<TICKER>;<yyyyMMdd>;<HH:mm:ss>;<O>;<H>;<L>;<C>;<V>`) è documentato e identico tra strumenti italiani ed esteri.
+- Lo schema candle DAPI (`CANDLE;<TICKER>;<yyyyMMdd>;<HH:mm:ss>;<O>;<H>;<L>;<C>;<V>`) è documentato e identico tra strumenti italiani ed esteri. `[WIKI-HINT, dimostrato INESATTO su CANDLE: ordine reale C;L;H;O — vedi export_directa_history_parametric.py:477 e M-1 2026-05-29]` — l'ordine `<O>;<H>;<L>;<C>` riportato qui è quello del wiki Directa, dimostrato inesatto; le posizioni 5..8 del payload sono in realtà `UFF;MIN;MAX;APE` = `close;low;high;open` (testo wiki conservato, etichettato come hint smentito).
 
 ---
 
@@ -43,7 +43,7 @@ Limiti DAPI ufficiali tratti dal wiki API (https://app1.directatrading.com/tradi
 **Differenze tra FIB e cross-index:** la documentazione DAPI **non espone differenze per strumento**: i limiti sopra valgono per tutti i titoli sottoscrivibili dal Darwin del cliente. È plausibile (ma non confermato dalla documentazione pubblica) che la profondità reale dipenda dallo storico effettivo presente nel database Directa per quel contratto: nota letterale dal wiki — *"in caso di chiamate oltre i limiti la risposta sarà composta della massima profondità della nostra base dati"*.
 
 **Schema dati:**
-- Candele: `CANDLE;<TICKER>;<yyyyMMdd>;<HH:mm:ss>;<Open>;<High>;<Low>;<Close>;<Volume>`. Niente settle né tick-count nel record candle.
+- Candele: `CANDLE;<TICKER>;<yyyyMMdd>;<HH:mm:ss>;<Open>;<High>;<Low>;<Close>;<Volume>`. Niente settle né tick-count nel record candle. `[WIKI-HINT, dimostrato INESATTO su CANDLE: ordine reale C;L;H;O — vedi export_directa_history_parametric.py:477 e M-1 2026-05-29]` — l'ordine `<Open>;<High>;<Low>;<Close>` è quello del wiki Directa, dimostrato inesatto; l'ordine reale del payload è `UFF;MIN;MAX;APE` = `close;low;high;open` (testo wiki conservato, etichettato come hint smentito).
 - Tick-by-tick (TBT/TBTRANGE): tick livello base con price + size; non documentati VWAP né cumulative volume in chiusura.
 - Volume: presente nel record candle (campo 9).
 - Granularità candle minima utile per training: 1 min, fino a 100 giorni.
