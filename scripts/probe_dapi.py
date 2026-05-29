@@ -173,8 +173,12 @@ def parse_line(line: str) -> dict:
             "raw": line,
         }
     if line.startswith("CANDLE;"):
-        # Schema reale verificato 2026-05-28:
-        # CANDLE;<ticker>;<yyyyMMdd>;<HH:mm:ss>;<O>;<L>;<H>;<C>;<V>
+        # Schema reale verificato 2026-05-29 (V-1 equivalenza realtime/CANDLERANGE):
+        # CANDLE;<ticker>;<yyyyMMdd>;<HH:mm:ss>;<UFF>;<MIN>;<MAX>;<APE>;<V>
+        #   p[4]=UFF (prezzo ufficiale = CLOSE)  p[7]=APE (apertura = OPEN)
+        # NB: il vecchio commento "O;L;H;C" era ERRATO. Su candele daily O e C non
+        # sono distinguibili dai soli valori (solo L/H lo erano), per questo l'errore
+        # era passato inosservato. Coerente con export_directa_history_parametric.py.
         p = line.split(";")
         if len(p) >= 9:
             try:
@@ -185,10 +189,10 @@ def parse_line(line: str) -> dict:
                     "ticker": p[1],
                     "date":   p[2],
                     "time":   p[3],
-                    "open":   float(p[4]),
-                    "low":    float(p[5]),
-                    "high":   float(p[6]),
-                    "close":  float(p[7]),
+                    "close":  float(p[4]),   # UFF
+                    "low":    float(p[5]),   # MIN
+                    "high":   float(p[6]),   # MAX
+                    "open":   float(p[7]),   # APE
                     "volume": volume,
                     "raw": line,
                 }
@@ -473,11 +477,19 @@ def cmd_v1_compare(args) -> None:
         if hh and not ll:
             only_hist += 1
             continue
+        # Tolleranza di precisione float: il realtime PRICE arriva arrotondato
+        # (es. DITAS 49968.32) mentre la CANDLE storica ha precisione piena
+        # (49968.32031); differenze ~5e-4 non sono discrepanze reali. 0.05 << 1
+        # tick (5pt FIB), così uno scostamento vero anche di 1 solo tick resta
+        # visibile come mismatch.
+        def close_enough(a: float, b: float) -> bool:
+            return abs(a - b) <= 0.05
+
         same = (
-            float(hh["open"])  == ll["open"]  and
-            float(hh["low"])   == ll["low"]   and
-            float(hh["high"])  == ll["high"]  and
-            float(hh["close"]) == ll["close"]
+            close_enough(float(hh["open"]),  ll["open"])  and
+            close_enough(float(hh["low"]),   ll["low"])   and
+            close_enough(float(hh["high"]),  ll["high"])  and
+            close_enough(float(hh["close"]), ll["close"])
         )
         if same:
             matches += 1
