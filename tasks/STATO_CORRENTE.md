@@ -2,8 +2,8 @@
 
 > **Single source of truth** dello stato del progetto. Aggiornato all'inizio e alla fine di ogni sessione (web e CLI locale). **Prima azione** di ogni sessione Claude: leggere questo file.
 
-**Ultimo aggiornamento**: 2026-05-29 02:15 CET — sessione **web** (Claude Code on the web)
-**Prossima sessione attesa**: **CLI locale** alle 09:00 CET per V-1 morning capture
+**Ultimo aggiornamento**: 2026-05-29 ~10:05 CET — sessione **CLI locale** (V-1 morning eseguito + fix schema CANDLE)
+**Prossima sessione attesa**: **CLI locale** alle 14:30 CET per V-1 afternoon capture + re-run inventory CME
 
 ---
 
@@ -27,10 +27,10 @@
 
 | Priorità | Task | File di stato | Owner | Vincolo temporale |
 |---|---|---|---|---|
-| 1 | **V-1 morning capture** | `scripts/probe_dapi.py v1-capture --window morning` | CLI locale | 09:00–09:30 CET 2026-05-29 |
+| ~~1~~ | ~~**V-1 morning capture**~~ ✅ FATTO 09:00–09:30: 1425 tick PRICE (FIB6F 1245, DITAS 180), 0 unknown | `probe_out/v1_morning_20260529.*` | CLI locale | — |
 | 2 | **V-1 afternoon capture** | idem `--window afternoon` | CLI locale | 14:30–15:00 CET 2026-05-29 |
 | 3 | **Re-run inventory CME** | `update_inventory_indici_futures_daily.py` | CLI locale | dopo le 14:30 (settle USA propagato) |
-| 4 | **V-1 fetch + compare** | `probe_dapi.py v1-fetch` poi `v1-compare` | CLI locale | dopo le 15:00 |
+| ~~4~~ | ~~**V-1 fetch + compare**~~ ✅ FATTO (morning): equivalenza confermata, 55/60 match dopo fix schema; 5 residui = primo minuto troncato + scarti 1 tick. Ri-fare dopo afternoon. | `probe_out/v1_compare_*.json` | CLI locale | dopo le 15:00 (afternoon) |
 | 5 | **V-2 cut-off** | `probe_dapi.py v2-cutoff` con period 60 e 86400 | CLI locale | finestre morte (10:00–14:00, sera) |
 | 6 | **Compilare PROBE_RECUPERO_GAP_DAPI.md** | redatto da CLI sulla base dei CSV di V-1/V-2 | CLI locale | fine giornata 2026-05-29 |
 | 7 | **CAP-DATA-03** | data warehouse: cumulativi vs daily, limite 100gg, schema CANDLE corretto, gestione ticker scaduti | Web (Planner→Developer→Reviewer) | dopo che PROBE_*.md è su main |
@@ -41,18 +41,18 @@
 
 | Campo | Valore |
 |---|---|
-| Ultimo commit | `6c84504` — `[PROBE] nota di ripresa 2026-05-29` |
+| Ultimo commit | `a12ae32` — `[PROBE] fix schema CANDLE C;L;H;O + tolleranza float` |
 | Branch primario | `main` |
 | Branch attivi | nessuno (tutti i `claude/*` sono mergiati e fast-forwarded) |
 | Working tree atteso | clean |
 
 Commit recenti:
 ```
+a12ae32 [PROBE] probe_dapi.py: fix schema CANDLE C;L;H;O + tolleranza float in v1-compare
+5e41252 [STATO] crea tasks/STATO_CORRENTE.md come single source of truth fra sessioni
 6c84504 [PROBE] nota di ripresa 2026-05-29: stato pre-V-1 + due note operative
 2dc457b [PROBE] probe_dapi.py: forza UTF-8 su stdout/stderr per console Windows
 9bf35fa [HANDOFF] briefing sessione probe DAPI 2026-05-28 per Claude CLI locale
-1fa0109 Merge PR #1 — probe_dapi.py runner V-1/V-2
-76efda2 Merge PR #2 — consolidate overlay scripts
 ```
 
 ---
@@ -61,7 +61,7 @@ Commit recenti:
 
 | ID | Promemoria | Dove è già incorporato |
 |---|---|---|
-| M-1 | Schema CANDLE reale = `O;L;H;C;V` (wiki dichiara OHLC, inesatto) | `scripts/probe_dapi.py` decoder |
+| M-1 | ⚠️ **CORRETTO 2026-05-29**: schema CANDLE reale = `UFF;MIN;MAX;APE;V` = **`C;L;H;O;V`**, NON `O;L;H;C`. V-1 ha provato lo swap O/C: su daily O e C non erano distinguibili (solo L/H lo erano), per questo l'errore era passato. `export_directa_history_parametric.py` era già corretto → dump storici NON affetti. Fix nel decoder `probe_dapi.py` in `a12ae32`. | `scripts/probe_dapi.py` + `export_directa_history_parametric.py` |
 | M-2 | Sintassi `CANDLERANGE <sym> <yyyyMMddHHmmss_start> <yyyyMMddHHmmss_end> <period_s>` (4 arg, period ultimo) | `scripts/probe_dapi.py` |
 | M-3 | Codici errore DAPI: `1004` cmd non valido, `1007` ticker non abilitato (storico), `1017` sintassi malformata, `1030` realtime non sottoscritto | docstring `probe_dapi.py` |
 | M-4 | Convenzione mese Directa-IDEM: `F`=Giugno, `I`=Settembre. **Mar e Dic da decodificare oggi.** | TODO |
