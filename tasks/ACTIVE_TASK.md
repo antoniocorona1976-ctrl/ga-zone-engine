@@ -206,3 +206,48 @@ verdetto CONDITIONAL/FAIL → controllo supervisore    → Developer Iter.2 → 
                                                                        ↓
                                                                        PASS o nuovo loop
 ```
+
+---
+
+## Finding di Review approvati per rework (Iterazione 2)
+
+**Verdetto Review v1**: FAIL (`reviews/REVIEW_FONDAMENTA_01_web.md`, commit `3ed0198`).
+**Punto di controllo supervisore eseguito 2026-05-29.** Decisione del supervisore:
+**TUTTI e 10 i finding approvati per il Developer** (3 BUG REALI + 5 MIGLIORA PROCESSO + 2 NEUTRO inclusi su scelta esplicita del supervisore).
+
+Il Developer corregge **solo** i file di perimetro indicati, applicando le patch suggerite dal Reviewer (adattabili nella forma, non nella sostanza). NON ridefinisce le RM. NON introduce regole nuove (no RM-5+). Edita **solo contenuto** e fa `git add` dei **soli** file effettivamente modificati nel contenuto (NON aggiungere file con sola modifica EOL/BOM, es. `planner.md`, per non sporcare il commit — nota line-ending autocrlf attiva).
+
+### BUG REALI (obbligatori)
+
+| # | File:linea | Finding | Azione richiesta |
+|---|-----------|---------|------------------|
+| 1 | `CLAUDE.md:20-30` + `:114-144` | Nessun trigger nella macchina a stati Orchestrator che attivi RM-4 *ex-ante* prima del commit di output non-CAP fuori dal ciclo Planner→Developer→Reviewer. La sez. "Workflow non-CAP" descrive ma non è agganciata a una condizione. | Aggiungere una riga alla macchina a stati `CLAUDE.md:24-30`: "Se la sessione corrente sta per produrre/committare output non-CAP che soddisfa uno dei criteri `:118-122`, prima del commit esegui il workflow RM-4 (`:114-144`)". In "Cosa l'orchestratore NON fa mai" (`:152-162`) aggiungere: "Non lascia passare un commit non-CAP senza opzione A o B; se l'autore opera in sessione autonoma, l'autore applica opzione A blindata dal proprio prompt". |
+| 2 | `developer.md:22`, `:131-159` | Il prompt Developer non ha pre-consegna RM-4 per output non-CAP. L'opzione A (self-review) è solo istruzione all'Orchestrator, non obbligo blindato dell'autore. | Aggiungere a `developer.md` una sezione "Pre-consegna per output non-CAP (RM-4 opzione A)" con checklist vincolante: (1) blocco "Self-review RM-1..RM-3" in fondo al documento o nel commit message esteso; (2) lista asserzioni "verificato" + alternative escluse nel formato 4-righe; (3) grep documentato; (4) fonti etichettate; (5) `READY_FOR_PROBE_REVIEW` in `DEV_STATUS.md` se opzione B richiesta. Aggiungere punto 13 alla pre-consegna. |
+| 4 | `developer.md:155` | Check RM-2 (grep) vincolato al `REPORT_CAP_XX`; per output non-CAP non c'è dove documentarlo. | Nella nuova sezione "Pre-consegna RM-4 opzione A", replicare il check grep sui blocchi non-CAP: lista decoder consultati nel repo con path:linea o dichiarazione "nessuno trovato dopo grep su <pattern>", inclusa nel commit message o nel documento. |
+
+### MIGLIORA PROCESSO (approvati dal supervisore — obbligatori)
+
+| # | File:linea | Finding | Azione richiesta |
+|---|-----------|---------|------------------|
+| 3 | `developer.md:153`, `reviewer.md:17,56,114` | Check pre-consegna p.10 non impone il formato 4-righe `VERIFICA/PROVE/ALTERNATIVE ESCLUSE/ALTERNATIVE NON ESCLUSE` di `METODO.md:28-33`. Prosa libera passa come compliant. | Estendere `developer.md:153` (punto 10): "con formato esatto VERIFICA/PROVE/ALTERNATIVE ESCLUSE/ALTERNATIVE NON ESCLUSE (cfr. METODO.md:28-33). Asserzioni in prosa libera senza blocco formattato sono respinte come 'non in formato'". Estendere `reviewer.md:17` con il criterio di rigetto del formato. |
+| 5 | `CLAUDE.md:112` | Nessun recupero retroattivo: la sessione successiva non rilegge handoff/probe non revisionati per riclassificarli RM-4. | Aggiungere al primo atto dell'Orchestratore della nuova sessione (`CLAUDE.md:112`): "Verifica anche se la sessione precedente ha committato output non-CAP. Per ognuno controlla che esista un blocco self-review (opz. A) o una probe-review committata (opz. B). Se manca, apri un task `AUDIT-RECUPERO-<nome>` come secondo atto prima del normale flusso." |
+| 6 | `CLAUDE.md:7-12` | Orchestrator ha RM-1/2/3 solo come elenco enunciativo, senza gatekeeping sui commit non-CAP. | Aggiungere a `CLAUDE.md:9-12` la responsabilità: "Applicare RM-1 ai commit non-CAP: rifiutare commit che dichiarano 'verificato X' senza blocco 4-righe. RM-2: rifiutare commit di parser senza grep documentato. RM-3: rifiutare commit con conclusioni wiki-only." |
+| 7 | `CLAUDE.md:135-136` | Soglia "200 righe" ambigua (per-file vs aggregata; ridondante per i decoder; valore non giustificato). Possibile fuga per handoff "piccoli". | Riscrivere `CLAUDE.md:134-136`: "B è obbligatoria se: (a) introduce un decoder/parser di sistema esterno, OR (b) modifica un fatto già dichiarato 'verificato' in CAP precedenti, OR (c) il diff **aggregato del commit** supera N righe (N=200 valore di lavoro). A è ammessa solo se nessuno di a/b/c è vero." Eliminare il criterio "area circoscritta" non definito. |
+| 8 | `developer.md:153` + `reviewer.md` | Formato 4-righe non esigibile da nessun prompt (componente di #3). | Coperto dalla patch #3. |
+
+### NEUTRO (inclusi su decisione esplicita del supervisore)
+
+| # | File:linea | Finding | Azione richiesta |
+|---|-----------|---------|------------------|
+| 9 | `METODO.md:147` | "lista non esaustiva" lascia discrezionalità su output borderline. | Convertire `METODO.md:147` in lista esaustiva con un criterio di estensione esplicito (es. "ogni output che soddisfa i criteri RM-4 in `CLAUDE.md:118-122`; estensioni richiedono commit `[METODO]` dedicato"). |
+| 10 | `CLAUDE.md:140-142` | `CLAUDE.md` non ripropone i divieti-per-sede del Reviewer (matrice solo in `reviewer.md`). | Aggiungere a `CLAUDE.md:140-142` un rimando esplicito ai divieti-per-sede di `reviewer.md:163-164` (Web non dichiara verificato-empirico; CLI non fa probe massivi di zelo). |
+
+### Vincoli per la rework Iterazione 2
+
+- Modifiche **solo** ai file di perimetro effettivamente coinvolti: `CLAUDE.md`, `developer.md`, `reviewer.md`, `METODO.md`. (`planner.md` NON è coinvolto da alcun finding approvato — non editarlo né committarlo.)
+- Mantenere coerenza inter-prompt: una modifica a `CLAUDE.md` può richiedere riflesso in `developer.md`/`reviewer.md`; documentare la mappatura nel report.
+- Nessuna riapertura delle RM-1..RM-4 nel loro enunciato; si aggancia/rende esigibile ciò che già esiste.
+- Output Developer: prompt patchati su `origin/main` + `reports/REPORT_FONDAMENTA_01.md` (formato ridotto: Cosa è stato modificato, Mappatura finding→patch, Verifica working tree, Verifica push).
+- Commit message: `[METODO-RM] patch RM-N — <descr>` per `METODO.md`; `[AGENT-PROMPT] patch <ruolo> — <descr>` per i prompt agenti.
+- `git add` solo dei file con modifica di **contenuto** (autocrlf attiva → evitare di committare file con sola churn EOL/BOM).
+- Al termine: pre-consegna checklist, poi `READY_FOR_REVIEW` in `tasks/DEV_STATUS.md`.
