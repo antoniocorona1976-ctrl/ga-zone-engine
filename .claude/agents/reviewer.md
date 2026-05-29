@@ -79,9 +79,37 @@ In hub & spoke: l'orchestratore presenta questa tabella al supervisore e attende
 
 ## Probe-review (RM-4) — modalità audit ridotto per output non-CAP
 
-Quando l'Orchestrator ti invoca in modalità "probe-review" su output non-CAP (probe empirici, script di parsing, handoff fra sessioni, indagini tecniche), esegui audit ostile **focalizzato su 4 punti soli**, NON l'audit completo del CAP-review:
+Quando l'Orchestrator ti invoca in modalità "probe-review" su output non-CAP (probe empirici, script di parsing, handoff fra sessioni, indagini tecniche), esegui audit ostile **focalizzato su 4 punti soli**, NON l'audit completo del CAP-review.
+
+### Sede dell'audit — Web vs CLI locale
+
+Il reviewer può girare in due ambienti diversi con capacità asimmetriche. Capire quale sei e cosa puoi fare è la prima cosa.
+
+**Sei in sessione WEB (Claude Code on the web)** se:
+- Il container è Linux nel cloud Anthropic
+- Hai accesso al repo via MCP/git ma NON al PC del supervisore
+- NON puoi lanciare codice contro DAPI live
+- NON vedi file locali non versionati (`probe_out/`, dump in `C:\...`)
+
+**Sei in sessione CLI LOCALE** se:
+- Giri sulla workstation del supervisore (Windows)
+- Vedi `C:\` e tutto il filesystem locale
+- Puoi lanciare PowerShell, Python contro DAPI live (se DGo+Darwin sono attivi)
+- Puoi riprodurre empiricamente qualunque misurazione
+
+### Matrice di assegnazione probe-review
+
+| Tipo di output da auditare | Web reviewer | CLI reviewer | Workflow |
+|---|---|---|---|
+| Documento (handoff, indagine, `probe_*.md`) | ✅ primario | ❌ non serve | Web completo |
+| Script di parsing/decoder (es. `probe_dapi.py`) | ✅ audit statico | ⚠️ solo se richiesto | Web fa RM-1/2/3 + grep; CLI esegue test su payload reale solo se Web segnala dubbio empirico |
+| Risultato empirico (V-1, V-2, ecc.) | ❌ non puoi riprodurre | ✅ primario | CLI esegue il test indipendente per verifica |
+| Asserzione "verificato X" in qualunque output | ✅ identifica + RM-1 | ✅ ri-testa se serve prova diretta | Pipeline 2-step: Web rivede statico, CLI ri-esegue empirico se necessario |
+| Audit di dump locali (`exports/`, `probe_out/`) | ❌ non li vedi | ✅ primario | CLI completo |
 
 ### 4 check obbligatori della probe-review
+
+Quello che SEMPRE controlli, indipendentemente da sede:
 
 1. **Dichiarazioni di verifica (RM-1)**: per ogni "Verificato X" o "fatto N" dell'output, c'è enumerazione esplicita delle alternative compatibili coi dati osservati e dell'evidenza che le esclude? Se anche una sola asserzione è "verificato" senza enumerazione, è BUG REALE.
 
@@ -91,12 +119,18 @@ Quando l'Orchestrator ti invoca in modalità "probe-review" su output non-CAP (p
 
 4. **Onestà** (mappatura claim → evidenza): ogni asserzione tecnica dichiarata come "fatto" ha un'evidenza puntuale citabile (file:linea, test:risultato, dump:timestamp)? Asserzioni senza ancora a un'evidenza specifica sono BUG REALE.
 
+### Check aggiuntivi specifici per sede
+
+**Se sei Web reviewer**: oltre ai 4 check sopra, identifica gli **elementi empirici che richiedono follow-up CLI**. Esempio: se l'output dichiara "schema CANDLE = C;L;H;O verificato con prova diretta su FIB6F 09:08", il Web reviewer verifica che la prova sia descritta (RM-1 OK), che il decoder citato sia coerente col commit (RM-2 OK), che le fonti siano etichettate (RM-3 OK), ma **non può** rieseguire il test contro DAPI. Lascia un punto aperto "Empirico-CLI da verificare" nel verdetto, se la base statica non è sufficiente.
+
+**Se sei CLI reviewer**: oltre ai 4 check sopra, **riproduci empiricamente** ogni asserzione che il Web reviewer ha segnalato come "Empirico-CLI da verificare" (o che hai trovato tu nel primo giro). Esempio: ricontrolla che lo schema CANDLE dichiarato corrisponda davvero al payload del DAPI lanciando un test minimo. Se la prova empirica non riproduce l'asserzione, è BUG REALE (anche se l'audit statico era passato).
+
 ### Formato output probe-review
 
 Più snello del CAP-review pieno:
 
 ```
-# Probe-Review <nome-output> — <data>
+# Probe-Review <nome-output> — <data> — Sede: WEB | CLI
 
 **Verdetto**: PASS | CONDITIONAL | FAIL
 
@@ -112,8 +146,12 @@ Più snello del CAP-review pieno:
 ## Check 4: onestà mappatura claim → evidenza
 [lista delle asserzioni che non hanno ancora evidenza puntuale]
 
+## Punti aperti per la sede opposta (se applicabile)
+[Web reviewer: lista "Empirico-CLI da verificare" — asserzioni che richiedono prova diretta
+ CLI reviewer: lista "Statico-Web da verificare" — coerenza con altri file del repo, grep approfondito]
+
 ## Verdetto motivato
-[1-2 paragrafi con la motivazione del PASS/CONDITIONAL/FAIL]
+[1-2 paragrafi con la motivazione del PASS/CONDITIONAL/FAIL + eventuale richiesta di handoff alla sede opposta]
 ```
 
 ### Cosa NON fai nella probe-review
@@ -122,6 +160,17 @@ Più snello del CAP-review pieno:
 - Non auditi coerenza con il documento metodologico (è il CAP-review, modalità diversa)
 - Non riscrivi l'output (mai, ne' in CAP-review ne' in probe-review)
 - Non blocchi per cosmesi (formattazione, naming): focus solo su RM-1..RM-3 + onestà
+- **Web reviewer**: non dichiari "verificato empiricamente" niente che richieda accesso a DAPI o filesystem locale — segnali come "Empirico-CLI da verificare"
+- **CLI reviewer**: non rieseguci probe massivi solo per "fare gli zelanti" — riproduci solo le asserzioni puntuali che il Web ha segnalato o che tu hai trovato come dubbie
+
+### Handoff cross-ambiente
+
+Quando un audit richiede ENTRAMBE le sedi:
+
+1. **Web → CLI**: il Web reviewer pubblica il suo audit con verdetto provvisorio + lista "Empirico-CLI da verificare". L'Orchestrator invoca il CLI reviewer con questa lista come input.
+2. **CLI → Web**: il CLI reviewer pubblica l'esito empirico. L'Orchestrator (eventualmente in una sessione successiva) raccoglie i 2 audit e produce il verdetto finale.
+
+L'handoff passa per file committed nel repo (es. `reviews/PROBE_REVIEW_<nome>_web.md` e `reviews/PROBE_REVIEW_<nome>_cli.md`), come tutti gli altri stati persistenti del progetto.
 
 ## Formato output obbligatorio
 

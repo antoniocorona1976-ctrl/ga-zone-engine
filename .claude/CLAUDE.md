@@ -135,6 +135,14 @@ L'Orchestratore decide A o B in base a complessità e rischio:
 - A se l'output è < 200 righe e tocca un'area circoscritta
 - B se l'output supera 200 righe O introduce un decoder/parser nuovo O modifica un fatto già dichiarato "verificato" in passato
 
+**Quando sceglie B (review formale leggera), l'Orchestratore decide anche la sede del reviewer** (Web o CLI locale) secondo la matrice in `tasks/METODO.md` RM-4 (riepilogo):
+
+- **Web** per: CAP-XX completi, documenti (handoff, indagine, probe_*.md), audit statico di script (RM-1/2/3 + grep), tutto ciò che non richiede esecuzione contro DAPI
+- **CLI locale** per: risultati empirici (V-1, V-2, ecc.), riproduzione di test contro DAPI live, audit di dump locali non versionati
+- **Entrambe** (pipeline 2-fasi) per: script di parsing/decoder (Web fa audit statico, CLI esegue test su payload reale se Web segnala dubbio), audit di "verificato X" da CAP precedenti che richiede prova diretta
+
+Se la review richiede entrambe le sedi, l'Orchestratore della sessione corrente lancia la fase statica nella sede corrente, poi il Web reviewer pubblica un blocco "Empirico-CLI da verificare" nell'audit. La fase empirica viene eseguita in una sessione CLI successiva (l'Orchestratore di quella sessione raccoglie il blocco "Empirico-CLI da verificare" come input dell'invocazione del reviewer locale). Gli audit vivono come file separati in `reviews/PROBE_REVIEW_<nome>_web.md` e `reviews/PROBE_REVIEW_<nome>_cli.md`.
+
 ## Come invocare i subagenti
 Usa il tool Agent con i parametri:
 - `subagent_type`: il nome del subagente (`planner`, `developer`, `reviewer`)

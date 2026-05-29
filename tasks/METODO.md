@@ -171,6 +171,28 @@ L'orchestratore invoca il reviewer in **modalità leggera** (probe-review): audi
 3. RM-3: fonti esterne etichettate `[WIKI-HINT]`? conclusioni hanno supporto da livelli 1–3?
 4. Onestà: claim asseriti hanno evidenza puntuale (file:linea o test:risultato)?
 
+### Sede della review: WEB vs CLI locale
+
+Il reviewer può girare in due ambienti con capacità asimmetriche:
+
+- **Web** (Claude Code on the web): container Linux nel cloud Anthropic. Vede il repo via Git/MCP, NON il PC del supervisore, NON può lanciare contro DAPI.
+- **CLI locale** (Claude Code CLI sul PC del supervisore): vede `C:\` e filesystem locale, può lanciare PowerShell/Python contro DAPI live se DGo+Darwin sono attivi.
+
+**Matrice di assegnazione**:
+
+| Tipo di output | Sede primaria | Note |
+|---|---|---|
+| CAP-XX completo (capitolo metodologico) | Web | Documento + grep, no DAPI necessario |
+| Documento (handoff, indagine, `probe_*.md`) | Web | Analisi testo + grep di codice committed |
+| Script di parsing/decoder (es. `probe_dapi.py`) | Web (audit statico RM-1/2/3) + CLI (test esecuzione su payload reale, solo se Web segnala dubbio empirico) | Pipeline 2-fasi: Web cattura 80% degli errori senza overhead |
+| Risultato empirico (V-1, V-2, ecc.) | CLI | Solo il CLI può riprodurre la misurazione contro DAPI |
+| Asserzione "verificato X" da CAP precedenti | Web identifica + CLI ri-testa empiricamente quando serve prova diretta | Pipeline 2-step |
+| Audit di dump locali (`exports/`, `probe_out/`) | CLI | Web non li vede |
+
+**Handoff cross-ambiente**: quando una review richiede ENTRAMBE le sedi, il Web pubblica il suo audit + lista "Empirico-CLI da verificare", l'Orchestrator invoca il CLI con quella lista, il CLI pubblica l'esito empirico, l'Orchestrator raccoglie i 2 audit e produce il verdetto finale. Gli audit vivono come file committed in `reviews/PROBE_REVIEW_<nome>_web.md` e `reviews/PROBE_REVIEW_<nome>_cli.md`.
+
+Dettaglio operativo dei check per sede e formato output: vedi `.claude/agents/reviewer.md` sezione "Probe-review (RM-4)".
+
 ### Caso reale che ha motivato la regola
 
 Sessione web 28/05: ha prodotto `scripts/probe_dapi.py` (588 righe nuove con decoder DAPI) + `tasks/HANDOFF_PROBE_DAPI_20260528.md` (207 righe con 6 "fatti verificati") + 2 PR. **Zero review.** Lo schema CANDLE sbagliato è entrato in `main` come fact-of-truth e ha contagiato la sessione CLI successiva. Se RM-4 fosse stata attiva, una self-review esplicita (opzione A) avrebbe forzato a scrivere "schema CANDLE: alternative compatibili coi soli daily = {O;L;H;C, C;L;H;O}, da disambiguare con test intraday" → il CLI avrebbe disegnato V-1 come **test di disambiguazione**, non come ri-conferma di un fatto già dato.
