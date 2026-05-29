@@ -45,30 +45,96 @@
 
 `CANDLERANGE <sym> <yyyyMMddHHmmss_start> <yyyyMMddHHmmss_end> <period_s>`
 
-4 argomenti, **period_s come ULTIMO** (NON secondo). Sintassi errata restituisce `ERR;;1017`.
+4 argomenti, **period_s come ULTIMO** (NON secondo).
+
+**Etichetta fonte (RM-3, aggiunta post-RM 2026-05-29)**: l'ordine argomenti è corroborato da codice di produzione `[CODICE-ESISTENTE r.228-230 scripts/export_directa_history_parametric.py]`, che emette la stessa identica sintassi con `period_seconds` in ultima posizione. Non è asserzione isolata di sessione web (livello 2).
+
+> **Nota (rettificato post-RM 2026-05-29)**: la clausola originale "Sintassi errata restituisce `ERR;;1017`" è stata disambiguata empiricamente — vedi §3.4: `1017` copre solo la sintassi STRUTTURALE malformata (ordine/numero argomenti), NON il parametro fuori range o la data invalida (che produce `1015`).
 
 ### 3.3 Terminatore stream history
 
 `END CANDLES` — marker testuale di fine. `probe_dapi.py` lo usa già come marker per terminare la `read_until_any()`.
 
+**Etichetta fonte (RM-3, aggiunta post-RM 2026-05-29)**: corroborato da `[CODICE-ESISTENTE r.245 scripts/export_directa_history_parametric.py]`, dove `END CANDLES` è usato come marker di fine stream nel tool di produzione che ha già processato ~380 dump (livello 2, non asserzione isolata).
+
 ### 3.4 Codici errore mappati
 
-| Codice | Comando origine | Significato |
-|---|---|---|
-| `1004` | qualsiasi su porta 10001 | comando non valido/non supportato (es. HELP/INFO/STATUS) |
-| `1007` | CANDLERANGE su 10003 | ticker non abilitato per l'account (storico) |
-| `1017` | CANDLERANGE su 10003 | sintassi del comando malformata |
-| `1030` | SUB su porta 10001 | market data realtime non sottoscritto |
+⚠️ **RIVEDUTO post-RM 2026-05-29 (BUG REALE #1, rework AUDIT-RM-RETRO)**: la tabella originale del 28/05 (conservata in fondo per storia, ora superata) dichiarava la semantica dei codici come "fatto" senza enumerare le alternative compatibili né citare un dump:timestamp. Audit RM-1 + prova empirica diretta hanno disambiguato `1017` e scoperto due codici nuovi (`1015`, `1003`). Blocco RM-1 sotto.
+
+**VERIFICA**: semantica dei codici errore DAPI sulle porte storica (10003) e realtime (10001) come da tabella rivista sotto.
+
+**PROVE**: `[PROVA-EMPIRICA 2026-05-29]` probe `w4_errcodes` (DGo aperta, mercato chiuso ~23:19 CET; dump locale completo `probe_out/w4_errcodes_20260529.json`, gitignored). Comandi-trigger inviati e righe `ERR;...` ricevute (campione incorporato inline per autoportanza su origin/main):
+
+| Codice | Comando-trigger inviato | Riga `ERR;...` ricevuta (con timestamp dove restituito dal server) | Porta |
+|---|---|---|---|
+| `1017` | `CANDLERANGE FIB6F 60 20260519080000 20260519180000` (period come 2° arg) | `ERR;;1017` | 10003 |
+| `1017` | `CANDLERANGE FIB6F` (argomenti insufficienti) | `ERR;;1017` | 10003 |
+| `1015` | `CANDLERANGE FIB6F notadate notadate 60` (date non parsabili) | `ERR;1015;20260218000000;20260529231925` | 10003 |
+| `1007` | `CANDLERANGE ZZZNOPE 20260519080000 20260519180000 60` (ticker inesistente) | `ERR;ZZZNOPE;1007` | 10003 |
+| `1007` | `SUB ZZZNOPE` (ticker inesistente, realtime) | `ERR;ZZZNOPE;1007` | 10001 |
+| `1004` | `HELP` | `ERR;HELP;1004` | 10003 e 10001 |
+| `1004` | `INFO` | `ERR;INFO;1004` | 10001 |
+| `1003` | `CANDLERANGE FIB6F 20260519080000 20260519180000 60` (comando storico su porta realtime) | `ERR;N/A;1003` | 10001 |
+| `1030` | (market data realtime gated) | **NON riprodotto** — richiede ticker realtime gated a mercato aperto | 10001 |
+
+Semantica rivista:
+- `1017` = **sintassi STRUTTURALE malformata** (ordine/numero argomenti errato). **Ristretto**: NON copre il parametro fuori range né la data invalida.
+- `1015` = **parametro/data invalida** (codice NUOVO, distinto da `1017`).
+- `1007` = ticker non abilitato/inesistente (storico e realtime).
+- `1004` = comando ignoto (entrambe le porte).
+- `1003` = comando storico inviato su porta realtime (codice NUOVO).
+- `1030` = market data realtime non sottoscritto — **verifica parziale, NON riprodotto**.
+
+**ALTERNATIVE COMPATIBILI ESCLUSE**: l'ipotesi originale del 28/05 "`1017` = sintassi del comando malformata in senso ampio (inclusi parametro fuori range / data invalida)" è ESCLUSA dal trigger `notadate` che produce `1015`, non `1017`. L'ipotesi "`1017` = qualsiasi errore CANDLERANGE" è esclusa: ticker inesistente → `1007`, porta sbagliata → `1003`.
+
+**ALTERNATIVE COMPATIBILI NON ESCLUSE**: `1030` non è stato riprodotto (mercato chiuso) → la sua semantica resta "verifica parziale" e va confermata CLI a mercato aperto con un ticker realtime gated. Non è escluso che esistano ulteriori codici (es. limiti di rate) non emersi dal set di trigger usato.
+
+**Testo originale del 28/05 (conservato per storia, ora superato):**
+
+> | Codice | Comando origine | Significato |
+> |---|---|---|
+> | `1004` | qualsiasi su porta 10001 | comando non valido/non supportato (es. HELP/INFO/STATUS) |
+> | `1007` | CANDLERANGE su 10003 | ticker non abilitato per l'account (storico) |
+> | `1017` | CANDLERANGE su 10003 | sintassi del comando malformata |
+> | `1030` | SUB su porta 10001 | market data realtime non sottoscritto |
+>
+> _(superato: `1017` era dichiarato in senso troppo ampio; `1015` e `1003` non erano stati osservati; nessun dump:timestamp era citato.)_
 
 ### 3.5 Convenzione mese Directa-IDEM (parziale)
 
-- `F` = **Giugno** (confermato: `FIB6F` = "FTSE MIB INDEX FUTURE GIU26", ISIN IT0024209022)
-- `I` = **Settembre** (Appendice B.2)
-- ❓ **Mar e Dic da decodificare oggi** — sono codici trimestrali, candidati probabili `C` e `L`
+- `F` = **Giugno** `[PROVA-EMPIRICA: FIB6F = "FTSE MIB INDEX FUTURE GIU26", ISIN IT0024209022]`
+- `I` = **Settembre** `[DOC-INTERNO Appendice B.2]` (da confermare CLI)
+- ❓ **Mar e Dic da decodificare** — codici trimestrali, candidati probabili `C` e `L` (speculazione non verificata, Empirico-CLI)
+
+**Nota RM (post-RM 2026-05-29)**: forma di verifica parziale corretta — `F` ancorato a evidenza puntuale (livello 1), `I` a fonte interna (livello 3), Mar/Dic dichiarati esplicitamente "da decodificare" (non come fatto). Etichette di fonte aggiunte in audit.
 
 ### 3.6 Pattern architetturale: socket persistente
 
-Aperture/chiusure TCP rapide su 10001 o 10003 innescano **cooldown ~30s** dopo la 14ª connessione consecutiva (Appendice A.4). Per V-1 cattura realtime di 30 minuti: **SUB + stream + UNSUB** sulla stessa connessione. `probe_dapi.py` lo fa già.
+⚠️ **RIVEDUTO post-RM 2026-05-29 (BUG REALE #2, rework AUDIT-RM-RETRO)**: le due costanti precise "~30s" e "14ª connessione" del 28/05 (conservate in fondo per storia, ora superate) erano dichiarate come fatti da una singola osservazione, senza enumerare le alternative (13/15/dipendenza dal timing). Audit RM-1 + prova empirica diretta le hanno REFUTATE come costanti nel regime testato. Blocco RM-1 sotto.
+
+**VERIFICA**: aprire/chiudere socket a raffica su 10001/10003 innesca un cooldown del gateway dopo un numero fisso di connessioni (~14) per una durata fissa (~30s).
+
+**PROVE**: `[PROVA-EMPIRICA 2026-05-29]` probe `w6_cooldown` (DGo aperta, mercato chiuso ~23:1x CET; dump locale completo `probe_out/w6_cooldown_20260529.json`, gitignored). Disegno: 3 cicli × 25 connessioni open/close su porta 10003 a cadenza ~1Hz (75 connessioni totali). Campione incorporato inline per autoportanza su origin/main:
+
+| Ciclo | Connessioni OK | Onset cooldown | Recovery | Banner per connessione |
+|---|---|---|---|---|
+| 1 | 25 / 25 | `null` (nessuno) | `null` | `blen=142` ogni connessione |
+| 2 | 25 / 25 | `null` (nessuno) | `null` | `blen=142` ogni connessione |
+| 3 | 25 / 25 | `null` (nessuno) | `null` | `blen=142` ogni connessione |
+
+(JSON: `onset_connection: null`, `n_ok_before_onset: 25` per tutti e 3 i cicli; tutte le 75 connessioni `ok:true`, `err:null`.)
+
+**ALTERNATIVE COMPATIBILI ESCLUSE**: la soglia "14 connessioni come costante" è **REFUTATA** in questo regime — 25 connessioni consecutive senza alcun onset di cooldown, ripetuto su 3 cicli. Anche "~30s di durata cooldown" non è osservabile perché nessun cooldown si è manifestato.
+
+**ALTERNATIVE COMPATIBILI NON ESCLUSE**: un rate-limit a frequenza più alta (burst >> 1Hz) o a mercato aperto NON è escluso da questo test (~1Hz, 75 connessioni totali). Sotto le condizioni testate nessun cooldown si manifesta; **soglia e durata restano NON confermate come costanti** e vanno ri-disambiguate CLI con burst ad alta frequenza a mercato aperto se mai serve dichiararle come fatto.
+
+Per V-1 cattura realtime di 30 minuti rimane comunque consigliato **SUB + stream + UNSUB** sulla stessa connessione (best practice di prudenza, non più giustificata da una soglia "14" confermata). `probe_dapi.py` lo fa già.
+
+**Testo originale del 28/05 (conservato per storia, ora superato):**
+
+> Aperture/chiusure TCP rapide su 10001 o 10003 innescano **cooldown ~30s** dopo la 14ª connessione consecutiva (Appendice A.4). Per V-1 cattura realtime di 30 minuti: **SUB + stream + UNSUB** sulla stessa connessione. `probe_dapi.py` lo fa già.
+>
+> _(superato: "14ª connessione" e "~30s" erano due costanti precise da una singola osservazione; il probe del 29/05 non ha riprodotto alcun cooldown su 75 connessioni a ~1Hz.)_
 
 ---
 

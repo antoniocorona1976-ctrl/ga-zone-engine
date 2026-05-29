@@ -4,29 +4,87 @@ DAPI probe runner — strumento per V-1 (equivalenza realtime vs CANDLERANGE)
 e V-2 (cut-off temporale CANDLERANGE), come da tasks/PROBE_RECUPERO_GAP_DAPI
 e INDAGINE_DIRECTA_CROSS_INDEX appendici A/B.
 
-Scoperte empiriche incorporate (sessioni 2026-05-28 / 2026-05-29):
+Scoperte empiriche incorporate (sessioni 2026-05-28 / 2026-05-29).
+Le asserzioni "scoperte" sono state rivedute in audit RM-1/2/3 (2026-05-29,
+rework AUDIT-RM-RETRO CAP-DATA-01). Le etichette di fonte sono:
+  [PROVA-EMPIRICA <data>] = test diretto contro DAPI live (livello 1)
+  [CODICE-ESISTENTE r.NNN] = decoder/comando di produzione nel repo (livello 2)
+  [WIKI-HINT, da verificare] = doc Directa, hint non autorevole (livello 4)
+
   - schema CANDLE reale: C;L;H;O;V  (UFF;MIN;MAX;APE;V in nomenclatura Directa)
-       NB: il wiki DAPI dichiara O;H;L;C ed è INESATTO.
+       NB: il wiki DAPI dichiara O;H;L;C ed è INESATTO [WIKI-HINT, smentito].
        NB: la sessione 28/05 aveva dichiarato O;L;H;C basandosi su test
        solo daily, dove O e C non sono distinguibili dai 4 valori. V-1
        (sessione 29/05) ha smentito con prova realtime: p[4]=close, p[7]=open.
-       Decoder coerente da commit a12ae32.
+       [PROVA-EMPIRICA 2026-05-29] V-1; [CODICE-ESISTENTE r.477
+       export_directa_history_parametric.py]. Decoder coerente da commit a12ae32.
+
   - terminatore stream history: "END CANDLES"
+       [CODICE-ESISTENTE r.245 export_directa_history_parametric.py] (usato come
+       marker di fine stream nel tool di produzione che ha già processato ~380 dump).
+
   - sintassi CANDLERANGE:
        CANDLERANGE <sym> <yyyyMMddHHmmss_start> <yyyyMMddHHmmss_end> <period_s>
-  - codici errore osservati:
-       1004 = comando non valido (es. HELP/INFO sulla 10001)
-       1007 = ticker non abilitato per l'account (porta 10003 storici)
-       1017 = sintassi del comando malformata
-       1030 = market data realtime non sottoscritto (porta 10001)
-  - convenzione mese Directa-IDEM (parziale): F=Giugno, I=Settembre
-  - convenzione ticker
-       Eurex: EU.<CODE><MONTH><YEAR>   es. EU.DJ50M6
-       CME:   CM.<CODE><MONTH><YEAR>   es. CM.ESM6
-       IDEM:  <CODE><YEAR><MONTH>       es. FIB6F
+       (period_s come ULTIMO argomento)
+       [CODICE-ESISTENTE r.228-230 export_directa_history_parametric.py] emette
+       la stessa identica sintassi con period in ultima posizione.
+
+  - codici errore osservati — RIVEDUTI RM-1 con prova empirica 2026-05-29.
+       VERIFICA: la semantica dei codici errore DAPI (porte storica 10003 e
+         realtime 10001) è quella della tabella sotto.
+       PROVE: [PROVA-EMPIRICA 2026-05-29] probe w4_errcodes (DGo aperta, mercato
+         chiuso ~23:19 CET, dump locale probe_out/w4_errcodes_20260529.json), invio
+         di comandi-trigger mirati e registrazione della riga ERR;... ricevuta.
+       ALTERNATIVE COMPATIBILI ESCLUSE: l'ipotesi 28/05 "1017 copre anche parametro
+         fuori range/data invalida" è ESCLUSA: una data non parsabile produce 1015
+         (codice distinto), non 1017. L'ipotesi "1017 = qualsiasi errore di comando"
+         è esclusa: ticker inesistente → 1007, comando ignoto → 1004.
+       ALTERNATIVE COMPATIBILI NON ESCLUSE: 1030 (market data realtime non
+         sottoscritto) NON è stato riprodotto (richiede ticker realtime gated a
+         mercato aperto) → resta "verifica parziale", Empirico-CLI a mercato aperto.
+       Tabella (codice → semantica, comando-trigger osservato):
+       1017 = SINTASSI STRUTTURALE malformata (NON copre param fuori range):
+              trigger "CANDLERANGE FIB6F 60 ..." (period come 2° arg) → "ERR;;1017";
+              trigger "CANDLERANGE FIB6F" (argomenti insufficienti) → "ERR;;1017"
+       1015 = parametro/data invalida (codice NUOVO, distinto da 1017):
+              trigger "CANDLERANGE FIB6F notadate notadate 60"
+                 → "ERR;1015;20260218000000;20260529231925"
+       1007 = ticker non abilitato/inesistente:
+              trigger "CANDLERANGE ZZZNOPE ..." → "ERR;ZZZNOPE;1007";
+              trigger "SUB ZZZNOPE" (10001)     → "ERR;ZZZNOPE;1007"
+       1004 = comando ignoto:
+              trigger "HELP"/"INFO" (10003 e 10001) → "ERR;HELP;1004" / "ERR;INFO;1004"
+       1003 = comando storico inviato su porta realtime (codice NUOVO):
+              trigger "CANDLERANGE FIB6F ..." su 10001 → "ERR;N/A;1003"
+       1030 = market data realtime non sottoscritto (porta 10001) — NON riprodotto,
+              verifica parziale, da disambiguare CLI a mercato aperto [WIKI-HINT].
+
+  - convenzione mese Directa-IDEM (parziale): F=Giugno [PROVA-EMPIRICA: ISIN
+       IT0024209022 "GIU26"], I=Settembre [DOC-INTERNO App. B.2]; Mar/Dic
+       da decodificare (verifica parziale dichiarata).
+
+  - convenzione ticker:
+       IDEM:  <CODE><YEAR><MONTH>       es. FIB6F  [PROVA-EMPIRICA 2026-05-29: solo
+                                                    IDEM/FIB6F è stato testato]
+       Eurex: EU.<CODE><MONTH><YEAR>   es. EU.DJ50M6  [WIKI-HINT, da verificare CLI]
+       CME:   CM.<CODE><MONTH><YEAR>   es. CM.ESM6    [WIKI-HINT, da verificare CLI]
+       NB: solo IDEM (FIB6F) ha evidenza nel perimetro. L'ordine MONTH/YEAR di
+       Eurex/CME va confermato via ANAG a mercato aperto e canonicizzato in Parte 9.
+
   - pattern architetturale: socket PERSISTENTE per la 10001 (realtime) e per
-       la 10003 (history); aprire/chiudere a raffica innesca cooldown ~30s
-       dopo la 14a connessione consecutiva (osservato in App. A.4).
+       la 10003 (history). La "14a connessione / cooldown ~30s" del 28/05 è
+       RIVEDUTA RM-1 (verifica parziale) — vedi sotto.
+       VERIFICA: aprire/chiudere socket a raffica innesca un cooldown del gateway.
+       PROVE: [PROVA-EMPIRICA 2026-05-29] probe w6_cooldown (DGo aperta, mercato
+         chiuso ~23:1x CET, dump locale probe_out/w6_cooldown_20260529.json): 3 cicli
+         x 25 connessioni open/close su 10003 a ~1Hz (75 connessioni totali), TUTTE
+         OK, nessun onset di cooldown (onset_connection=null, n_ok_before_onset=25).
+       ALTERNATIVE COMPATIBILI ESCLUSE: la soglia "14 connessioni come costante"
+         è REFUTATA in questo regime — 25 connessioni consecutive senza cooldown.
+       ALTERNATIVE COMPATIBILI NON ESCLUSE: un eventuale rate-limit a frequenza
+         più alta (burst >>1Hz) o a mercato aperto NON è escluso; "~30s" e "14"
+         restano NON confermati come costanti. Da ri-disambiguare CLI con burst ad
+         alta frequenza a mercato aperto se mai serve dichiararlo come fatto.
 
 Uso:
   python scripts/probe_dapi.py sanity
@@ -41,7 +99,15 @@ Uso:
 Output: directory probe_out/ in cwd, NON committata (vedi .gitignore).
 
 Prerequisiti operativi:
-  - DGo aperto, Darwin avviato, banner DARWIN_STATUS;CONN_OK;TRUE atteso
+  - DGo aperto, Darwin avviato, banner con prefisso "DARWIN_STATUS" atteso alla
+    connessione. NB: il decoder (parse_line, sotto) matcha SOLO il prefisso
+    "DARWIN_STATUS", non l'intera stringa "DARWIN_STATUS;CONN_OK;TRUE". La forma
+    piena dichiarata il 28/05 è [WIKI-HINT, da verificare] — non allineata al
+    comportamento del decoder. [PROVA-EMPIRICA 2026-05-29] probe w6_cooldown:
+    ogni connessione su 10003 ha restituito un banner di lunghezza 142 byte
+    (blen=142, dump probe_out/w6_cooldown_20260529.json); il contenuto esatto
+    dei campi resta Empirico-CLI da catturare a mercato aperto. Docstring e
+    decoder sono ora allineati sul prefisso "DARWIN_STATUS".
   - TradingView Directa CHIUSO  (vincolo D-6)
   - una sola istanza Darwin attiva sulla macchina
 """
