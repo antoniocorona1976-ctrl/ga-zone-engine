@@ -144,12 +144,16 @@ Il workflow di review formale Planner→Developer→Reviewer copre i capitoli me
 
 ### Cosa significa in pratica
 
-Output soggetti a RM-4 (lista non esaustiva):
+Output soggetti a RM-4 (lista **esaustiva**):
 
 - **Script di parsing/decoder** di payload di sistemi esterni (es. `probe_dapi.py`, futuri `telegram_consumer.py`, ecc.)
 - **Documenti di handoff fra sessioni** che dichiarano "fatti verificati" (es. `tasks/HANDOFF_*.md`, `tasks/RIPRESA_*.md`)
 - **Probe/spike empirici** i cui risultati saranno citati nei CAP successivi (es. `tasks/PROBE_*.md`, `tasks/INDAGINE_*.md`)
 - **Scoperte tecniche dichiarate come "M-promemoria"** che entreranno in CARRYOVER
+
+Il criterio sintetico equivalente è quello operativo dell'Orchestrator (`.claude/CLAUDE.md` §"Workflow per output non-CAP", trigger `OR` a 3 voci: parsing payload esterno **OR** dichiarazione "fatti verificati" da citare in CAP successivi **OR** asserzioni destinate a CARRYOVER). Un output che soddisfa almeno uno dei tre criteri rientra in RM-4 anche se non è riconducibile letteralmente a uno dei 4 tipi sopra.
+
+**Criterio di estensione**: l'aggiunta di un nuovo tipo a questa lista richiede un commit dedicato `[METODO] estensione RM-4 — <tipo>` con motivazione (incidente documentato o classe di output emergente). Non è ammesso estendere implicitamente la lista durante un'altra modifica.
 
 ### Modalità di review per output non-CAP
 
