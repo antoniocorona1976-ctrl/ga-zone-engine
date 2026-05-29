@@ -2,8 +2,8 @@
 
 > **Single source of truth** dello stato del progetto. Aggiornato all'inizio e alla fine di ogni sessione (web e CLI locale). **Prima azione** di ogni sessione Claude: leggere questo file.
 
-**Ultimo aggiornamento**: 2026-05-29 ~13:15 CET — sessione **web** (definizione regole metodologiche RM-1..RM-4 in `tasks/METODO.md` + propagazione nei 4 prompt agenti)
-**Prossima sessione attesa**: **CLI locale** alle 14:30 CET per V-1 afternoon capture + re-run inventory CME
+**Ultimo aggiornamento**: 2026-05-29 sera — sessione **CLI** (AUDIT-RM-RETRO CAP-DATA-01 chiuso **PASS**, Re-Review Iter.3 `074fba4`; debito retroattivo RM-4 su perimetro A-D saldato)
+**Prossima sessione attesa**: **CLI locale a mercato aperto** per le verifiche empiriche residue (W4/1030, W6 burst, W5 `I`=Set/Mar-Dic, W9 Eurex/CME) — lista Empirico-CLI in `reviews/REVIEW_CAP_DATA_01_RM_RETRO_v2_review.md`
 
 ---
 
@@ -41,18 +41,18 @@
 
 | Campo | Valore |
 |---|---|
-| Ultimo commit | `a12ae32` — `[PROBE] fix schema CANDLE C;L;H;O + tolleranza float` |
+| Ultimo commit | `074fba4` — `[REVIEW] Re-Review AUDIT-RM-RETRO CAP-DATA-01 v2 — PASS` |
 | Branch primario | `main` |
 | Branch attivi | nessuno (tutti i `claude/*` sono mergiati e fast-forwarded) |
 | Working tree atteso | clean |
 
 Commit recenti:
 ```
-a12ae32 [PROBE] probe_dapi.py: fix schema CANDLE C;L;H;O + tolleranza float in v1-compare
-5e41252 [STATO] crea tasks/STATO_CORRENTE.md come single source of truth fra sessioni
-6c84504 [PROBE] nota di ripresa 2026-05-29: stato pre-V-1 + due note operative
-2dc457b [PROBE] probe_dapi.py: forza UTF-8 su stdout/stderr per console Windows
-9bf35fa [HANDOFF] briefing sessione probe DAPI 2026-05-28 per Claude CLI locale
+074fba4 [REVIEW] Re-Review AUDIT-RM-RETRO CAP-DATA-01 v2 — PASS (sede CLI)
+4bc870f [AUDIT-RETRO] report ridotto rework Iter.2 — mappatura 7 finding + self-review
+34e233f [AUDIT-RETRO] DEV_STATUS READY_FOR_REVIEW — rework Iter.2 C+D consegnato
+e444c33 [AUDIT-RETRO] patch C+D — chiusura 7 finding Review v1 (2 BUG REALI + 5 MIGLIORA PROCESSO)
+8e0e334 [REVIEW] CAP-DATA-01 RM-RETRO web — CONDITIONAL
 ```
 
 ---
@@ -63,9 +63,9 @@ a12ae32 [PROBE] probe_dapi.py: fix schema CANDLE C;L;H;O + tolleranza float in v
 |---|---|---|
 | M-1 | ⚠️ **CORRETTO 2026-05-29**: schema CANDLE reale = `UFF;MIN;MAX;APE;V` = **`C;L;H;O;V`**, NON `O;L;H;C`. V-1 ha provato lo swap O/C: su daily O e C non erano distinguibili (solo L/H lo erano), per questo l'errore era passato. `export_directa_history_parametric.py` era già corretto → dump storici NON affetti. Fix nel decoder `probe_dapi.py` in `a12ae32`. | `scripts/probe_dapi.py` + `export_directa_history_parametric.py` |
 | M-2 | Sintassi `CANDLERANGE <sym> <yyyyMMddHHmmss_start> <yyyyMMddHHmmss_end> <period_s>` (4 arg, period ultimo) | `scripts/probe_dapi.py` |
-| M-3 | Codici errore DAPI: `1004` cmd non valido, `1007` ticker non abilitato (storico), `1017` sintassi malformata, `1030` realtime non sottoscritto | docstring `probe_dapi.py` |
-| M-4 | Convenzione mese Directa-IDEM: `F`=Giugno, `I`=Settembre. **Mar e Dic da decodificare oggi.** | TODO |
-| M-5 | Socket persistente per porte 10001/10003: cooldown ~30s dopo 14 aperture rapide consecutive | `probe_dapi.py` |
+| M-3 | ⚠️ **RIAUDITATO [PROVA-EMPIRICA 2026-05-29]** (AUDIT-RM-RETRO W4): `1004` cmd ignoto, `1007` ticker inesistente/non abilitato, `1017` sintassi strutturale malformata, `1015` data/parametro invalido (**NUOVO**, distinto da 1017), `1003` comando storico su porta realtime (**NUOVO**). `1030` realtime non sottoscritto **non riprodotto** (account FIB ha il dato) → verifica parziale. Dump: `probe_out/w4_errcodes_20260529.json` | docstring `probe_dapi.py` + `HANDOFF §3.4` |
+| M-4 | Convenzione mese Directa-IDEM: `F`=Giugno **confermato [PROVA-EMPIRICA 2026-05-29]** (SUB FIB6F → ANAG ISIN IT0024209022 GIU26, AUDIT-RM-RETRO W5). `I`=Settembre + Mar/Dic **ancora da decodificare a mercato aperto** (verifica parziale). | TODO (W5 residuo Empirico-CLI) |
+| M-5 | ⚠️ **RIAUDITATO [PROVA-EMPIRICA 2026-05-29]** (AUDIT-RM-RETRO W6): la costante "cooldown ~30s dopo 14ª connessione" è **refutata nel regime testato** — 75 connessioni open/close a ~1Hz su 10003 senza alcun cooldown (3×25, `onset_connection:null`). Soglia/durata sotto burst >>1Hz NON disambiguate (verifica parziale). Dump: `probe_out/w6_cooldown_20260529.json` | `probe_dapi.py` + `HANDOFF §3.6` |
 | M-6 | Account `B6086` non committarlo in chiaro. `scripts/directa_history_export_config.json` (con il valore) è in `.gitignore`. Template safe = `.example.json` | `.gitignore` |
 | M-7 | Settle CME daily arriva sul DAPI Directa nel pomeriggio CET (non di notte). Rilanciare `update_inventory_*` dopo le 14:30 | TODO 29/05 |
 | M-8 | Bug encoding `cp1252` su console Windows italiana → patch UTF-8 reconfigure già committata in `2dc457b` | risolto |
