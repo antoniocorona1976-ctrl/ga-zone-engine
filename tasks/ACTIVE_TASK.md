@@ -417,4 +417,28 @@ Output non-CAP attesi da questo task:
 
 ---
 
+## Finding di Review approvati per rework — Iterazione 2
+
+> Aggiunto dall'**Orchestratore** al punto di controllo supervisore (2026-05-30), dopo verdetto **FAIL** del Reviewer Web ([`reviews/REVIEW_CAP_DATA_02_RM_RETRO_review.md`](../reviews/REVIEW_CAP_DATA_02_RM_RETRO_review.md), commit `f6d2ac3`). Il supervisore ha approvato **tutti i 9 finding non-NEUTRO**: i 4 BUG REALI (obbligatori) + i 5 MIGLIORA. Il finding **#9 (NEUTRO, PRICE campi 5/6/7 già onesto) NON va a Developer** (resta come-è).
+
+Il Developer patcha **solo** questi 9 finding, **solo** nei file del perimetro coinvolti (A = `docs/methodology_v2/CAP_09_parte_9.md`, C = `tasks/INDAGINE_DIRECTA_CROSS_INDEX.md`). **Vincoli assoluti:** (i) **D** (`scripts/export_directa_history_parametric.py`) è il decoder canonico autoritativo — **NON si modifica MAI**; è la fonte di verità rispetto a cui si corregge A. (ii) **B** (`reports/REPORT_CAP_09.md`) originale è storico immutabile — l'annotazione del finding #8 vive nel report ridotto di rework, non si edita il REPORT originale. (iii) Le patch RM-1 non cancellano il testo vecchio: lo etichettano (`[CORREGGE WIKI]` / "verifica parziale" / "refutato da M-5"). (iv) Le patch su A/C rientrano in RM-4 criterio (b) → re-review formale opzione B del Reviewer in Iter.3 (già in pipeline); il report ridotto richiede self-review opzione A (blocco 4-righe RM-1).
+
+| # | Classificazione | File:linea | Patch da applicare |
+|---|-----------------|-----------|--------------------|
+| 1 | **BUG REALE (catastrofico)** | A `:158-161` (vs D `:477-481`) | Correggere la mappatura "canonica" Cap.49 allo schema reale del decoder D (`parts[4..8] = UFF;MIN;MAX;APE = close;low;high;open`): `bar_open` ← campo 8 (APE=open), `bar_high` ← campo 7 (MAX=high), `bar_low` ← campo 6 (MIN=low), `bar_close` ← campo 5 (UFF=close); `volume` ← campo 9 invariato. Rendere la colonna "Origine DAPI runtime" inequivocabile sui nomi-campo DAPI reali. Aggiungere etichette `[CODICE-ESISTENTE export_directa_history_parametric.py:477-481]` + `[PROVA-EMPIRICA M-1 2026-05-29]` + nota `[CORREGGE WIKI: l'ordine wiki O;H;L;C è dimostrato inesatto]`. |
+| 2 | **BUG REALE (RM-3)** | C `:28` e `:46` | Etichettare le due righe `[WIKI-HINT, dimostrato INESATTO su CANDLE: ordine reale C;L;H;O — vedi export_directa_history_parametric.py:477 e M-1 2026-05-29]`. NON cancellare il testo wiki: etichettarlo come hint smentito. Coerente con patch #1. |
+| 3 | **BUG REALE (RM-1, refutato)** | A `:47`, `:51`, `:198` | Riscrivere il cooldown "~30s / 14ª connessione" come: "osservazione singola del 2026-05-27 in regime di burst non disambiguato; in regime ~1Hz nessun cooldown osservato (`[PROVA-EMPIRICA M-5 2026-05-29]`, 75 conn open/close); soglia e durata sotto burst >>1Hz non disambiguate". Mantenere la regola architetturale "1 connessione persistente per porta". |
+| 4 | **BUG REALE (RM-1)** | A `:194`, `:195` | Riscrivere la semantica dei codici 1004/1007 come "verifica parziale": indicare il comando-trigger osservato e marcare "semantica esatta da disambiguare" (no dump:timestamp disponibile in WEB → Empirico-CLI per i trigger esatti). `is_error_line` di D non decodifica codici numerici → nessun supporto level-2 per la semantica numerica. |
+| 5 | **MIGLIORA PERFORMANCE** | A `:192-196` | Estendere la tabella codici errore con `1017` (sintassi malformata), `1015` (data/parametro invalido — NUOVO), `1003` (comando storico su porta realtime — NUOVO) osservati in `[PROVA-EMPIRICA M-3 2026-05-29]`, con cautela RM-1 (comando-trigger; "semantica da disambiguare"). Migliora il recovery deterministico in produzione. |
+| 6 | **MIGLIORA PROCESSO** | A `:207` | Etichettare il riavvio Darwin di mezzanotte `[WIKI-HINT, da verificare]` (oggi appoggiato a wiki-only, level-4) e marcare il fenomeno "da osservare empiricamente" (Empirico-CLI). Non bloccante (contingenza di recovery, non schema-dato). |
+| 7 | **MIGLIORA PERFORMANCE** | A `:93`, `:164`, `:168` | Annotare che lo schema BOOK_5 deriva da osservazione singola del 2026-05-27, con alternative non escluse (ordine BID/ASK, indice `lots`/`price`); la regola `bar_synthetic` dipende dalle posizioni `bid1_lots`/`ask1_lots` non certificate → Empirico-CLI. |
+| 8 | **MIGLIORA PROCESSO** | (annotazione nel report ridotto, NON in B) | Annotare nel report ridotto di rework che la verifica AC-3/AC-4 di B va estesa a "mapping CANDLE verificato contro il decoder canonico D", non solo completezza dei campi. Il REPORT originale `reports/REPORT_CAP_09.md` resta storico immutabile. |
+| 10 | **MIGLIORA PROCESSO** | A, C (globale) | Aggiungere etichette di livello fonte RM-3 (`[CODICE-ESISTENTE]` / `[PROVA-EMPIRICA]` / `[WIKI-HINT]`) dove la sostanza regge (W4/W6/W7/W10). Non bloccante. |
+
+**Escluso (NON a Developer):** #9 NEUTRO (A `:94`, PRICE campi 5/6/7 marcati `?` — già forma RM-1 onesta). Resta in lista Empirico-CLI per la sessione CLI, non richiede patch testuale.
+
+**Output attesi dal Developer (Iter.2):** patch ai file A e C su `origin/main` + `reports/REPORT_AUDIT_RM_RETRO_CAP_DATA_02.md` (formato ridotto: Cosa modificato, Mappatura finding→patch, Verifica working tree, Verifica push, **blocco self-review RM-1 opzione A**). Commit `[AUDIT-RETRO] patch <file> — chiusura finding <#> (RM-N)`. Al termine: `READY_FOR_REVIEW` in `tasks/DEV_STATUS.md`.
+
+---
+
 **Fine del task card.**
