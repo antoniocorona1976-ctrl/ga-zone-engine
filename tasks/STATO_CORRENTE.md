@@ -2,7 +2,7 @@
 
 > **Single source of truth** dello stato del progetto. Aggiornato all'inizio e alla fine di ogni sessione (web e CLI locale). **Prima azione** di ogni sessione Claude: leggere questo file.
 
-**Ultimo aggiornamento**: 2026-05-29 ~12:30 CET — sessione **web** (risposta del revisore a §3.7 di PROBE_RECUPERO_GAP_DAPI.md + propagazione schema corretto)
+**Ultimo aggiornamento**: 2026-05-29 ~13:15 CET — sessione **web** (definizione regole metodologiche RM-1..RM-4 in `tasks/METODO.md` + propagazione nei 4 prompt agenti)
 **Prossima sessione attesa**: **CLI locale** alle 14:30 CET per V-1 afternoon capture + re-run inventory CME
 
 ---
@@ -126,8 +126,9 @@ Per commit che aggiornano più cose (es. PASS + STATO + indice): tag del commit 
 ## 8. Riferimenti rapidi
 
 - **Workflow orchestratore metodologico**: `.claude/CLAUDE.md`
+- **Regole metodologiche permanenti (RM-1..RM-4)**: `tasks/METODO.md` ← **da leggere come prima azione di ogni sessione**
 - **Briefing probe corrente**: `tasks/HANDOFF_PROBE_DAPI_20260528.md`
 - **Nota ripresa CLI**: `tasks/RIPRESA_20260529.md`
-- **Carryover M-promemoria storici**: `tasks/CARRYOVER.md`
+- **Carryover M-promemoria storici (namespace CAP-XX)**: `tasks/CARRYOVER.md`
 - **Indagine DAPI base**: `tasks/INDAGINE_DIRECTA_CROSS_INDEX.md` (Appendici A/B)
 - **Indice metodologico**: `docs/methodology_v2/00_indice.md`

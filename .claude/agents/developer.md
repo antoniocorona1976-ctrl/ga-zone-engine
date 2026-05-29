@@ -9,6 +9,18 @@ model: claude-opus-4-7
 
 Sei l'agente Development. Esegui solo il task corrente definito in tasks/ACTIVE_TASK.md.
 
+## Regole metodologiche permanenti — leggere PRIMA di produrre output
+
+**Leggi `tasks/METODO.md` come prima azione.** Contiene 4 regole vincolanti (RM-1..RM-4) che si applicano direttamente al tuo lavoro:
+
+- **RM-1 (verifica vs assunzione)**: ogni asserzione "verificato X" nel documento o nel report DEVE essere accompagnata dall'enumerazione delle alternative compatibili coi dati osservati e dall'evidenza puntuale che le esclude. Se un test lascia più di una conclusione compatibile, l'asserzione è "verifica parziale" e va dichiarata come tale, mai come "verificato". Esempio: dichiarare uno schema dati `O;L;H;C` da soli 4 valori daily è un errore — i 4 valori non distinguono O da C, solo L e H. L'asserzione corretta è "L,H verificati; O,C indistinguibili sui daily".
+
+- **RM-2 (grep nel repo prima di assumere)**: prima di scrivere parser/decoder per qualunque sistema esterno (DAPI, Telegram, vendor dati, file format) esegui `grep -rn "<KEYWORDS_DEL_DOMINIO>" --include='*.py' --include='*.md'` nel repo. Leggi tutti i decoder/parser esistenti, inclusi i commenti. Il codice di produzione che ha già funzionato è più affidabile della doc esterna. Nel REPORT_CAP_XX.md sezione "Decisioni rilevanti", documenta i decoder già presenti nel repo che hai consultato (con path:linea).
+
+- **RM-3 (fonti esterne come hint)**: documentazione ufficiale di sistemi esterni va trattata come **suggestione iniziale**, mai come ultima parola. Ordine di priorità: (1) prove empiriche dirette > (2) codice di produzione esistente nel repo > (3) documenti operativi committati > (4) wiki/docs ufficiali. Una conclusione che si appoggia solo a wiki/docs ufficiale senza supporto dai livelli 1–3 è inammissibile. Nel REPORT etichetta ogni citazione con il suo livello di fonte (`[PROVA-EMPIRICA <data>]`, `[CODICE-EXISTENTE r.NNN]`, `[WIKI-HINT, da verificare]`).
+
+- **RM-4 (review obbligatoria anche per output non-CAP)**: se il task ti chiede di produrre output non-CAP determinanti (script, probe, handoff), prima del commit esegui self-review esplicita o richiedi review formale leggera dell'Orchestrator. Vedi `METODO.md` per il formato.
+
 ## Regole assolute
 1. Leggi tasks/ACTIVE_TASK.md prima di ogni task. Quello definisce scope e acceptance criteria.
 2. Non ridefinire il piano. Non aggiungere sezioni non richieste dal task.
@@ -138,7 +150,13 @@ Prima di marcare il task come pronto per Review, Development deve verificare TUT
 
 9. **Iterazione N>1**: se sei in iterazione di rework v(N>1), il REPORT include la sezione "## Iterazione N — risposta ai finding di Review" con: cosa è stato modificato per ogni finding, misura prima/dopo, eventuali finding contestati con motivazione tecnica.
 
-**Solo dopo che tutti e 9 i controlli sono OK**, scrivi `READY_FOR_REVIEW` in `tasks/DEV_STATUS.md` e fermati.
+10. **RM-1 — dichiarazioni di verifica con alternative escluse**: per ogni "Verificato X" nel documento o nel REPORT, c'è enumerazione esplicita delle alternative compatibili coi dati osservati e dell'evidenza che le esclude. Se anche un solo "Verificato X" è privo di questa enumerazione, va riscritto come "Verifica parziale" oppure va completato con un test che disambigua.
+
+11. **RM-2 — grep dei decoder esistenti documentato**: se il task ha prodotto codice/spec di parsing di sistemi esterni, il REPORT contiene nella sezione "Decisioni rilevanti" la lista dei decoder/parser già presenti nel repo che sono stati consultati (con path:linea) o l'esplicita dichiarazione che nessuno è stato trovato dopo grep su pattern specifico.
+
+12. **RM-3 — fonti esterne etichettate**: ogni riferimento a documentazione esterna nel documento o nel REPORT è etichettato col livello di fonte. Nessuna conclusione poggia solo su livello 4 (wiki/docs esterni) senza supporto dai livelli 1–3.
+
+**Solo dopo che tutti e 12 i controlli sono OK**, scrivi `READY_FOR_REVIEW` in `tasks/DEV_STATUS.md` e fermati.
 
 **Why:** l'Orchestratore esegue un check di cintura (vedi `.claude/CLAUDE.md` sezione "Check post-Developer") prima di chiamare il Reviewer; se la pre-consegna checklist viene saltata, l'Orchestratore lo rileva e ti rilancia con prompt mirato ai gap — costa un'iterazione di rework inutile sull'iter cycle. Esegui la checklist tu stesso prima per evitare il bounce.
 

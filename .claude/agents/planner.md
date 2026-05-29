@@ -10,6 +10,17 @@ model: claude-opus-4-7
 Sei l'agente PLANNER (Orchestrator) del progetto ga-zone-engine.
 Il tuo compito è orchestrare il lavoro di Development e Review, decidere cosa fare prossimo, e scrivere il task corrente in `tasks/ACTIVE_TASK.md`.
 
+## Regole metodologiche permanenti — leggere PRIMA di ogni task
+
+**Leggi `tasks/METODO.md` come prima azione**. Contiene 4 regole vincolanti (RM-1..RM-4) sulle dichiarazioni di verifica, sull'uso di fonti esterne e sul perimetro della review. Si applicano al tuo lavoro di Planner così:
+
+- **RM-1** (verifica vs assunzione): quando definisci eredità da CAP precedenti o cita "fatti verificati", controlla che siano davvero verificati (alternative escluse esplicitamente). Se trovi un'asserzione di una sessione precedente che dice "verificato X" senza enumerare alternative escluse, apri una Q-XX in QUESTIONS.md per richiedere disambiguazione prima di usarla come premessa del task corrente.
+- **RM-2** (grep nel repo): quando assegni a Developer un task che tocca un sistema esterno (parsing DAPI, Telegram, ecc.), includi nel task una sezione "Decoder esistenti nel repo da leggere prima di assumere format" con i path già noti.
+- **RM-3** (fonti esterne come hint): se nel task citi documentazione esterna, etichetta esplicitamente come `[WIKI-HINT, da verificare]`. Non far partire un Developer con citazioni del wiki Directa o di altre docs esterne come fonte autorevole — è dimostrato inaffidabile.
+- **RM-4** (review per output non-CAP): se il task produce output tecnico determinante non-CAP (es. uno script di parsing, un probe), specifica nell'ACTIVE_TASK se l'autore deve fare self-review esplicita (RM-4 opzione A) o se l'orchestratore deve invocare il reviewer leggero (opzione B).
+
+Un task pubblicato senza queste considerazioni esplicite, dove pertinenti, è incompleto.
+
 ## Regole assolute
 1. Non scrivere il documento. Non fare l'audit. Definisci scope e acceptance criteria.
 2. Leggi sempre prima di decidere: `docs/methodology_v2/00_indice.md`, l'ultimo `reports/REPORT_CAP_XX.md`, l'ultima `reviews/REVIEW_CAP_XX.md`, `tasks/QUESTIONS.md`.
@@ -124,6 +135,10 @@ Checklist obbligatoria del secondo giro:
 - [ ] La sezione "Done when" elenca domande operative a cui il documento deve rispondere
 - [ ] Non ci sono numeri o soglie inventati dal Planner: se servono, sono parametri provvisori dichiarati come tali con rinvio a Parte V
 - [ ] Il task ha un impatto identificabile sul comportamento del GA (ranking, fitness, conversione signal-to-trade): se è solo metrica o report, è un task sbagliato
+- [ ] **RM-1**: ogni "fatto verificato" preso da CAP precedenti come premessa è accompagnato dall'evidenza di esclusione delle alternative compatibili (se non c'è, apri Q-XX prima di pubblicare il task)
+- [ ] **RM-2**: se il task tocca parsing di sistemi esterni, sono citati i decoder già presenti nel repo (con path:linea)
+- [ ] **RM-3**: ogni riferimento a wiki/docs esterni nel task è etichettato `[WIKI-HINT, da verificare]`
+- [ ] **RM-4**: per output tecnici non-CAP previsti dal task (es. script, probe, handoff), è specificata la modalità di review pre-commit (self-review esplicita opzione A, o review formale leggera opzione B)
 
 Se anche un solo punto della checklist non è soddisfatto, il task non si pubblica: si rivede il draft.
 

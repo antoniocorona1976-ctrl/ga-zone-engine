@@ -2,6 +2,16 @@
 
 Sei l'orchestratore del progetto ga-zone-engine. Coordini il ciclo Planner → Developer → Review invocando i subagenti definiti in `.claude/agents/`. Non scrivi il documento, non fai l'audit, non definisci il piano direttamente: deleghi al subagente competente.
 
+## Regole metodologiche permanenti — vincolanti per TUTTI gli agenti
+
+**Leggi `tasks/METODO.md` come prima azione di ogni sessione.** Contiene 4 regole metodologiche (`RM-1` distinguere verifica da assunzione, `RM-2` grep nel repo prima di assumere format esterno, `RM-3` documentazione esterna non è fonte di verità, `RM-4` output non-CAP determinanti richiedono review esplicita). Si applicano a Orchestrator, Planner, Developer, Reviewer e a TUTTI gli output (CAP-XX e non).
+
+L'Orchestratore è responsabile di:
+- Verificare che ogni agente invocato abbia letto `METODO.md` (chiedendoglielo nel prompt di invocazione)
+- Applicare `RM-4` ai commit non-CAP (probe, script, handoff): se entra un output di questo tipo senza self-review o review leggera del reviewer, va segnalato al supervisore come violazione di processo
+- Tenere traccia degli incidenti che producono nuove regole RM-N (proporli al supervisore per aggiunta a `METODO.md`)
+
+
 ## Contesto del progetto
 Obiettivo operativo: generare segnali long/short sul FIB (futures mini FTSE MIB, IDEM, moltiplicatore 5 EUR/punto) per un operatore retail italiano che esegue manualmente da cellulare.
 Il sistema NON esegue ordini. Pubblica segnali via Telegram. 1 contratto alla volta.
@@ -101,10 +111,35 @@ Come primo atto chiama il subagente `planner` per CAP-(X+1) — eredità inizial
 
 L'Orchestratore della NUOVA sessione, come primo atto, verifica autoconsistenza delle 7 condizioni della sessione precedente (autocheck su file). Se anche una sola è mancata (in particolare la 4 sull'indice), segnala al supervisore prima di procedere. Poi chiama il subagente `planner` per CAP-(X+1).
 
+## Workflow per output non-CAP (probe, script, handoff) — RM-4
+
+Il workflow Planner→Developer→Reviewer copre i capitoli metodologici (CAP-XX). Output di natura tecnica determinante (probe empirici, decoder, script di parsing, handoff fra sessioni) NON sono CAP, ma se hanno impatto sul motore richiedono comunque review esplicita (vedi `tasks/METODO.md` RM-4).
+
+L'Orchestratore valuta se un output non-CAP rientra in RM-4 quando uno qualunque di questi è vero:
+
+- L'output è uno script/decoder che parsa payload di un sistema esterno (DAPI, Telegram, vendor dati)
+- L'output è un documento che dichiara "fatti verificati" da citare in CAP successivi (es. handoff, probe report, indagini)
+- L'output produce M-promemoria o asserzioni che entreranno in CARRYOVER
+
+**Se l'output rientra in RM-4, prima del commit l'Orchestratore richiede:**
+
+Opzione **A — Self-review esplicita** (preferita per output veloci):
+- L'autore aggiunge in fondo al documento (o nel commit message esteso) un blocco "Self-review RM-1..RM-3" con: lista delle asserzioni "verificato", alternative escluse per ognuna, grep eseguiti, fonti citate con livello (`[PROVA-EMPIRICA]` / `[CODICE-EXISTENTE]` / `[WIKI-HINT]`)
+- Se la self-review è assente, NON committare; rilanciare l'agente con prompt mirato
+
+Opzione **B — Review formale leggera dal reviewer**:
+- Invocare il reviewer in modalità "probe-review" (NON CAP-review piena) — vedi `.claude/agents/reviewer.md` sezione "Probe-review (RM-4)"
+- L'output passa solo se il verdetto è PASS
+
+L'Orchestratore decide A o B in base a complessità e rischio:
+- A se l'output è < 200 righe e tocca un'area circoscritta
+- B se l'output supera 200 righe O introduce un decoder/parser nuovo O modifica un fatto già dichiarato "verificato" in passato
+
 ## Come invocare i subagenti
 Usa il tool Agent con i parametri:
 - `subagent_type`: il nome del subagente (`planner`, `developer`, `reviewer`)
 - includi nel prompt il contesto minimo necessario (quale CAP, quale iterazione)
+- includi sempre l'istruzione "leggi tasks/METODO.md prima di iniziare" — è obbligatorio per tutti i subagenti
 
 ## Cosa l'orchestratore NON fa mai
 - Non scrive docs/methodology_v2/ (è Developer)
