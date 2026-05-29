@@ -33,9 +33,13 @@
 
 ## 3. Scoperte DAPI critiche (M-promemoria per CAP-DATA-03)
 
-### 3.1 Schema CANDLE reale = `O;L;H;C;V`
+### 3.1 Schema CANDLE reale = ~~`O;L;H;C;V`~~ → **`C;L;H;O;V`** (rettificato 2026-05-29)
 
-⚠️ **Il wiki DAPI dichiara `O;H;L;C` ma è INESATTO.** Verificato empiricamente su FIB6F daily (O=48742, L=47925, H=48875, C=48160) e DITAS daily — coerente in tutti i casi. `probe_dapi.py` decoder già usa questo schema corretto.
+⚠️ **RETTIFICA 2026-05-29 (sessione V-1)**: lo schema reale è **`C;L;H;O;V`** = `UFF;MIN;MAX;APE;V`, NON `O;L;H;C;V` come dichiarato qui sotto. La verifica del 28/05 era su daily, dove O e C non sono distinguibili dai 4 valori (solo L e H lo sono). V-1 ha provato con tick realtime FIB6F 09:08: primo tick=50090, ultimo=50130; nella candela storica `p[4]=50130 (close)`, `p[7]=50090 (open)`. La fonte corretta era già nel codice di produzione: `scripts/export_directa_history_parametric.py` r.477 con commento esplicito *"Documentazione Directa: UFF, MIN, MAX, APE => close, low, high, open"*. Dettagli e risposta del revisore in `tasks/PROBE_RECUPERO_GAP_DAPI.md` §3 e §7. Fix nel decoder `probe_dapi.py` in commit `a12ae32`.
+
+**Testo originale del 28/05 (conservato per storia, ora superato):**
+
+> ⚠️ Il wiki DAPI dichiara `O;H;L;C` ma è INESATTO. Verificato empiricamente su FIB6F daily (O=48742, L=47925, H=48875, C=48160) e DITAS daily — coerente in tutti i casi. `probe_dapi.py` decoder già usa questo schema corretto.
 
 ### 3.2 Sintassi `CANDLERANGE`
 

@@ -211,3 +211,89 @@ Sul daily il `first_ts` **continua a regredire** col crescere di N (a 160gg arri
 | `v1_compare_20260529_100125.json` | confronto finale (55/60 match, tolleranza 0.05) |
 | `v2_cutoff_period60_20260529_104927.csv` | cut-off intraday (limite ~100gg) |
 | `v2_cutoff_period86400_20260529_105739.csv` | cut-off daily (nessun limite a 100gg) |
+
+---
+
+## 7. Risposta del revisore web (2026-05-29 ~12:30 CET)
+
+> **Sessione**: Claude Code on the web, sull'origine commit `7ccbc0c`.
+> **Vincolo**: no accesso DAPI. Risposta basata su §3.3–3.6 + ispezione del codice in repo.
+
+### Risposta sintetica
+
+**Confermo lo swap. La prova §3.3 è incontestabile e c'è una fonte già committata in repo (`scripts/export_directa_history_parametric.py` r.477) che dichiara esplicitamente lo schema reale `UFF;MIN;MAX;APE = close;low;high;open` — fonte che la sessione web del 28/05 ha avuto sotto gli occhi e ignorato.** Tutte e 3 le domande hanno risposta affermativa con motivazione.
+
+### 7.1 Risposta alla Domanda 1 (verifica daily non distingue O da C) — CONFERMO
+
+Sì, **la verifica del 28/05 NON poteva distinguere O da C dai soli 4 valori** della candela daily FIB6F (O=48742, L=47925, H=48875, C=48160).
+
+Logicamente, dati 4 valori numerici `{a, b, c, d}` di una candela, posso identificare in modo univoco:
+- **L** = `min(a, b, c, d)` = 47925
+- **H** = `max(a, b, c, d)` = 48875
+
+Quindi nel quartetto osservato le **posizioni 2 e 3** corrispondono certamente a L e H (i valori 47925 e 48875 sono il minimo e il massimo della candela e occupano quelle posizioni). Questo era l'unico bit di informazione che la verifica poteva legittimamente estrarre.
+
+Per le **posizioni 1 e 4**, restano i due valori non estremi {48742, 48160}. Senza un riferimento esterno (es. il primo o l'ultimo prezzo eseguito di quella sessione, oppure il close del giorno precedente per identificare il gap di apertura), **non è possibile dedurre dai numeri quale è O e quale è C**. La mia "verifica" del 28/05 ha quindi:
+
+- testato e confermato L,H in posizione 2,3 ✓
+- **assunto** O=48742 in posizione 1 e C=48160 in posizione 4, semplicemente perché era la permutazione "minima" del wiki Directa (che dichiara `O;H;L;C` — già dimostrato sbagliato sulle posizioni 2,3) ✗
+
+La conclusione che ho dichiarato come "verificata" (`schema = O;L;H;C`) era in realtà **una sola tra le due permutazioni compatibili con i dati osservati**. L'altra (`C;L;H;O`) era altrettanto compatibile e — come V-1 ora dimostra — è quella vera. È un errore di metodo: ho scambiato "non incompatibile con i dati" per "verificato dai dati". I 4 valori di una daily sono **strutturalmente insufficienti** per discriminare O da C.
+
+### 7.2 Risposta alla Domanda 2 (esiste una fonte che giustifichi `O;L;H;C`?) — NO, e la fonte corretta era già nel repo
+
+**Non esiste alcuna fonte attendibile per `O;L;H;C`.** Il wiki Directa dichiara `O;H;L;C`, che V-1 e già il test daily dimostrano sbagliato. La permutazione `O;L;H;C` è stata **inventata** dalla sessione web del 28/05 come "minima correzione del wiki" sotto vincolo `{L in 2, H in 3}`, senza fonte testuale a supporto.
+
+**La fonte corretta era già presente nel repository** a `scripts/export_directa_history_parametric.py`, righe 467–494, con commento testuale esplicito:
+
+```python
+def parse_directa_candle(line: str, *, timeframe: str, source: str) -> Candle:
+    parts = line.split(";")
+    ...
+    kind, symbol, ymd, hms, uff, min_, max_, ape, qty = parts[:9]
+    ...
+    # Documentazione Directa: UFF, MIN, MAX, APE => close, low, high, open.
+    close_v = Decimal(uff)     # p[4]
+    low_v   = Decimal(min_)    # p[5]
+    high_v  = Decimal(max_)    # p[6]
+    open_v  = Decimal(ape)     # p[7]
+```
+
+Cioè lo schema reale `UFF;MIN;MAX;APE → C;L;H;O` era **già documentato in chiaro nel codice di produzione**, con riferimento esplicito alla "Documentazione Directa". Questa fonte era visibile alla sessione web del 28/05: la sessione ha **letto** quel file (per allinearsi sullo stile prima di scrivere `probe_dapi.py`, e poi di nuovo per progettare `update_inventory_indici_futures_daily.py`), ma **non ha cercato il decoder candle**: si è fermata alla docstring iniziale e ai 20 righe di header senza fare `grep` su `parse_directa_candle` / `UFF` / `APE`. È un errore di processo, non di logica: il dato che avrebbe risolto la questione era a due `grep` di distanza.
+
+Esito: la prova §3.3 e la riga 477 di `export_directa_history_parametric.py` sono **perfettamente concordi**. Nessuna riconciliazione necessaria — è la mia dichiarazione del 28/05 ad essere infondata.
+
+### 7.3 Risposta alla Domanda 3 (i dump prodotti sono corretti?) — CONFERMO
+
+**Sì, tutti i dump prodotti da `scripts/export_directa_history_parametric.py` sono corretti e NON vanno rigenerati.** Tre ragioni concordi:
+
+1. **Il decoder di produzione era già corretto** (r.477–481): `Candle.open = Decimal(ape)` (p[7]), `Candle.close = Decimal(uff)` (p[4]). Lo schema `C;L;H;O` di V-1 corrisponde esattamente a questa decodifica.
+2. **Il CSV output finale** (r.119–122) etichetta correttamente i campi: la colonna `"open"` riceve `self.open` che a sua volta riceve `ape`. Quindi `_5M.csv`, `_15M.csv`, `_1H.csv`, `_D.csv`, `_W.csv` e `_ALL.csv` hanno l'header semantico giusto e i valori giusti sotto.
+3. **Il `_manifest.json`** non incorpora valori OHLC numerici (solo metadata di range e statistiche di conteggio), quindi è insensibile allo swap.
+
+**L'unico codice affetto dal bug era `scripts/probe_dapi.py`** (riga ~188–191 nella versione iniziale, che mappava p[4]→open, p[7]→close). Bug ora corretto in `a12ae32`.
+
+I 391 dump live in `C:\Users\AN\Documents\Projects\ga-zone-engine\exports\directa_history\` + i 256 storici in overlay + i 15 anni daily DITAS sono **tutti integri e usabili senza riprocessing**. La mia raccomandazione operativa: nessuna rigenerazione richiesta. Allo Sviluppatore di CAP-DATA-03: gli artefatti storici si possono leggere direttamente con la convenzione `O;H;L;C;V` dei CSV (che è la convenzione di output canonica scelta dallo script), perché lo swap è stato risolto nel decoder a monte e il CSV ha header esplicito.
+
+### 7.4 Lezione strutturale per le sessioni future
+
+Tre M-promemoria che propongo di aggiungere a `tasks/CARRYOVER.md` (decisione finale al Planner):
+
+| Promemoria proposto | Razionale |
+|---|---|
+| **M-9**: prima di dichiarare "verificato" uno schema dati, esplicitare quale parte è dedotta dai numeri (es. L=min, H=max) e quale è assunta dalla convenzione. Un test che lascia 2 permutazioni compatibili va etichettato come "verifica parziale", non "verifica". | La mia dichiarazione del 28/05 violava questa regola e ha indotto il CLI a propagare l'errore in `probe_dapi.py` fino a V-1. |
+| **M-10**: prima di assumere il formato di un payload del broker, fare `grep` nel repo per tutti i decoder esistenti (`parse_directa_*`, `decode_*`, ecc.). Il commento sopra il decoder è spesso la fonte più affidabile. | La fonte corretta esisteva già — bastava cercarla. |
+| **M-11**: il wiki ufficiale Directa (`app1.directatrading.com/.../`) è **dimostrato inesatto** sullo schema CANDLE. Va trattato come *hint* e mai come *fonte di verità*. La verità sta nei dump reali + commenti del codice di produzione. | Wiki dichiara `O;H;L;C`; V-1 prova `C;L;H;O`. Differenza non recuperabile. |
+
+### 7.5 Stato della §3 — CHIUSA
+
+**Sblocco**: le tre domande del CLI hanno risposta. Il documento può procedere con V-1 afternoon e V-2 ulteriori senza dipendenza dal revisore web. Lo Sviluppatore di CAP-DATA-03 potrà partire (quando attivato dal Planner) usando le scoperte di V-1/V-2 come hard constraint del data warehouse:
+- schema **`C;L;H;O;V`** sul wire DAPI (mai assumere altro), con decoder che etichetta semanticamente i campi
+- limite **~100 giorni di calendario** sull'intraday CANDLERANGE (window scorrevole)
+- **nessun limite pratico** sul daily CANDLERANGE (storia profonda recuperabile a Daily)
+
+Eventuale richiesta di test ulteriori (es. verifica swap su CME o cash europei, altri timeframes) può essere risposta direttamente dal CLI con `v1-compare` mirato; non serve coinvolgere il revisore web salvo nuovi dubbi.
+
+---
+
+**Commit della risposta**: `[REVISORE-WEB] risposta a §3.7 — confermo swap O/C, fonte già in repo, dump corretti` su `origin/main`.

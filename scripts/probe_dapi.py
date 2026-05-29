@@ -4,8 +4,13 @@ DAPI probe runner — strumento per V-1 (equivalenza realtime vs CANDLERANGE)
 e V-2 (cut-off temporale CANDLERANGE), come da tasks/PROBE_RECUPERO_GAP_DAPI
 e INDAGINE_DIRECTA_CROSS_INDEX appendici A/B.
 
-Scoperte empiriche incorporate (sessione 2026-05-28):
-  - schema CANDLE reale: O;L;H;C;V  (wiki DAPI dichiara O;H;L;C — INESATTO)
+Scoperte empiriche incorporate (sessioni 2026-05-28 / 2026-05-29):
+  - schema CANDLE reale: C;L;H;O;V  (UFF;MIN;MAX;APE;V in nomenclatura Directa)
+       NB: il wiki DAPI dichiara O;H;L;C ed è INESATTO.
+       NB: la sessione 28/05 aveva dichiarato O;L;H;C basandosi su test
+       solo daily, dove O e C non sono distinguibili dai 4 valori. V-1
+       (sessione 29/05) ha smentito con prova realtime: p[4]=close, p[7]=open.
+       Decoder coerente da commit a12ae32.
   - terminatore stream history: "END CANDLES"
   - sintassi CANDLERANGE:
        CANDLERANGE <sym> <yyyyMMddHHmmss_start> <yyyyMMddHHmmss_end> <period_s>
