@@ -2,8 +2,8 @@
 
 > **Single source of truth** dello stato del progetto. Aggiornato all'inizio e alla fine di ogni sessione (web e CLI locale). **Prima azione** di ogni sessione Claude: leggere questo file.
 
-**Ultimo aggiornamento**: 2026-05-29 sera — sessione **CLI** (AUDIT-RM-RETRO CAP-DATA-01 chiuso **PASS**, Re-Review Iter.3 `074fba4`; debito retroattivo RM-4 su perimetro A-D saldato)
-**Prossima sessione attesa**: **CLI locale a mercato aperto** per le verifiche empiriche residue (W4/1030, W6 burst, W5 `I`=Set/Mar-Dic, W9 Eurex/CME) — lista Empirico-CLI in `reviews/REVIEW_CAP_DATA_01_RM_RETRO_v2_review.md`
+**Ultimo aggiornamento**: 2026-05-30 — sessione **WEB** (AUDIT-RM-RETRO CAP-DATA-02 chiuso **PASS sede WEB**, Re-Review Iter.3 `20961f4`; trovato e corretto **1 BUG catastrofico**: schema CANDLE invertito `O;H;L;C` in Cap.49 → corretto a `C;L;H;O` coerente col decoder canonico, + 8 finding RM-1/2/3; debito retroattivo RM su perimetro A-D di Parte 9 saldato lato WEB; 8 voci Empirico-CLI in handoff)
+**Prossima sessione attesa**: **CLI locale a mercato aperto** per le verifiche empiriche residue di **CAP-DATA-01 e CAP-DATA-02** (schema PRICE/BOOK_5 bit-a-bit, trigger esatti codici errore + 1030, mesi IDEM Mar/Dic + FIB6L, cooldown burst >>1Hz, banner per release Darwin, riavvio mezzanotte) — liste Empirico-CLI in `reviews/REVIEW_CAP_DATA_01_RM_RETRO_v2_review.md` e `reviews/REVIEW_CAP_DATA_02_RM_RETRO_v2_review.md`
 
 ---
 

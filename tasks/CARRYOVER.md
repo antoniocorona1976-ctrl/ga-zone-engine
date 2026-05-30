@@ -44,6 +44,7 @@ Registro delle raccomandazioni di processo emerse dalle Review di audit non-CAP 
 | RACC-ID | Origine | Contenuto | Stato |
 |---------|---------|-----------|-------|
 | RACC-METODO-1 | Re-Review v3 FONDAMENTA-01 (`58cf81f`) | Permangono rimandi numerici **pre-esistenti** verso `.claude/agents/reviewer.md` e `tasks/METODO.md` (es. `→ METODO.md:28-33`, `→ reviewer.md:163-164`) che oggi risolvono correttamente ma sono soggetti allo stesso churn di riga che ha generato N1/N2/N3. Raccomandazione: de-numerizzare i rimandi residui convertendoli in àncore di sezione (come fatto nel rework v3 per `CLAUDE.md`/`developer.md`). Non bloccante, fuori scope FONDAMENTA-01. | OPEN |
+| RACC-METODO-2 | Re-Review v2 CAP-DATA-02 RM-RETRO (`20961f4`), finding #8 | Quando una Review/AC dichiara "OK" sulla correttezza di uno **schema-dato di un sistema esterno** (DAPI, Telegram, vendor), la verifica deve includere il **confronto puntuale col decoder di produzione esistente** (RM-2), non la sola completezza strutturale dei campi. Lo schema CANDLE invertito `O;H;L;C` di Cap.49 (CAP-DATA-02) era **completo su tutti i campi** ma con mapping OHLC sbagliato, ed è sfuggito al ciclo Review v1→v2 (AC verificavano completezza, non correttezza-vs-decoder). Raccomandazione: i criteri di accettazione per schemi esterni richiedano esplicitamente il diff col decoder canonico. Non bloccante, fuori scope CAP-DATA-02. | OPEN |
 
 ---
 
