@@ -211,3 +211,20 @@ Letti come prima azione della sessione: `tasks/METODO.md` (RM-1..RM-4) e `.claud
 **Tabella AC dopo l'iterazione 2**: invariata nei verdetti (43/43 OK). L'unica riga con evidenza ritoccata e' **AC-60-2** (riga 97), dove il riferimento "Brier" e' stato sostituito dal contrasto accurato con Cap.30; il verdetto resta **OK** e l'evidenza punta sempre a Cap.60 step 6. Nessun'altra riga AC cambia file:riga (le correzioni NB-1 su `:42`, `:126`, `:248` sono in sezioni "Ipotesi di partenza"/Cap.65 D-10-3, non in righe di evidenza AC per-capitolo diverse da AC-60-2). OM-1 e' interno al blocco RM-1 di Cap.59 (AC-59-4, evidenza "blocco RM-1 4-righe" invariata come riferimento). 
 
 **Verifica finale v2**: grep su `CAP_10_parte_10.md` + `00_indice.md` + `REPORT_CAP_10.md` per `Brier`, `49/13`, `tutti definiti in Cap.65` → **0 match**. Nessun residuo. Nessuna regressione di AC (modifiche di sola accuratezza testuale).
+
+---
+
+#### Iterazione audit RM — fix finding NEUTRO #1
+
+**Origine**: AUDIT-RM CAP-DATA-03 (`reviews/REVIEW_CAP_DATA_03_RM_AUDIT_review.md`, verdetto **PASS**, W16/finding #1, classificazione **NEUTRO**). Fix approvato dal supervisore il 2026-06-01. Il verdetto dell'audit resta **PASS**: è correzione di precisione di formulazione di 1 riga, non un BUG. Parte 10 resta PASS (lo stato del capitolo non cambia).
+
+**Finding #1 (NEUTRO)** — phrasing "OHLCV coincidenti" nella riga *ALTERNATIVE COMPATIBILI ESCLUSE* del blocco RM-1 "equivalenza/immutabilità" di Cap.59. La dicitura "con OHLCV coincidenti" sovrastima: l'afternoon è **49/62** match (non 62/62), e i 7 FIB6F in mismatch hanno scarti open/low di confine minuto $\leq 6$ tick. Le 13 eccezioni sono già enumerate nella riga PROVE (r.104, "49 match / 13 mismatch") e in ALTERNATIVE COMPATIBILI NON ESCLUSE (r.106) — il blocco era quindi già internamente riconciliato, ma "coincidenti" letta in isolamento risultava troppo assoluta.
+
+- **Cosa modificato**: SOLO il frammento "con OHLCV coincidenti" nella riga ESCLUSE. Nessun'altra parte del blocco RM-1 toccata (VERIFICA r.103, PROVE r.104, le clausole "swap O/C" e "rewriting/adjustment" della stessa r.105, NON ESCLUSE r.106 restano invariate). Unica modifica ammessa dentro un blocco RM-1, da task card.
+- **File:riga**: `docs/methodology_v2/CAP_10_parte_10.md:105`.
+- **Prima→dopo**:
+  - **Prima**: "…escluso dall'equivalenza su 2 finestre indipendenti (morning + afternoon) **con OHLCV coincidenti**; swap O/C — …"
+  - **Dopo**: "…escluso dall'equivalenza su 2 finestre indipendenti (morning + afternoon) **con range high-low coincidente e nessuno swap O/C (i residui open/close di confine minuto, $\leq 6$ tick, e il low del cash rado sono enumerati nella riga PROVE e in ALTERNATIVE COMPATIBILI NON ESCLUSE, e non sono distorsioni di path-inference)**; swap O/C — …"
+- **Perché la nuova formulazione non indebolisce l'esclusione**: la claim effettivamente esclusa resta "path-inference / distorsione di volatilità". Il **range high-low** (ciò che alimenta le feature di volatilità) coincide su tutti i 7 FIB6F afternoon; i residui sono scarti di confine minuto sull'open/close ($\leq 6$ tick, artefatto di SUB timing) e il low del cash rado — non distorsioni di path. La nuova dicitura nomina esplicitamente questi residui e rimanda alle righe PROVE e NON ESCLUSE dove sono già enumerati, rendendo la riga ESCLUSE coerente con il resto del blocco senza spostare la sostanza.
+- **Misura prima/dopo**: prima = "OHLCV coincidenti" (assoluto, in tensione con i 13 mismatch dichiarati nella stessa riga PROVE); dopo = "range high-low coincidente + nessuno swap O/C" con i residui (open/close di confine, low cash) richiamati esplicitamente. I numeri sono invariati (49 match / 13 mismatch / 62 minuti; 7 FIB6F).
+- **Impatto**: **nullo** (precisione di formulazione; il blocco era già internamente riconciliato — VERIFICA r.103 e NON ESCLUSE r.106 disclosavano già le eccezioni; nessun cambiamento su correttezza / GA / ranking / fitness / conversione signal-to-trade / AC; Parte 10 resta PASS).
