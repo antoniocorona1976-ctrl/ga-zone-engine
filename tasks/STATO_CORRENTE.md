@@ -3,7 +3,8 @@
 > **Single source of truth** dello stato del progetto. Aggiornato all'inizio e alla fine di ogni sessione (web e CLI locale). **Prima azione** di ogni sessione Claude: leggere questo file.
 
 **Ultimo aggiornamento**: 2026-06-01 — sessione **CLI locale** (follow-up empirico AUDIT-RM-RETRO CAP-DATA-02): **PASS EMPIRICO** sulle 8 voci Empirico-CLI contro DAPI live (`reviews/REVIEW_CAP_DATA_02_RM_RETRO_CLI_review.md`), **0 SMENTITE / 0 BUG REALI**. **Audit RM-RETRO CAP-DATA-02 ora CHIUSO (WEB+CLI)**. Confermati: schema PRICE (`f8`/`f9`=day_low/day_high — hypothesis Web "bid/ask" FALSIFICATA; `f6`=volume cumulato), schema BOOK_5 (BID×5/ASK×5 best-first, triplo `lots,orders,price` certificato 290/290), codici errore 1004/1007/1017/1015/1003 (confini disambiguati), mesi `F`=Giugno/`I`=Settembre via ANAG, refutazione cooldown "14/~30s" estesa a 850 conn/~907Hz (0 onset), banner len=142. Parziali NON bloccanti: 1030 (IDEM nel servizio base), riavvio Darwin mezzanotte (notturno), mesi Mar/Dic (non listati al 2026-06-01).
-**Prossima sessione attesa**: **CLI locale** per completare `tasks/PROBE_RECUPERO_GAP_DAPI.md` (V-1 afternoon 14:30–15:00 + V-1 T+1) — ultimo prerequisito empirico a CAP-DATA-03. NB: V-1 afternoon **NON catturata in questa sessione** (ora ~11:1x CET, fuori finestra 14:30–15:00). Audit RM-RETRO **CAP-DATA-01 e CAP-DATA-02 entrambi CHIUSI (WEB+CLI)**. Residui Empirico-CLI non bloccanti: 1030 su ticker gated (PHASE-2), mesi Mar/Dic (quando listati), riavvio Darwin mezzanotte (osservazione notturna).
+**Aggiornamento 2026-06-01 (stessa sessione CLI)**: completati anche **V-1 afternoon (§2.4)** e **T+1 (§2.5)** in `tasks/PROBE_RECUPERO_GAP_DAPI.md`. Afternoon (cattura custom 14:55–15:25, dopo un blocco Darwin 14:30–14:50 risolto chiudendo TradingView): **equivalenza realtime↔CANDLERANGE CONFERMATA** (49/62 match, 13 residui spiegati = cash low sparsity + scarto confine minuto, nessuno swap O/C, schema C;L;H;O regge). T+1 (re-fetch 29/05 il 01/06 = T+3): **60/60 barre morning IDENTICHE → barre intraday immutabili** (no rewriting notturno). Self-review RM-4 opzione A in fondo al probe doc, gatekeeping Orchestratore PASS.
+**Prossima sessione attesa**: **Web (Planner→Developer→Reviewer) per CAP-DATA-03** (data warehouse: cumulativi vs daily, limite 100gg intraday, schema CANDLE `C;L;H;O`, gestione ticker scaduti). **Prerequisiti empirici DAPI ora completi**: V-1 morning+afternoon (equivalenza), V-2 (cut-off ~100gg intraday / nessun limite daily), T+1 (immutabilità barre). Audit RM-RETRO **CAP-DATA-01 e CAP-DATA-02 entrambi CHIUSI (WEB+CLI)**. Residui Empirico-CLI non bloccanti: 1030 su ticker gated (PHASE-2), mesi Mar/Dic (quando listati), riavvio Darwin mezzanotte (notturno).
 
 ---
 
@@ -11,7 +12,7 @@
 
 **Fase**: pre-CAP-DATA-03. In corso il **probe DAPI V-1/V-2** (prerequisito empirico, non capitolo metodologico). CAP-DATA-02 chiuso PASS il 2026-05-27. Roadmap: PHASE-1 FIB-only.
 
-**Bloccante per avanzare**: completare `tasks/PROBE_RECUPERO_GAP_DAPI.md` con i risultati di V-1 (equivalenza realtime vs CANDLERANGE) e V-2 (cut-off temporale).
+**Bloccante per avanzare**: ~~completare `tasks/PROBE_RECUPERO_GAP_DAPI.md` con i risultati di V-1 e V-2~~ ✅ **SBLOCCATO 2026-06-01**: V-1 (morning+afternoon, equivalenza confermata), V-2 (cut-off ~100gg intraday / nessun limite daily) e T+1 (immutabilità barre) tutti completi nel probe doc. Pronto per CAP-DATA-03.
 
 ---
 
@@ -28,7 +29,7 @@
 | Priorità | Task | File di stato | Owner | Vincolo temporale |
 |---|---|---|---|---|
 | ~~1~~ | ~~**V-1 morning capture**~~ ✅ FATTO 09:00–09:30: 1425 tick PRICE (FIB6F 1245, DITAS 180), 0 unknown | `probe_out/v1_morning_20260529.*` | CLI locale | — |
-| 2 | **V-1 afternoon capture** | idem `--window afternoon` | CLI locale | 14:30–15:00 CET 2026-05-29 |
+| ~~2~~ | ~~**V-1 afternoon capture**~~ ✅ FATTO 2026-06-01 (cattura custom 14:55–15:25 dopo blocco Darwin 14:30–14:50; 2098 PRICE, 0 unknown): equivalenza confermata 49/62, 13 residui spiegati, schema C;L;H;O regge | `probe_out/v1_now_20260601_*` | — |
 | 3 | **Re-run inventory CME** | `update_inventory_indici_futures_daily.py` | CLI locale | dopo le 14:30 (settle USA propagato) |
 | ~~4~~ | ~~**V-1 fetch + compare**~~ ✅ FATTO (morning): equivalenza confermata, 55/60 match dopo fix schema; 5 residui = primo minuto troncato + scarti 1 tick. Ri-fare dopo afternoon. | `probe_out/v1_compare_*.json` | CLI locale | dopo le 15:00 (afternoon) |
 | 5 | **V-2 cut-off** | `probe_dapi.py v2-cutoff` con period 60 e 86400 | CLI locale | finestre morte (10:00–14:00, sera) |

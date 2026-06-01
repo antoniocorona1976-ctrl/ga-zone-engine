@@ -4,13 +4,15 @@
 **Origine**: continuazione del briefing `tasks/HANDOFF_PROBE_DAPI_20260528.md` (sessione web 2026-05-28)
 **Scopo**: validare empiricamente (V-1) l'equivalenza realtime↔CANDLERANGE e (V-2) il cut-off temporale di CANDLERANGE, come prerequisito tecnico a CAP-DATA-03.
 
-> **Stato documento**: V-1 **morning** + V-2 completi e verificati. V-1 **afternoon** (finestra 14:30–15:00) da eseguire e da aggiungere alla §2.4. Questo NON è un capitolo metodologico (no CAP-DATA-03).
+> **Stato documento**: V-1 **morning** + V-2 + V-1 **afternoon** (§2.4) + **T+1** (§2.5) completi e verificati. Afternoon catturato il **2026-06-01** su finestra effettiva **14:55–15:25** (la canonica 14:30–15:00 è andata a vuoto per un blocco Darwin/DGo ~14:30–14:50, vedi §2.4). T+1 (di fatto T+3, incl. weekend) conferma immutabilità delle barre già passate. Questo NON è un capitolo metodologico (no CAP-DATA-03).
 
 ---
 
 ## 0. SINTESI ESECUTIVA (per il revisore web — leggere prima)
 
-1. **Equivalenza realtime↔CANDLERANGE: CONFERMATA** per il timeframe 1-min, una volta corretto un bug di decoder. Dopo il fix: **55/60 minuti identici**; i 5 residui sono tutti spiegati (primo minuto troncato dalla SUB + scarti di 1 tick al confine del minuto), nessuno è un errore sistematico.
+1. **Equivalenza realtime↔CANDLERANGE: CONFERMATA** per il timeframe 1-min, una volta corretto un bug di decoder. Dopo il fix: **55/60 minuti identici** (morning); i 5 residui sono tutti spiegati (primo minuto troncato dalla SUB + scarti di 1 tick al confine del minuto), nessuno è un errore sistematico. **✅ CORROBORATA su afternoon (2026-06-01, §2.4)**: finestra 14:55–15:25, compare **49 match / 13 mismatch**, tutti i 13 residui spiegati (cash low sparsity, scarto di confine minuto, bordi parziali), **nessuno swap O/C, nessun errore sistematico**. Lo schema `C;L;H;O` regge anche nel pomeriggio.
+
+1-bis. **Immutabilità barre intraday già passate: CONFERMATA ✅ (T+1, §2.5).** Re-fetch del 29/05 eseguito il 01/06 (di fatto T+3, incluso weekend): sulle 60 chiavi comuni (= tutte morning) **60/60 barre OHLCV bit-identiche**, 0 differenze. `CANDLERANGE` NON riscrive le barre intraday storiche almeno fino a T+3 (nessun aggiustamento notturno/weekend osservato).
 
 2. **⚠️ SCOPERTA CRITICA — schema CANDLE invertito su Open/Close.** Lo schema reale dei campi CANDLE NON è `O;L;H;C` (come dichiarato nel "fatto #1" del handoff e nel decoder di `probe_dapi.py`), ma **`C;L;H;O`** (in nomenclatura Directa: `UFF;MIN;MAX;APE`). Questo **contraddice una verifica già fatta dalla sessione web**. → vedi **§3, che richiede risposta esplicita del revisore web**.
 
@@ -79,13 +81,87 @@ I **4 match casuali** con il decoder originale erano esattamente i minuti FIB6F 
 
 La **tolleranza 0.05** introdotta in v1-compare assorbe il rumore di precisione float (realtime DITAS arriva arrotondato a 2 decimali `49968.32`, la CANDLE storica ha precisione piena `49968.32031`: Δ≈3e-4, non è una discrepanza reale). 0.05 << 1 tick (5pt FIB), quindi uno scostamento vero anche di 1 solo tick resta visibile.
 
-### 2.4 Confronto afternoon — DA ESEGUIRE
+### 2.4 Confronto afternoon — ✅ FATTO (2026-06-01)
 
-`v1-capture --window afternoon` (14:30–15:00) + `v1-fetch` + `v1-compare`. Atteso lo stesso esito. Da completare e inserire qui.
+> **Esito**: equivalenza realtime↔CANDLERANGE **CONFERMATA anche sulla finestra afternoon**. Lo schema `C;L;H;O` regge (nessuno swap O/C); i 13 residui sono della stessa classe del morning (cash low sparsity + scarto di confine minuto + parziali di bordo), **nessun errore sistematico**. Questo risultato **corrobora** §2.3 (morning), non lo modifica.
 
-### 2.5 T+1 — DA ESEGUIRE domani
+**Data di esecuzione**: 2026-06-01 (NON lo stesso giorno del morning, che era il 29/05). `[PROVA-EMPIRICA 2026-06-01]`.
 
-`v1-fetch --date 2026-05-29` ripetuto il 30/05 per verificare se CANDLERANGE riscrive le barre già passate (aggiustamenti notturni). Confronto T+0 vs T+1.
+#### 2.4.1 Incidente di cattura (documentato onestamente)
+
+La finestra **canonica 14:30–15:00 è stata tentata ma è andata a vuoto (0 eventi)** a causa di un **blocco di Darwin/DGo fra ~14:30 e ~14:50** — probabile conflitto datafeed con TradingView Directa aperto (violazione temporanea del vincolo D-6). Ripristinato il flusso (TradingView chiuso, DGo/Darwin operativi), la cattura è stata ri-eseguita su una **finestra custom piena 14:55:07 → 15:25:08 (30 min)** con i ticker FIB6F + DITAS. La finestra effettiva NON è la canonica, ma è una finestra afternoon piena e contigua, sufficiente a corroborare l'equivalenza.
+
+#### 2.4.2 Cattura realtime — esito
+
+Finestra `14:55:07 → 15:25:08`, connessione persistente (SUB FIB6F + SUB DITAS sulla 10001).
+
+| Tipo evento | Conteggio |
+|---|---|
+| `PRICE` (tick prezzo) | **2098** (FIB6F 1929, DITAS 169) |
+| `BOOK_5` | 2771 |
+| `ANAG` | 12 |
+| `unknown` (parser fallito) | **0** |
+
+31 minuti PRICE distinti per FIB6F. File: `probe_out/v1_now_20260601_145507.decoded.csv` / `.raw.log`.
+
+#### 2.4.3 Fetch CANDLERANGE — esito
+
+`CANDLERANGE` period 60s sulla porta 10003, stessa finestra:
+
+| Ticker | candele | end marker | errs |
+|---|---|---|---|
+| FIB6F | 31 | True | 0 |
+| DITAS | 31 | True | 0 |
+
+File: `probe_out/v1_now_hist_20260601_152554.csv`.
+
+#### 2.4.4 Confronto — esito
+
+Stesso `v1-compare` del morning, tolleranza 0.05. File: `probe_out/v1_compare_20260601_152556.json`.
+
+| Metrica | Valore |
+|---|---|
+| Minuti totali confrontati | 63 |
+| **match** | **49** |
+| **mismatch** | **13** |
+| only_local | 1 |
+| only_hist | 0 |
+
+#### 2.4.5 Classificazione dei 13 mismatch (tutti spiegati, nessuno sistematico, nessuno swap O/C)
+
+**(A) DITAS cash — 6 mismatch** — minuti 15:11 / 15:12 / 15:13 / 15:14 / 15:24 / 15:25. In tutti e 6 diverge **solo il `low`** (low ufficiale più basso, es. dL −15 / −25 / −60 / −10 / −5 / −20), mentre **O / H / C coincidono esatti**. Causa: il feed PRICE del cash index è rado (~6 tick/min) → la cattura realtime perde i print del minimo intraday che la CANDLE ufficiale registra. **Non è schema**: è incompletezza del feed cash sul low. → vedi nota di onestà nella self-review (sotto-asserzione "cattura realtime del cash completa sul low" = **FALSA**).
+
+**(B) FIB6F future — 7 mismatch** — minuti 15:10 / 15:11 / 15:13 / 15:14 / 15:18 / 15:20 / 15:25. Scarto su **open (o close) al confine del minuto** di 1–6 tick (es. dO +5 / +30 / +15 / +10; dC ±5 / +10), concentrato nel segmento veloce 15:11–15:18 (n_tick = 413 / 302 / 154, prezzo in caduta rapida) + ultimo minuto 15:25 troncato. **`high` coincide su tutti i 7; `low` coincide su tutti i FIB6F.**
+**NESSUNO swap O/C**: dove l'open scarta, il close coincide esatto. Esempio 15:13 — hist O=49765 / C=49730, local O=49735 / **C=49730**: se ci fosse inversione di schema sarebbe `local_O == hist_C`, che **NON accade** su nessuno dei 7. Questo replica il test discriminante di §3.3.
+
+**(C) only_local — 1** — DITAS 14:53 (1 tick) = snapshot-on-subscribe dell'ultimo trade del cash, con timestamp **fuori** dalla finestra fetch (precede 14:55). Minore, atteso al momento della SUB.
+
+**(D) Bordi parziali** — primo minuto 14:55 (n=3, SUB agganciata a +7s) e ultimo minuto 15:25 (n=11, troncato) hanno la stessa natura dei parziali di bordo già osservati nel morning §2.3.
+
+#### 2.4.6 Esito §2.4
+
+Equivalenza realtime↔CANDLERANGE **CONFERMATA sulla finestra afternoon**. I 13 residui appartengono tutti alla **stessa classe del morning** (cash low sparsity + scarto di confine minuto + parziali di bordo); nessuno è un errore sistematico e nessuno è uno swap O/C (anzi, la verifica `local_O ≠ hist_C` su tutti i 7 FIB6F riconferma lo schema `C;L;H;O`). Il risultato **corrobora** §2.3 e §3, **non li modifica**.
+
+### 2.5 T+1 — ✅ FATTO (immutabilità barre già passate)
+
+> **Esito**: `CANDLERANGE` **NON riscrive le barre intraday già passate**. Re-fetch del 29/05 eseguito il 01/06 (di fatto **T+3**, incluso il weekend): **60/60 barre OHLCV bit-identiche** sulle chiavi comuni, **0 differenze**. Nessun adjustment notturno/weekend osservato.
+
+**T+0 baseline** — `probe_out/v1_hist_20260529_fetched_20260529_094821.csv`: fetch del 29/05 eseguito il 29/05 alle 09:48 → 60 barre **morning** del 29/05 (30 FIB6F + 30 DITAS). Le finestre afternoon/usopen erano **future** a quell'ora → assenti dal baseline. `[PROVA-EMPIRICA 2026-05-29]`.
+
+**T+1** — `probe_out/v1_hist_20260529_fetched_20260601_135432.csv`: re-fetch del 29/05 eseguito **oggi 01/06** (di fatto **T+3**, perché fra 29/05 e 01/06 c'è il weekend). 178 barre totali (morning 60 + afternoon 58 + usopen 60). `[PROVA-EMPIRICA 2026-06-01]`.
+
+**Confronto sulle 60 chiavi comuni** `(ticker, window, time)` — tutte morning:
+
+| Metrica | Valore |
+|---|---|
+| Chiavi comuni T+0 ∩ T+1 | 60 (tutte morning) |
+| **Barre OHLCV identiche** | **60 / 60** |
+| Differenze | **0** |
+| Barre presenti solo a T+1 | afternoon (58) + usopen (60) — non confrontabili (erano future al fetch T+0) |
+
+#### 2.5.1 Esito §2.5
+
+`CANDLERANGE` **NON riscrive le barre intraday già passate**: le barre storiche risultano immutabili **almeno fino a T+3** (incluso l'attraversamento del weekend, quando eventuali aggiustamenti notturni sarebbero più probabili). Nessun adjustment osservato. **Limite del test**: confermato solo sulle barre **morning** (le uniche presenti nel baseline T+0) e solo fino all'orizzonte T+3; immutabilità oltre T+3 o sulle finestre afternoon/usopen **non è testata** (afternoon/usopen erano future al fetch T+0) — vedi self-review.
 
 ---
 
@@ -193,8 +269,8 @@ Sul daily il `first_ts` **continua a regredire** col crescere di N (a 160gg arri
 | # | Punto | Stato |
 |---|---|---|
 | 1 | **Risposta del revisore web sullo schema O/C** (§3.7) | **ATTESA** |
-| 2 | V-1 afternoon (14:30) + ri-compare | da eseguire 29/05 |
-| 3 | V-1 T+1 (re-fetch 29/05 il giorno 30/05) | da eseguire 30/05 |
+| 2 | V-1 afternoon + ri-compare | **✅ FATTO 2026-06-01** (§2.4) — finestra effettiva 14:55–15:25 (canonica 14:30 a vuoto per blocco Darwin), 49/13 match, equivalenza corroborata, nessuno swap O/C |
+| 3 | V-1 T+1 (re-fetch 29/05) | **✅ FATTO** (§2.5) — re-fetch 01/06 (di fatto T+3), 60/60 barre morning identiche, immutabilità confermata. Residuo: non testato oltre T+3 né su afternoon/usopen |
 | 4 | Re-run inventory CME (settle 28/05) | da eseguire dopo le 14:30 |
 | 5 | Decodifica mesi IDEM Mar/Dic (M-4) | non eseguita |
 | 6 | Inventory CSV con path hardcoded all'overlay | nota architetturale, non bloccante |
@@ -211,6 +287,11 @@ Sul daily il `first_ts` **continua a regredire** col crescere di N (a 160gg arri
 | `v1_compare_20260529_100125.json` | confronto finale (55/60 match, tolleranza 0.05) |
 | `v2_cutoff_period60_20260529_104927.csv` | cut-off intraday (limite ~100gg) |
 | `v2_cutoff_period86400_20260529_105739.csv` | cut-off daily (nessun limite a 100gg) |
+| `v1_now_20260601_145507.decoded.csv` / `.raw.log` | cattura realtime afternoon 14:55–15:25 (2098 tick PRICE) — §2.4 |
+| `v1_now_hist_20260601_152554.csv` | fetch CANDLERANGE afternoon (FIB6F 31 + DITAS 31 candele) — §2.4 |
+| `v1_compare_20260601_152556.json` | confronto afternoon (49 match / 13 mismatch, tolleranza 0.05) — §2.4 |
+| `v1_hist_20260529_fetched_20260529_094821.csv` | T+0 baseline (60 barre morning del 29/05, fetch del 29/05) — §2.5 |
+| `v1_hist_20260529_fetched_20260601_135432.csv` | T+1/T+3 re-fetch del 29/05 eseguito il 01/06 (178 barre) — §2.5 |
 
 ---
 
@@ -297,3 +378,56 @@ Eventuale richiesta di test ulteriori (es. verifica swap su CME o cash europei, 
 ---
 
 **Commit della risposta**: `[REVISORE-WEB] risposta a §3.7 — confermo swap O/C, fonte già in repo, dump corretti` su `origin/main`.
+
+---
+
+## Self-review RM-4 (opzione A) — V-1 afternoon (§2.4) + T+1 (§2.5)
+
+**Autore**: Developer (CLI), 2026-06-01. **Dati**: autoritativi, raccolti dall'Orchestratore contro DAPI live (sessione CLI 2026-06-01) e validati; il Developer ha redatto il documento a partire da questi numeri, **senza ri-eseguire probe**.
+
+### Asserzioni "verificato" — formato 4-righe RM-1 (`tasks/METODO.md:28-33`)
+
+**Asserzione (a) — equivalenza realtime↔CANDLERANGE confermata su afternoon**
+
+```
+VERIFICA: l'equivalenza realtime↔CANDLERANGE (schema CANDLE = C;L;H;O) regge anche sulla finestra afternoon 14:55–15:25 del 2026-06-01; nessun errore sistematico, nessuno swap O/C.
+PROVE: [PROVA-EMPIRICA 2026-06-01] cattura realtime 2098 PRICE (probe_out/v1_now_20260601_145507.decoded.csv) vs fetch CANDLERANGE 60s FIB6F 31 + DITAS 31 candele (probe_out/v1_now_hist_20260601_152554.csv); compare tol 0.05 → 49 match / 13 mismatch / 1 only_local / 0 only_hist (probe_out/v1_compare_20260601_152556.json). Sui 7 FIB6F in mismatch: high coincide su tutti, low coincide su tutti, e local_O ≠ hist_C su tutti (es. 15:13 hist O=49765/C=49730 vs local O=49735/C=49730).
+ALTERNATIVE COMPATIBILI ESCLUSE: (1) errore sistematico di schema — escluso perché i 13 mismatch sono localizzati e di natura nota (solo-low cash, scarto di confine minuto), non distribuiti su quasi ogni minuto come accadeva col decoder errato O;L;H;C nel morning (56/60); (2) swap O/C — escluso dal test discriminante local_O==hist_C che NON si verifica su nessuno dei 7 FIB6F, e da high/low coincidenti.
+ALTERNATIVE COMPATIBILI NON ESCLUSE: nessuna sull'equivalenza dello schema O/C. NB onesto: la sotto-asserzione implicita "la cattura realtime del cash DITAS è completa sul low" è FALSA — il feed cash è rado (~6 tick/min) e perde i minimi intraday (6 mismatch DITAS sul solo low). Questo NON è un controesempio all'equivalenza: è un limite del feed realtime cash, non dello schema CANDLE; la CANDLE ufficiale resta corretta, è la cattura realtime ad essere incompleta sul low del cash.
+```
+
+**Asserzione (b) — barre intraday immutabili (no rewriting)**
+
+```
+VERIFICA: CANDLERANGE non riscrive le barre intraday già passate; le barre storiche sono immutabili almeno fino a T+3 (incluso weekend).
+PROVE: [PROVA-EMPIRICA] T+0 baseline 60 barre morning del 29/05 fetch del 29/05 (probe_out/v1_hist_20260529_fetched_20260529_094821.csv) vs T+1 re-fetch del 29/05 eseguito il 01/06 = di fatto T+3 (probe_out/v1_hist_20260529_fetched_20260601_135432.csv); sulle 60 chiavi comuni (ticker,window,time)=tutte morning → 60/60 barre OHLCV bit-identiche, 0 differenze.
+ALTERNATIVE COMPATIBILI ESCLUSE: rewriting/adjustment notturno o di weekend sulle barre morning — escluso da 60/60 identiche attraverso un intervallo che include il weekend 30-31/05 (finestra in cui un eventuale adjustment sarebbe più probabile).
+ALTERNATIVE COMPATIBILI NON ESCLUSE: (1) rewriting oltre l'orizzonte T+3 (non testato: il confronto si ferma a T+3); (2) rewriting sulle finestre afternoon/usopen (NON testato: erano future al fetch T+0 del 29/05 09:48, quindi assenti dal baseline e non confrontabili); (3) rewriting su strumenti diversi da FIB6F/DITAS (non testato). → l'asserzione vale come "verificato su barre morning FIB6F/DITAS fino a T+3", non oltre.
+```
+
+### Grep RM-2 eseguito (decoder/comandi riusati — NESSUN nuovo decoder introdotto)
+
+Comando eseguito (sola lettura, nessuna modifica): `grep -rn "parse_directa_candle|parse_line|run_candlerange|UFF|APE|DapiConn"` su `scripts/`.
+
+Decoder/funzioni **esistenti e riusati** (non riscritti) che hanno prodotto i dump di questo task:
+- `[CODICE-EXISTENTE scripts/export_directa_history_parametric.py:467-481]` — `parse_directa_candle`, decoder canonico di produzione; commento r.477 "Documentazione Directa: UFF, MIN, MAX, APE => close, low, high, open" → schema `C;L;H;O`. È la fonte canonica già concordata in §7.2.
+- `[CODICE-EXISTENTE scripts/probe_dapi.py:230]` — `parse_line` (già corretto a `C;L;H;O` nel commit `a12ae32`); `[CODICE-EXISTENTE scripts/probe_dapi.py:159]` — `DapiConn` (connessione persistente 10001/10003); `[CODICE-EXISTENTE scripts/probe_dapi.py:333]` — `run_candlerange`.
+
+**Nessun decoder/parser nuovo è stato scritto in questo task.** Il task è di sola redazione documentale a partire da dump già prodotti dai decoder esistenti sopra.
+
+### Fonti RM-3 etichettate
+
+Tutte le evidenze di §2.4 e §2.5 sono **livello 1** `[PROVA-EMPIRICA 2026-06-01]` (afternoon, T+1 re-fetch) e `[PROVA-EMPIRICA 2026-05-29]` (T+0 baseline). Lo schema `C;L;H;O` riusato è livello 2 `[CODICE-EXISTENTE r.477]`. **Nessuna conclusione si appoggia a livello 4 (wiki)**: il wiki Directa (`O;H;L;C`) resta dichiarato inaffidabile (§7.4 / RM-3) e non è usato come supporto.
+
+### Assunzioni non testate usate come premesse
+
+1. La finestra afternoon 14:55–15:25 è rappresentativa della classe "afternoon" tanto quanto la canonica 14:30–15:00 sarebbe stata (assunto, non dimostrato; ma è comunque una finestra afternoon piena e contigua).
+2. Il blocco Darwin ~14:30–14:50 è attribuito a conflitto datafeed TradingView (vincolo D-6); causa probabile, non provata con certezza — irrilevante per l'esito (la finestra è stata ricatturata pulita).
+3. L'immutabilità delle barre morning si estende per analogia a tutte le barre intraday — NON assunto nel testo: il §2.5.1 dichiara esplicitamente il limite (solo morning, solo fino a T+3).
+
+### File/dump letti durante la redazione (a riprova di RM-2)
+
+- `scripts/export_directa_history_parametric.py` (grep r.467-481), `scripts/probe_dapi.py` (grep r.230/333/159) — sola lettura.
+- Dump citati per nome (NON riaperti/ricomputati, gitignored in `probe_out/`): `v1_now_20260601_145507.decoded.csv`/`.raw.log`, `v1_now_hist_20260601_152554.csv`, `v1_compare_20260601_152556.json`, `v1_hist_20260529_fetched_20260529_094821.csv`, `v1_hist_20260529_fetched_20260601_135432.csv` — esistenza verificata con `Glob probe_out/*`.
+
+**Vincolo rispettato**: unico file modificato in questo task = `tasks/PROBE_RECUPERO_GAP_DAPI.md`. Nessun decoder, script, dump, review, capitolo o file di stato toccato. Commit lasciato all'Orchestratore (gatekeeping RM-4).
