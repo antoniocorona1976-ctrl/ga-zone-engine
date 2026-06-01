@@ -355,3 +355,19 @@ In coerenza con `tasks/METODO.md` RM-1 e con l'eredita' che il Planner pone come
   - I 43/43 AC ribaditi v2 sono presi come **autoritativi dalla review v2 PASS gia' fatta**: il Reviewer di questo audit NON li ri-valuta nel merito, ma campionamento sostantivo dell'onesta' claim → evidenza in B (E.1) e' obbligatorio.
 
 Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>
+
+---
+
+## Finding di Review da risolvere — fix NEUTRO #1 (approvato supervisore 2026-06-01)
+
+**Origine**: `reviews/REVIEW_CAP_DATA_03_RM_AUDIT_review.md` (AUDIT-RM v1, verdetto **PASS**, commit `33d35b9`), finding #1 (unico finding, NEUTRO).
+**Approvazione supervisore**: 2026-06-01 — fix approvato del NEUTRO #1 prima di chiudere l'audit. **Il verdetto dell'audit resta PASS**: è correzione di precisione di formulazione, non un BUG.
+
+Il Developer: (1) corregge SOLO la riga indicata in `docs/methodology_v2/CAP_10_parte_10.md`; (2) registra il fix in `reports/REPORT_CAP_10.md` con breve sezione "## Iterazione audit RM — fix finding NEUTRO #1" (prima→dopo); (3) scrive `READY_FOR_REVIEW`. **Scope rigido**: SOLO questo edit + la nota nel REPORT. NON toccare D (`export_directa_history_parametric.py`), NON modificare gli altri blocchi RM-1, NON cambiare AC/decisioni/scope/numeri. Parte 10 resta PASS (il fix non cambia lo stato del capitolo).
+
+### NEUTRO #1 — phrasing "OHLCV coincidenti" (riga ESCLUSE del blocco RM-1 di Cap.59)
+- **Dove**: `CAP_10_parte_10.md:105` — riga *ALTERNATIVE COMPATIBILI ESCLUSE* del blocco RM-1 "equivalenza/immutabilità" di Cap.59. Frammento attuale: "…path-inference o distorsione di volatilita' nella ricostruzione CANDLERANGE — escluso dall'equivalenza su 2 finestre indipendenti (morning + afternoon) **con OHLCV coincidenti**; …".
+- **Problema** (Reviewer finding #1): "OHLCV coincidenti" sovrastima — l'afternoon è **49/62** match (non 62/62) e i 7 FIB6F in mismatch hanno scarti open/low di confine minuto ≤6 tick. Le 13 eccezioni sono già enumerate nella riga PROVE (r.104, "49 match / 13 mismatch") e in ALTERNATIVE NON ESCLUSE (r.106). Internamente riconciliato, ma "coincidenti" letta da sola è troppo assoluta.
+- **Fix richiesto**: riformulare "con OHLCV coincidenti" in modo preciso, coerente col resto del blocco e **senza indebolire** l'esclusione di path-inference/distorsione. Dicitura suggerita (il Developer rifinisce): "…escluso dall'equivalenza su 2 finestre indipendenti (morning + afternoon) **con range high-low coincidente e nessuno swap O/C** (i residui open/close di confine minuto, ≤6 tick, e il low del cash rado sono enumerati nella riga PROVE e in ALTERNATIVE NON ESCLUSE, e non sono distorsioni di path-inference); …". **UNICA** modifica dentro il blocco RM-1; il resto del blocco (VERIFICA r.103, PROVE r.104, swap O/C, rewriting, NON ESCLUSE r.106) resta invariato.
+
+Dettaglio: vedi `reviews/REVIEW_CAP_DATA_03_RM_AUDIT_review.md` (finding #1).
