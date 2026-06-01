@@ -1,499 +1,357 @@
-# TASK ATTIVO: CAP-DATA-03 — Parte 10 — Continuità tape, recupero gap, riconciliazione canonica, storicizzazione strutturata
+# TASK ATTIVO: AUDIT-RM CAP-DATA-03 — audit indipendente RM-1/2/3 perimetro A-D (Parte 10)
 
 **Assegnato da**: Planner
-**Output atteso primario**: `docs/methodology_v2/CAP_10_parte_10.md` (capitolo metodologico nuovo, ~9-12 pp, capitoli Cap.57-Cap.65)
-**Output atteso secondario**: `reports/REPORT_CAP_10.md` (report supervisore con le 5 sezioni standard: "Cosa è stato prodotto", "Ipotesi di partenza", "Decisioni rilevanti", "Misura prima/dopo", "Domande aperte", "Criterio di rollback") + aggiornamento `docs/methodology_v2/00_indice.md` (Parte 10 da "IN CORSO" a "IN REVIEW" a "PASS" attraverso il ciclo)
+**Output atteso**: `reviews/REVIEW_CAP_DATA_03_RM_AUDIT_review.md`
 **Stato**: IN ATTESA
-**Workflow**: **Planner → Developer → Reviewer pieno** (CAP-XX nuovo, NON Review-First)
-**Sede del Reviewer proposta**: **WEB** (un CAP-XX completo è documento metodologico + grep di codice committato; nessuna esecuzione contro DAPI richiesta per la review della **metodologia**). NB sotto-asserzioni che richiedono prova DAPI live (non attese in questo CAP perché i prerequisiti empirici V-1/V-2/T+1 sono già chiusi nei dump committati come livello-1) vanno marcate "Empirico-CLI" dal Web Reviewer e lasciate come handoff alla sede CLI in una sessione separata. Questa sessione di Planner gira su CLI locale, ma la sede effettiva del Reviewer la decide l'Orchestratore a valle del Developer in base a quanto resterà come asserzione non risolvibile per documento + grep.
+**Workflow**: **Review-First** (il perimetro A-D esiste già su `origin/main` e Parte 10 è già **PASS** — review v1 `ab80d96` + v2 `48171e4`. Il Developer NON entra in v1: entra **solo** se il supervisore approva finding `BUG REALE` / `MIGLIORA PERFORMANCE` / `RISCHIO PEGGIORAMENTO` derivanti dall'audit; in tal caso l'Orchestratore riapre il loop con prompt mirato. Niente bozze Developer prima della Review.)
+**Sede Reviewer**: **CLI locale** (sessione corrente — il supervisore non ha richiesto sede WEB; l'audit è documento + grep + lettura del codice committato, **nessuna esecuzione DAPI**).
+
+**Natura del task** (dichiarata esplicitamente come premessa metodologica):
+
+CAP-DATA-03 è **post-RM**: è nato RM-compliant ed è già stato revisionato su RM-1/2/3 nelle review v1/v2 (entrambe in sede CLI, locale). Questo task **non è un recupero di debito retroattivo** come gli `AUDIT-RM-RETRO` di CAP-DATA-01/02 (che erano pre-RM e dovevano saldare retroattivamente i 3 vincoli su un capitolo storico non auditato in chiave RM). Questo task è un **audit indipendente confermativo** (seconda opinione / simmetria con il trattamento ricevuto da CAP-DATA-01/02 / verifica che la conformità RM regga a un secondo sguardo ostile esteso al **perimetro A-D**, non al solo capitolo): tre file accessori del CAP (B report, C probe-sorgente empirico, D decoder canonico) non sono stati formalmente auditati come perimetro a sé nelle review v1/v2 (queste hanno auditato il CAP A e verificato citazioni puntuali, non gli oggetti B/C/D come oggetti di prima classe). Il naming evita deliberatamente "RETRO" perché sarebbe fuorviante: qui non c'è debito retroattivo da saldare, c'è una conformità da **riconfermare con sguardo esteso**.
+
+NON è una CAP-review piena nuova (Parte 10 è già PASS e questo task NON la riapre); NON è una probe-review standard (qui si audita simultaneamente: 1 CAP appena chiuso A + 1 report supervisore B + 1 documento-indagine sorgente C + 1 decoder canonico di riferimento D); è un **audit RM mirato a 4 sorgenti contemporaneamente**, con priorità "non re-derivare l'empirico, verificare l'uso che ne fa il perimetro A-D".
 
 ---
 
 ## Obiettivo
 
-Parte 10 (= CAP-DATA-03) chiude il versante "ciclo di vita del tape" della convenzione dati del progetto, raccogliendo i 4 temi rinviati esplicitamente da Parte 9 Cap.55 ("Continuita' tape, recupero gap, riconciliazione canonica giornaliera, storicizzazione strutturata — CAP-DATA-03 / Parte 10"). Parte 9 ha formalizzato il **canale runtime DAPI** (architettura, schemi, mappatura `bar_synthetic`, errori, warm-up ≤30gg dentro la finestra 100gg, sessione 08:00-22:00 CET, audit log, retention); Parte 10 formalizza **cosa fa la pipeline quando il tape runtime ha discontinuità** (gap di sessione, restart, finestre fuori dai 100gg intraday), **come si verifica giornalmente** che il tape runtime sia coerente con la serie ufficiale di training (Parte 8), e **come si archivia strutturalmente** il flusso DAPI per coerenza inter-temporale e per ricostruzione futura.
+L'audit verifica, su tutto il **perimetro A-D** di CAP-DATA-03, che:
 
-Parte 10 risponde a quattro domande operative concrete, in ordine:
-1. **Continuità tape**: dato un tape DAPI runtime con buchi (gap di sessione tra giorni, riavvio Darwin notturno, conflitto DGo, gap intra-sessione), come si compone una griglia 1-min coerente sul piano semantico con il preprocessor di Parte 8 Cap.40?
-2. **Recupero gap**: per gap di durata ≤100gg di calendario, quale procedura `CANDLERANGE` su porta 10003 ricostruisce le barre mancanti, con quali marker di provenienza e quali criteri di idempotenza? Per gap >100gg, quale fallback all'archivio Portara, con quale criterio di coerenza con la serie ratio-adjusted di Parte 8 Cap.38?
-3. **Riconciliazione canonica giornaliera**: ogni end-of-day, come si verifica che il tape DAPI runtime del giorno $d$ sia coerente con la fonte di training Portara, e come si gestisce la discrepanza nota del **low del cash rado** (DITAS feed PRICE ~6 tick/min perde i minimi intraday — vedi probe §2.4)?
-4. **Storicizzazione strutturata**: come la tape runtime confluisce in un archivio canonico (formato, manifest, immutabilità, versioning, integrazione con `exports/` esistente) coerente con la convenzione storica di Parte 8 Cap.37-40 e con i 391 dump live + 256 archeologici già presenti in `exports/directa_history/`?
+1. **RM-1 — formato e sostanza**. Tutte le asserzioni "verificato / confermato / fatto / dimostrato / stabilito" del perimetro:
+   - rispettino il formato 4-righe `VERIFICA / PROVE / ALTERNATIVE COMPATIBILI ESCLUSE / ALTERNATIVE COMPATIBILI NON ESCLUSE` (`tasks/METODO.md:28-33`);
+   - abbiano sostanza coerente con le prove citate (cioè le "alternative escluse" siano effettivamente escluse dai dati osservati, e le "non escluse" siano davvero compatibili);
+   - dichiarino il **perimetro empirico onesto** quando l'asserzione si appoggia a prove parziali (T+3 morning, FIB6F/DITAS, ~100gg) — NON dichiarino "verificato universalmente" cio' che e' verificato solo entro un perimetro.
+2. **RM-2 — grep + citazioni file:linea verso D-canonico**. Ogni richiamo a strutture/format/protocollo DAPI nel perimetro abbia citazione `[CODICE-ESISTENTE <path>:<linea>]` puntuale **VERIFICATA leggendo D** (sola lettura): la riga citata contiene davvero il costrutto che A/B/C affermano. Coerenza A/C ↔ D-canonico: gli schemi (CANDLE `C;L;H;O;V`, sintassi `CANDLERANGE`, costante `DEFAULT_INTRADAY_MAX_DAYS=100`, header CSV legacy 11-campi, terminatore `END CANDLES`) citati in A e/o C combaciano con D nelle righe esatte; **eventuali divergenze di citazione o di numero di campi devono essere segnalate**. Onorando `RACC-METODO-2` (Re-Review v2 CAP-DATA-02): per ogni AC del CAP che dichiara "schema X coerente con DAPI", verificare con diff puntuale rispetto a D, NON solo completezza strutturale.
+3. **RM-3 — etichettatura fonti per livello**. Ogni prova nel perimetro e' etichettata con il suo livello (1 `[PROVA-EMPIRICA <data>]`, 2 `[CODICE-ESISTENTE r.NNN]`, 3 `[DOC-INTERNO <path>]`, 4 `[WIKI-HINT, da verificare]`); nessuna conclusione di livello 1/2/3 si appoggia **solo** a livello 4 (wiki Directa, dimostrato inesatto); riferimenti residui a wiki o convenzioni esterne sono espliciti come hint.
+4. **Coerenza inter-file (perimetro come un tutto)**. Le citazioni di A verso C e D sono fedeli (numero di match, posizione del cut-off, schema PRICE `f4/f6/f8/f9`, cash low/high, immutabilita' T+3, perimetro empirico onesto FIB6F/DITAS morning); le citazioni cross-CAP (`CAP_06_parte_VI.md:276`, `CAP_08_parte_8.md` Cap.37/Cap.38/Cap.40/Cap.41/Cap.43/Cap.44, `CAP_09_parte_9.md` Cap.45/Cap.46/Cap.47/Cap.48/Cap.49/Cap.50/Cap.51/Cap.52/Cap.54/Cap.55) puntano a contenuti effettivamente esistenti nei file referenti.
+5. **Onesta' claim → evidenza in B (REPORT_CAP_10.md)**. Ogni AC dichiarato OK dal REPORT (43/43) ha evidenza puntuale verificabile nel CAP A; ogni "OK" non si appoggia a un riferimento generico ("Cap.59 ✓") ma alla riga/blocco esatto del CAP che soddisfa l'AC. La tabella AC del REPORT non contiene "OK" privi di evidenza puntuale.
 
-NON risponde a: ri-apertura schema CANDLE (chiuso `C;L;H;O` in AUDIT-RM-RETRO PASS); ri-apertura policy switch front-month (chiusa D-9-NB2 in Parte 9 Cap.47); ri-apertura warm-up ≤30gg/limite 100gg (chiusa D-9-NB4 in Parte 9 Cap.51 e Cap.55 perché il caso ≤100gg è coperto dal warm-up Cap.51 stesso, qui si tratta SOLO il caso >100gg con fallback Portara e il **gap intermedio nella finestra ≤100gg recuperabile via CANDLERANGE strutturato**); audit log e retention (chiusi D-9-15 in Parte 9 Cap.54 e Gap-4); audit ANAG/BOOK_5 codici mese (chiusi in AUDIT-RM-RETRO CAP-DATA-02 CLI); implementazione codice operativo (FASE-D del roadmap, dichiarato fuori scope da Parte 9 Cap.55 ultima riga); Telegram / latenza M-2 (dichiarato esplicitamente fuori perimetro: DAPI ≠ Telegram).
+**Cosa l'audit NON fa**:
 
-Parte 10 si fa adesso perché:
-- Tutti i **prerequisiti empirici** sono completi e committati come livello-1 in `tasks/PROBE_RECUPERO_GAP_DAPI.md` (V-1 morning + afternoon equivalenza realtime↔CANDLERANGE su schema `C;L;H;O` 55/60+49/13 match, V-2 cut-off `~100gg intraday / nessun limite daily`, T+1=T+3 immutabilità barre 60/60 identiche su finestre morning) con self-review RM-4 opzione A approvata e gatekeeping Orchestratore PASS;
-- Tutti i **prerequisiti normativi** sono congelati: Parte 8 (convenzione storica, ratio-adjusted, filtro pre-expiry, preprocessor griglia 1-min, sanity validation Cap.43), Parte 9 (canale runtime DAPI, mappatura schema, marker, warm-up, audit);
-- Il **debito RM** retroattivo su Parte 8 e Parte 9 è chiuso (CAP-DATA-01 PASS, CAP-DATA-02 RM-RETRO PASS WEB+CLI), quindi le fondamenta su cui Parte 10 si appoggia sono RM-compliant e non vanno ri-auditate dentro questo CAP.
+- **Non riapre AC della Review v2**: i 43/43 AC del task card di sviluppo CAP-DATA-03 sono gia' stati verificati indipendentemente in v1 (`ab80d96`) e ri-confermati in v2 (`48171e4`); l'audit RM non li riesamina nel merito (e' verifica trasversale di conformita' RM al perimetro esteso, non re-verifica del merito metodologico del capitolo).
+- **Non re-deriva l'empirico**. Le fondamenta empiriche sono **CHIUSE** ed elencate come inputs autoritativi sotto. L'audit ne controlla l'**uso** dentro A/B/C, non le ri-misura contro DAPI.
+- **Non riapre decisioni** `D-10-1..D-10-10`. L'audit verifica che siano dichiarate correttamente con RM-1 dove l'oggetto della decisione e' una verifica empirica (es. D-10-2 idempotenza T+3 morning, D-10-4 cash low/high); non ne mette in discussione il merito normativo.
+- **Non patcha D** (`scripts/export_directa_history_parametric.py`): D e' **fonte di verita' level-2** e NON si modifica in questo task. Eventuali divergenze A/C ↔ D si segnalano come finding e si correggono in A o C, mai in D.
+- **Non re-fa la review v1/v2** di CAP-DATA-03: NB-1 (Brier $f_5^{live}$), OM-1/2/3 sono gia' **chiusi** in v2; l'audit verifica per scrupolo che le correzioni reggano e non siano regredite, ma non li riapre se intatti.
+- **Non audita il micro-patch Cap.49 di Parte 9** (sotto-task separato fuori dal perimetro A-D di Parte 10).
+- **Non audita il cross-index PHASE-2** (DAX/EuroStoxx 50/ES/MES futures): Parte 10 dichiara fuori scope (Cap.64) e PHASE-2 e' perimetro autonomo.
+- **Non esegue DAPI** ne' apre socket: vincolo di sede CLI = lettura del codice committato + grep + Read dei dump citati come esistenti su `probe_out/` (sola verifica di esistenza, NON di contenuto rispetto a DAPI live).
+- **Non solleva probe massivi di mero zelo** (divieto di sede CLI in `reviewer.md`): le asserzioni empiriche del perimetro sono CHIUSE; eventuali residui empirici si segnalano come "Empirico-CLI da verificare" — **lista attesa VUOTA**, perche' l'empirico e' chiuso (V-1 morning+afternoon, V-2 cut-off, T+1=T+3 immutabilita', schema PRICE `f4/f6/f8/f9`).
 
-L'impatto sul GA è diretto e identificabile (orientamento al GA — regola fondamentale del Planner):
-- **Ranking dei cromosomi e fitness**: il bundle frozen calibrato in Parte V opera in inference su una griglia 1-min runtime che, se ha gap non-conciliati o `bar_synthetic` non propagati simmetricamente, produce feature contaminate (volatilità EGARCH su barre fittizie, regime intraday mis-classificato per dati assenti, pivot strutturali instabili). Parte 10 garantisce che il **tape che alimenta l'inference live sia metricamente lo stesso del tape di training** (invariante research = runtime esteso al ciclo di vita del tape, non solo allo schema della barra come in Parte 9 Cap.49).
-- **Conversione signal-to-trade**: la riconciliazione canonica giornaliera produce un **gate operativo** che, se fallisce, marca la sessione come degraded e blocca emissioni per il giorno successivo finché il supervisore non interviene — è una protezione contro la deriva silenziosa del feed che altrimenti contaminerebbe i segnali. Direttamente analogo al gate Parte VI Cap.30 sul Brier $f_5^{live}$.
-- **Validità delle metriche live**: la storicizzazione strutturata del flusso DAPI permette di ricostruire post-hoc il replay deterministico bit-exact (Parte II Cap.10) anche dopo restart >100gg, evitando di marcare come "n/a" intervalli per i quali il dato è recuperabile dall'archivio locale.
-
----
-
-## Eredità obbligatoria
-
-### Da `tasks/METODO.md` — regole metodologiche permanenti (vincolanti per Developer e Reviewer di questo task)
-
-1. **RM-1 — formato 4-righe**. Ogni asserzione del documento del tipo "verificato / confermato / fatto" deve essere accompagnata dal blocco `VERIFICA / PROVE / ALTERNATIVE COMPATIBILI ESCLUSE / ALTERNATIVE COMPATIBILI NON ESCLUSE` (`METODO.md:28-33`). Le asserzioni di Parte 10 che ricadono sotto RM-1 sono prevalentemente: (a) la composizione delle barre `bar_synthetic` cross-gap (semantica e simmetria training/runtime); (b) il limite ~100gg intraday di `CANDLERANGE` come finestra scorrevole (già provato in V-2); (c) l'immutabilità delle barre intraday CANDLERANGE entro T+3 morning (già provato in T+1); (d) il low rado del cash DITAS come limite del feed PRICE (già provato in V-1 afternoon). Per (b)/(c)/(d) le prove sono nei dump V-1/V-2/T+1: il Developer deve **citare** i dump per nome + il numero esatto dal probe (es. 60/60, 55/60, 49/62) + il **limite di validità onesto** dichiarato dal probe stesso (es. T+1 non oltre T+3, immutabilità solo su barre morning FIB6F/DITAS, non testato afternoon/usopen).
-2. **RM-2 — grep nel repo prima di assumere format esterno** (`METODO.md:46-94`). Il Developer DEVE eseguire `grep -rn` su pattern del dominio prima di scrivere capitoli che toccano parsing/strutture esistenti, e citare i decoder esistenti con `[CODICE-ESISTENTE <path>:<linea>]`. Decoder noti rilevanti per Parte 10:
-   - `scripts/export_directa_history_parametric.py:467-481` — `parse_directa_candle`, schema CANDLE canonico `C;L;H;O` (`UFF;MIN;MAX;APE`).
-   - `scripts/export_directa_history_parametric.py:228-230` — sintassi `CANDLERANGE <sym> <yyyyMMddHHmmss_start> <yyyyMMddHHmmss_end> <period_s>` (period in ultima posizione).
-   - `scripts/export_directa_history_parametric.py:245,282-285,437` — terminatore `END CANDLES` (RM-2 da CAP-DATA-01 W2/W3/W7).
-   - `scripts/export_directa_history_parametric.py:61` — `DEFAULT_INTRADAY_MAX_DAYS=100` (limite costante codice).
-   - `scripts/export_directa_history_parametric.py:119-122` — header CSV legacy (output `O;H;L;C;V` con label semantiche).
-   - `scripts/probe_dapi.py:230` — `parse_line` post-rettifica `C;L;H;O` (`a12ae32`).
-   - `scripts/probe_dapi.py:159,333` — `DapiConn` connessione persistente / `run_candlerange`.
-
-   Pattern da grep aggiuntivi che il Developer DEVE eseguire prima della stesura: `grep -rn "manifest|bar_synthetic|RUNTIME_GAP|AGG_FROM_60s|AGG_FROM_D|forward.fill|reconcile|sanity"` su `scripts/`, `docs/`, `tasks/` per non re-inventare convenzioni esistenti. Risultato del grep va dichiarato nella sezione "Decoder/convenzioni esistenti nel repo letti prima della stesura" del REPORT_CAP_10.md.
-
-3. **RM-3 — ordine priorità fonti `1>2>3>4`** (`METODO.md:97-136`). Etichette obbligatorie per ogni citazione. Il wiki Directa è **dimostrato inesatto** sullo schema CANDLE e va trattato come hint anche per i temi di Parte 10. Concretamente, sulle quattro classi di asserzioni di Parte 10:
-   - **Limite ~100gg intraday CANDLERANGE**: `[PROVA-EMPIRICA 2026-05-29 V-2 dump probe_out/v2_cutoff_period60_20260529_104927.csv]` livello-1 + `[CODICE-EXISTENTE export_directa_history_parametric.py:61]` livello-2.
-   - **Nessun limite intra-day sul daily CANDLERANGE**: `[PROVA-EMPIRICA 2026-05-29 V-2 dump probe_out/v2_cutoff_period86400_20260529_105739.csv]` livello-1.
-   - **Immutabilità barre CANDLERANGE T+0/T+3 morning**: `[PROVA-EMPIRICA 2026-05-29+2026-06-01 T+1 dump probe_out/v1_hist_20260529_fetched_*_*.csv]` livello-1, **limite onesto T+3 morning only**.
-   - **Riavvio Darwin mezzanotte**: già etichettato `[WIKI-HINT, da verificare]` in Parte 9 Cap.50 Gap-3 (Empirico-CLI residuo, sessione notturna non eseguita). Parte 10 EREDITA quel `WIKI-HINT` e NON lo solleva: si appoggia al marker `RUNTIME_GAP_*` già normato in Parte 9.
-   - **Feed cash rado low**: `[PROVA-EMPIRICA 2026-06-01 V-1 afternoon §2.4.5 lettera A]` livello-1 (6/6 mismatch DITAS sul solo `low`).
-
-4. **RM-4 — review esplicita per output non-CAP determinanti**. Parte 10 è un CAP-XX, quindi rientra nel workflow Planner→Developer→Reviewer standard. NON sono attesi output non-CAP collaterali (probe nuovi, decoder nuovi, handoff fra sessioni). Se il Developer dovesse scoprire la necessità di un probe empirico aggiuntivo (es. per disambiguare un caso di gestione gap), DEVE fermarsi e segnalare al Planner via Q-XX in QUESTIONS.md, **non** eseguirlo dentro questo task.
-
-### Da AUDIT-RM-RETRO CAP-DATA-02 (chiusura WEB+CLI) — fatti livello-1/2 **AUTORITATIVI** per Parte 10 (NON ri-verificare, USA come HARD CONSTRAINT)
-
-5. **Schema CANDLE canonico `C;L;H;O;V`** (= `UFF;MIN;MAX;APE;V`). Tutti i CSV di output usano convenzione `O;H;L;C;V` con header esplicito semantico (`bar_open` riceve `ape` = pos.8 del payload wire; `bar_close` riceve `uff` = pos.5 del payload wire). I dump storici sono integri: 391 dump live in `C:\Users\AN\Documents\Projects\ga-zone-engine\exports\directa_history\` + 256 archeologici in `C:\directa_history_parametric_export_overlay\` + 15 anni daily `DITAS_20110404_20260402` sono **tutti corretti, nessuna rigenerazione**. Parte 10 NON tocca lo schema, lo USA. (Fonte: `CAP_09_parte_9.md:155-191` Cap.49 tabella canonica post-AUDIT; `scripts/export_directa_history_parametric.py:477-481`; `tasks/PROBE_RECUPERO_GAP_DAPI.md` §3 + §7.)
-
-6. **CANDLERANGE intraday — limite ~100gg di calendario, finestra scorrevole**, tronca al **minuto esatto** del limite (NON al giorno intero). Verificato V-2 period 60 su FIB6F+DITAS+CM.MESM6 (saturazione a `first_ts=2026-02-18 09:56`, identica e simultanea sui 3 ticker, costante da N=80 a N=160). Implicazione che Parte 10 deve assorbire: il **gap intra-sessione** ≤100gg è recuperabile via `CANDLERANGE` strutturato; il gap >100gg richiede fallback all'archivio locale (`exports/` + overlay) o, in subordine, all'archivio Portara. (Fonte: probe §4.2.)
-
-7. **CANDLERANGE daily (period 86400) — nessun limite pratico** osservato fino a N=160gg (first_ts continua a regredire, a N=160 arriva al 2026-01-05). La storia profonda pluriennale è recuperabile a livello Daily, coerente con `DITAS_20110404_20260402` (15 anni daily). Implicazione che Parte 10 deve assorbire: la **riconciliazione canonica giornaliera** può attingere a daily DAPI per gap lunghi senza dipendenza da Portara, ma SOLO al livello daily (la ricostruzione intraday post-100gg resta fuori dal canale DAPI). (Fonte: probe §4.3.)
-
-8. **Equivalenza realtime↔CANDLERANGE confermata su 2 finestre indipendenti** (morning 09:00-09:30, afternoon 14:55-15:25). Schema regge, nessuno swap O/C, mismatch tutti spiegati (primo minuto SUB-troncato + scarto 1 tick confine minuto + feed cash rado sul low). Implicazione che Parte 10 deve assorbire: il **recupero gap via CANDLERANGE** è metricamente equivalente al tape realtime (no path-inference, no distorsione di volatilità) → la ricostruzione di un gap con `CANDLERANGE` produce barre `bar_synthetic=False` indistinguibili da quelle che il realtime avrebbe prodotto, **a eccezione del low del cash rado**, vedi punto 10. (Fonte: probe §2.3 + §2.4.)
-
-9. **Immutabilità barre intraday CANDLERANGE — verificata fino a T+3 morning** (re-fetch del 29/05 eseguito il 01/06, attraversando weekend, 60/60 barre OHLCV bit-identiche). Implicazione che Parte 10 deve assorbire: la **storicizzazione strutturata** può trattare le barre CANDLERANGE come **immutabili** entro l'orizzonte ≤T+3 morning per uso operativo (idempotenza del recupero gap, no riscrittura archivio per cambi notturni). **Limite onesto da dichiarare nel CAP**: non testato oltre T+3, non testato su finestre afternoon/usopen (erano future al fetch T+0), non testato su strumenti diversi da FIB6F/DITAS. Parte 10 deve normare il caso "T+3 morning" come **regola operativa con perimetro empirico esplicito**, non come "fatto universale". (Fonte: probe §2.5.)
-
-10. **Feed cash realtime rado** (~6 tick/min su DITAS): il flusso PRICE perde i minimi intraday del cash; sulla CANDLE ufficiale daily il low è corretto. Implicazione che Parte 10 deve assorbire: la riconciliazione canonica giornaliera per i ticker cash europei (DGER/DSTX50/DITAS/DFRA — gating qualitativo Cap.53) DEVE usare la CANDLE ufficiale come fonte del low/high del giorno, NON l'aggregato dei tick realtime. (Fonte: probe §2.4.5 lettera A — 6/6 mismatch DITAS sul solo low.)
-
-### Da Parte 9 (CAP-DATA-02) — marker, dominio source, fallback già normati (NON re-inventare, AGGANCIA)
-
-11. **Marker già definiti in Parte 9 Cap.50/Cap.51/Cap.52/Cap.54** che Parte 10 USA come vocabolario normativo: `RUNTIME_GAP_START`/`RUNTIME_GAP_END` (gap intra-sessione/cross-midnight), `RUNTIME_DEGRADED` (conflitto DGo/TradingView), `RUNTIME_STALE_RESTART` (downtime >100gg), `CONTRACT_SWITCH` (rollover front-month), `WARMUP_COMPLETE` (fine warm-up boot), `SESSION_OPEN`/`SESSION_CLOSE` (apertura/chiusura sessione 08:00-22:00 CET). Parte 10 NON introduce marker concorrenti; introduce eventualmente marker **complementari** specifici alla riconciliazione e alla storicizzazione (es. `RECONCILE_OK`/`RECONCILE_DIVERGENT`, `ARCHIVE_WRITTEN`, `BACKFILL_FROM_CANDLERANGE`/`BACKFILL_FROM_ARCHIVE`/`BACKFILL_FROM_PORTARA`), con definizione esplicita e tabella decisioni in Cap.65.
-
-12. **Dominio chiuso `source ∈ {DIRECTA, AGG_FROM_60s, AGG_FROM_D}`** (Parte 9 Cap.48 + D-9-5). Parte 10 può **estendere** il dominio con eventuali nuovi marker di provenienza per il recupero gap (es. `BACKFILL_CANDLERANGE`, `BACKFILL_ARCHIVE`, `BACKFILL_PORTARA`), ma DEVE giustificare ogni nuovo valore come decisione normativa esplicita in Cap.65 (tabella decisioni) e dichiarare se è sostituto, sub-categoria o complemento del dominio Cap.48.
-
-13. **Warm-up congelato `L_warmup=30gg di trading IDEM`** (D-9-NB4 in Parte 9 Cap.51 e Cap.56). Parte 10 NON tocca il warm-up al boot (è il **caso nominale** ≤100gg coperto da Parte 9 Cap.51 procedura 1-5). Parte 10 tratta:
-    - gap intra-sessione (es. perdita feed temporanea dentro la sessione 08:00-22:00 CET): recupero `CANDLERANGE` su porta 10003 della finestra mancante, immutabilità T+3 morning, marker `RUNTIME_GAP_END` + `BACKFILL_FROM_CANDLERANGE`;
-    - gap cross-midnight (riavvio Darwin gestito da Parte 9 Cap.50 procedura 1-7): Parte 10 documenta la **riconciliazione end-of-day** che chiude il loop del riavvio (verifica che le barre della sessione $d$ riprese post-restart siano coerenti con quelle attese dalla finestra di sessione completa);
-    - restart >100gg `RUNTIME_STALE_RESTART` (rinviato da Parte 9 Cap.51 r261): Parte 10 norma la **procedura di re-bootstrap** dopo downtime >100gg, con fallback strutturato all'archivio locale `exports/` + overlay o all'archivio Portara, e con vincolo di **coerenza ratio-adjusted** rispetto a Parte 8 Cap.38.
-
-14. **Invariante research = runtime applicato all'adapter** (Parte 9 Cap.45/Cap.49 + Parte 8 Cap.37). Parte 10 ESTENDE l'invariante dal singolo bar all'**intero ciclo di vita del tape**: dopo recupero gap / riconciliazione / storicizzazione, le barre archiviate hanno gli **stessi metadati** del tape di training Portara (header CSV BOM UTF-8 con `tick_count` e `bar_synthetic`, dominio `source`, regola forward-fill, regola pivot-touch su `bar_synthetic`), così che il replay deterministico bit-exact (Parte II Cap.10 + Parte VII Cap.31) sia preservato anche dopo backfill.
-
-15. **Tabella decisioni Parte 9 Cap.56** (17 decisioni D-9-1..D-9-17 + D-9-NB2/NB3/NB4): Parte 10 NON apre nessuna delle decisioni esistenti. Eventuali nuove decisioni di Parte 10 vivono nella tabella propria di Cap.65 (numerazione D-10-1..D-10-N), con criterio di rollback registrato.
-
-### Da Parte 8 (CAP-08) — convenzione storica e sanity validation (vincolo strutturale)
-
-16. **Serie ufficiale di training = FIB pieno back-adjusted Portara/CQG ratio-adjusted** (Parte 8 Cap.37 + Cap.38). Parte 10 conferma che il tape DAPI runtime archiviato **NON è fonte di training** (vincolo invariato D-9 ed eredità Parte 8 Cap.44). La storicizzazione strutturata di Parte 10 produce un archivio canonico per **riconciliazione e replay**, NON per re-training. L'apertura del flusso DAPI come fonte di training richiederebbe nuovo task Planner con riesame Cap.38 (back-adjustment ratio-adjusted ricostruzione da `UnadjustedClose+RollSpread`) e Cap.39 (filtro pre-expiry $N=3$). Parte 10 lo dichiara fuori scope esplicitamente (carryover Parte 9 Cap.55 invariato).
-
-17. **Procedura di sanity validation Parte 8 Cap.43**: confronto ratio-adjusted vs unadjusted-stitched su ultimi 18-24 mesi, metriche (quantili rendimenti log 1/5/60-min, autocorrelazione rendimenti e rendimenti quadrati, $\sigma$ giornaliera realized), criterio $3\sigma$ bootstrap $B=2000$ con block length Politis-White (Parte VII Cap.34). Parte 10 NON ri-definisce questa procedura ma la USA come **template** per la riconciliazione canonica giornaliera: la riconciliazione end-of-day di Parte 10 è una **versione runtime, su scala giornaliera, del sanity check storico di Cap.43**. La differenza: Cap.43 è procedura **una-tantum** all'acquisizione dati Portara, Parte 10 è **gate operativo giornaliero** sul tape DAPI runtime; la struttura delle metriche è la stessa, la finestra è 1 giorno invece che 18-24 mesi, e la soglia di accettazione è da definire come parametro provvisorio di lavoro non congelato (vedi Done when domanda d3).
-
-18. **Preprocessor griglia 1-min Parte 8 Cap.40 + flag `bar_synthetic`** (D-9-7 simmetria runtime/training). Parte 10 conferma che il forward-fill su Close per minuti senza trade + flag `bar_synthetic=True` con `Volume=0` `tick_count=0` e regola "nessun touch su barre sintetiche" (Parte 8 Cap.40 r92-96; Parte 9 Cap.49 r173-180) è **invariante operativo** per ogni barra ricostruita dal backfill di Parte 10. La storicizzazione produce barre con la stessa semantica: il consumer a valle (feature engineering Parte III Cap.15, EGARCH Parte III Cap.13) non distingue una barra ricostruita via backfill da una barra reale del tape (eccetto per il campo `source` che traccia la provenienza).
-
-### Da `tasks/CARRYOVER.md` — M-promemoria attivi (censimento Planner, regola operativa)
-
-Censimento completo dei M-promemoria aperti, con assegnazione esplicita a Parte 10 o rinvio motivato:
-
-19. **M-2** (Review v1 CAP-02): "Verifica empirica latenza Telegram ($L_{max}=30$s)" → destinazione `Appendice E`. **FUORI SCOPE Parte 10**: tratta canale Telegram, NON canale DAPI. Parte 9 Cap.55 lo conferma esplicitamente come carryover ad Appendice E. **Rinvio motivato**: Parte 10 (DAPI tape lifecycle) e Appendice E (Telegram bot) sono perimetri disgiunti; M-2 sarà ripreso nella sessione di Appendice E quando il Planner aprirà quel capitolo, atteso in coda al consolidamento delle Appendici. Stato in CARRYOVER: `OPEN` invariato.
-
-20. **M-2 v2 CAP-03** (Review v2 CAP-03): "Cadenza ricalibrazione EGARCH" → destinazione Parte V/VI. **Stato `CLOSED-CAP-06 completo`** (CARRYOVER riga 27): già chiuso in Cap.25.9 + Cap.27.5 + Cap.30.4. NON pertinente a Parte 10.
-
-21. **M-1 v2 CAP-03** (Review v2 CAP-03): "Pivot all'inizio/fine sessione non confermabili" → destinazione Parte VI. **Stato `CLOSED-CAP-04`** (CARRYOVER riga 26). NON pertinente a Parte 10.
-
-22. **M-4, M-5, M-6, M-7, M-8, M-9, M-10, M-11, M-12, M-13, M-14, M-15**: tutti `CLOSED-CAP-04/05/07`. NON pertinenti a Parte 10. (Verificato leggendo CARRYOVER.md righe 22-37.)
-
-23. **M-16 condizionale** (Review v1 CAP-05): Cox time-varying coefficients in Parte VII. **Stato `CLOSED-CAP-07 con condizione operativa`** (Cap.31.3 + metadato bundle `cox_time_varying_active`). NON pertinente a Parte 10.
-
-24. **Conclusione censimento M-promemoria** (regola operativa del Planner): **nessun M-promemoria aperto è pertinente al perimetro di Parte 10**. M-2 (Telegram) è esplicitamente fuori scope per natura del canale. Nessun M-promemoria attraversa la soglia "3 task senza integrazione" che richiederebbe sollevamento al supervisore.
-
-25. **RACC-METODO-1** (Re-Review v3 FONDAMENTA-01): "de-numerizzare rimandi residui in `reviewer.md`/`METODO.md`" → raccomandazione di processo metodologico, NON di capitolo. **Stato `OPEN`**, fuori scope Parte 10. NON da integrare qui (è manutenzione del processo, non del documento metodologico v2).
-
-26. **RACC-METODO-2** (Re-Review v2 CAP-DATA-02 RM-RETRO, finding #8): "AC su schemi-dato esterni devono includere diff col decoder canonico" → raccomandazione di processo. **Stato `OPEN`**. **Parziale impatto su Parte 10**: il Reviewer di Parte 10, se gli AC del capitolo dichiarano "schema X coerente con DAPI / con Portara", DOVREBBE confrontare con il decoder canonico prima di scrivere "OK". Il Planner NON include questo come requisito hard del task (è una raccomandazione di processo già da applicare per default dopo CAP-DATA-02 RM-RETRO), ma lo segnala al Reviewer nel prompt di invocazione futura.
-
-### Da `tasks/STATO_CORRENTE.md` §5 — M-promemoria di sessione (non capitolo, **input critico per Developer di Parte 10**)
-
-Sono note tecniche di sessione, livello-1 [PROVA-EMPIRICA]. Diversi sono **direttamente rilevanti** per il Developer di Parte 10 e devono essere citati esplicitamente come riferimenti `[PROVA-EMPIRICA <data>]`:
-
-27. **M-1 (sessione)**: schema CANDLE `C;L;H;O;V`. Già assorbito in eredità #5. Citazione obbligatoria nel CAP-10 ogni volta che la mappatura schema è richiamata.
-
-28. **M-2 (sessione)**: sintassi `CANDLERANGE <sym> <yyyyMMddHHmmss_start> <yyyyMMddHHmmss_end> <period_s>` (4 arg, period ultimo). Già normata in Parte 9 Cap.48 r144 e Cap.51 r254. Parte 10 la USA per il recupero gap; citazione `[CODICE-EXISTENTE export_directa_history_parametric.py:228-230]`.
-
-29. **M-3 (sessione)**: codici errore 1004/1007/1017/1015/1003 ri-auditati [PROVA-EMPIRICA 2026-05-29 + ri-confermato 2026-06-01 CLI]. 1030 non riprodotto sul FIB (servizio base IDEM). Già normati in Parte 9 Cap.50. Parte 10 li USA come **codici di trigger del marker `RUNTIME_GAP_END` / `BACKFILL_*`** quando il backfill CANDLERANGE risponde con errore.
-
-30. **M-4 (sessione)**: F=Giugno, I=Settembre confermati [PROVA-EMPIRICA]; Mar/Dic residuo Empirico-CLI. Già normato in Parte 9 Cap.47 r96 + Cap.55. NON pertinente al perimetro Parte 10 (rollover front-month è D-9-NB2 chiuso). Parte 10 lo cita solo se richiama esplicitamente il rollover come trigger di gap potenziale.
-
-31. **M-5 (sessione)**: cooldown "14/~30s" refutato a ~907Hz/850 conn (0 onset). Già ri-caratterizzato in Parte 9 Cap.46 r47-53 e Cap.50 r218. NON pertinente al perimetro Parte 10 (recupero gap usa connessione persistente per backoff, non burst).
-
-32. **M-9 (sessione)**: schema PRICE realtime [PROVA-EMPIRICA 2026-06-01 W2]: `f4=last`, `f6=volume_cum`, `f8=day_low`, `f9=day_high`; `f5`/`f7` parziali. Già normato in Parte 9 Cap.47 r91-94 post-AUDIT. Parte 10 lo USA nella **regola di derivazione del low/high del cash europeo per riconciliazione canonica**: per i cash europei la riconciliazione canonica giornaliera (es. low di giornata di DITAS) si appoggia su `f8`/`f9` della CANDLE ufficiale (level-2 verificato cross-check `[PROVA-EMPIRICA W2]`), NON sull'aggregato dei tick realtime (rado, vedi punto 10 di Eredità).
-
-33. **M-10 (sessione)**: schema BOOK_5 certificato [PROVA-EMPIRICA 2026-06-01 W3]: `[BID×5 best-first][ASK×5 best-first]`, triplo `(lots,orders,price)`; `bid1_lots/ask1_lots/bid1_price` per `bar_synthetic` Cap.49 CERTIFICATE. Anomalia 27/05 spiegata come artefatto del campione. Parte 10 NON tocca BOOK_5 (il backfill è via CANDLERANGE, non via book replay). Riferimento citato solo come supporto per "schema runtime certificato post-AUDIT".
-
-### Da `.claude/CLAUDE.md` — workflow di sessione (vincoli organizzativi)
-
-34. **Workflow Planner→Developer→Reviewer pieno** (CAP-XX nuovo): Developer produce v1 di `CAP_10_parte_10.md` + `REPORT_CAP_10.md` + update `00_indice.md` (Parte 10 da assente a "IN CORSO" durante stesura, a "IN REVIEW" al `READY_FOR_REVIEW`). Orchestratore esegue check post-Developer (6 condizioni). Reviewer Web esegue review piena con classificazione finding per supervisore. Punto di controllo supervisore su CONDITIONAL/FAIL standard.
-
-35. **Push policy** (MEMORY `push_policy`): push diretto a `origin/main` autorizzato per Developer/Reviewer.
-
-36. **Sub-agente registry web** (MEMORY `subagent_registry_web`): in sessione web solo `planner` è esposto come `subagent_type`; Developer/Reviewer vanno via `general-purpose` adottando il proprio `.md`. Questa è una sessione **CLI locale** (autocheck Orchestratore), quindi la nota subagent web NON si applica direttamente alla sessione corrente; si applicherà quando l'Orchestratore della prossima sessione (Developer di CAP-DATA-03) eseguirà il task — ma se quella sessione sarà web (matrice METODO.md §RM-4 raccomanda Web per CAP-XX), allora la nota si applicherà.
-
-37. **DGo aperto / TradingView chiuso per probe DAPI** (MEMORY `feedback_no_dapi_probe_con_dgo_aperto`): NON pertinente a Parte 10 (è documento metodologico, non probe). Citato solo per completezza dell'eredità organizzativa.
+L'audit rende possibile, in caso di esito PASS, una **conferma di simmetria** col trattamento ricevuto da CAP-DATA-01/02 e una **verifica indipendente** che l'apparato RM (formato e sostanza) sia diventato pratica stabile del progetto sul perimetro esteso, non solo sul singolo CAP. In caso di esito CONDITIONAL/FAIL, indirizza fix mirati (correzioni puntuali ad A/B/C, mai D) attraverso il punto di controllo supervisore con classificazione dei finding.
 
 ---
 
-## Perimetro dei file (cosa il Developer produce e modifica)
+## Eredita' obbligatoria
 
-Il Developer di Parte 10 produce/modifica **esclusivamente**:
+### Da `tasks/METODO.md` — RM-1..RM-4 (vincolanti per il Reviewer di questo task — RM-1 si applica anche al Reviewer)
 
-| Path assoluto | Operazione | Note |
-|---|---|---|
-| `docs/methodology_v2/CAP_10_parte_10.md` | **CREATE** (file nuovo) | Capitolo metodologico Parte 10, ~9-12 pp totali, scaletta Cap.57-Cap.65 (vedi sezione successiva). Naming β2 ratificato: `CAP_10_parte_10.md`, identifier interno "Parte 10" (arabo), coerente con Parte 8/9. |
-| `reports/REPORT_CAP_10.md` | **CREATE** (file nuovo) | Report supervisore con 5 sezioni standard: "Cosa è stato prodotto", "Ipotesi di partenza", "Decisioni rilevanti", "Misura prima/dopo", "Domande aperte" + "Criterio di rollback" + "Verifica esplicita degli AC". Include sezione "Decoder/convenzioni esistenti nel repo letti prima della stesura" (RM-2 grep documentato). |
-| `docs/methodology_v2/00_indice.md` | **EDIT** | Aggiungere voce "Parte 10 — Continuità tape, recupero gap, riconciliazione canonica, storicizzazione strutturata (~9-12 pp)" con stato "IN CORSO" durante stesura, "IN REVIEW" al `READY_FOR_REVIEW`, "PASS Review v$N$ (review commit `<sha>` del <data>; documento commit `<sha>`)" alla chiusura PASS. Mantenere stile delle voci precedenti (Parte 8/9). |
-| `tasks/DEV_STATUS.md` | **EDIT** | Scrivere `READY_FOR_REVIEW` al completamento v1; azzerato dall'Orchestratore a ogni nuovo ciclo. |
+1. **RM-1 — formato e sostanza** (`METODO.md:11-43`). Il Reviewer applica la regola a se' stesso: ogni sua dichiarazione "CONFERMATO ESATTO", "MATCH", "coerente", "verificato esatto", "non trovato dopo grep" deve essere accompagnata, nel corpo dell'audit, da: (a) prova testuale puntuale (token cercato + esito + file:linea); (b) enumerazione esplicita delle alternative compatibili (es. "alternativa: riga diversa nel file, esclusa controllando le 5 righe adiacenti"; "alternativa: il documento usa convenzione X non Y, esclusa cercando il pattern `X|Y` su tutto il file"). NON sono ammesse asserzioni "verificato" del Reviewer senza il blocco 4-righe o suo equivalente operativo (es. "tabella con `Citazione | Contenuto atteso | Esito verifica`" e' ammessa come forma compatta del blocco RM-1 se ogni riga contiene esattamente i 4 elementi).
 
-**Fuori perimetro (NON toccare in v1)**:
-- `tasks/ACTIVE_TASK.md` (questo task card) — il Developer NON lo modifica; le eventuali "Finding di Review da risolvere" le aggiunge l'Orchestratore dopo il punto di controllo supervisore;
-- `tasks/CARRYOVER.md` — il Developer aggiunge eventuali nuovi M-promemoria SOLO se la Review li solleva e il supervisore li ratifica (mai prima di PASS);
-- `tasks/STATO_CORRENTE.md` — single-writer per disciplina; aggiornato in chiusura sessione dall'Orchestratore;
-- `tasks/METODO.md` — NON si modifica nel ciclo CAP-XX; le RM si aggiungono solo per incidente con commit dedicato `[METODO]`;
-- `scripts/*` — Parte 10 è metodologia, NON implementazione. Il decoder canonico `export_directa_history_parametric.py` è citato come `[CODICE-EXISTENTE]`, NON modificato;
-- `docs/methodology_v2/CAP_08_parte_8.md`, `CAP_09_parte_9.md` — i capitoli precedenti sono PASS storici, NON si riapre nulla;
-- `data/sessions/fib_session_calendar.csv`, `data/runtime/exports_sample/*` — file normativi/sample, NON toccati da Parte 10;
-- `reviews/*` — il Developer NON produce review (lo fa il Reviewer);
-- `probe_out/*` — dump empirici gitignored, NON modificati né riprodotti dal Developer (il task è di sola redazione documentale a partire dai dump già esistenti, identico schema del task PROBE §2.4-§2.5 vincolo rispettato).
+2. **RM-2 — grep documentato** (`METODO.md:46-94`). Il Reviewer DEVE eseguire `grep`/`Grep` sui pattern del dominio prima di concludere e citare comando + esito nell'audit. Pattern obbligatori (lista minima — il Reviewer estende):
+   - **Schema CANDLE**: `parse_directa_candle|UFF|MIN|MAX|APE|C;L;H;O|O;L;H;C|O;H;L;C` su `scripts/` + `docs/methodology_v2/CAP_10_*.md` + `tasks/PROBE_RECUPERO_GAP_DAPI.md`. Esito atteso: nessuna occorrenza di `O;L;H;C` o `O;H;L;C` come "schema canonico" nel perimetro (sono il wiki + l'errore §3.1 storico); se occorrono, devono essere in contesti di rifiuto/correzione esplicita (es. §3.2 PROBE, §7.2 risposta web).
+   - **CANDLERANGE sintassi**: `CANDLERANGE.*period|period_s|period_seconds|<period_s>|86400|period 60` su `scripts/` + perimetro. Verifica posizione `period` (ultimo arg) coerente in A/C/D.
+   - **Cut-off 100gg**: `DEFAULT_INTRADAY_MAX_DAYS|100.*gg|~100|100 giorni|2026-02-18` su perimetro. Verifica che il valore numerico (~100gg/saturazione `2026-02-18 09:56`/38.567 candele) sia coerente fra A Cap.59 cut-off, REPORT B, e PROBE C §4.2.
+   - **Schema CSV legacy vs runtime**: `fieldnames|tick_count|bar_synthetic|symbol,timeframe,timestamp` su `scripts/export_directa_history_parametric.py` (header legacy 11 campi `:605-617`) e su `docs/methodology_v2/CAP_09_parte_9.md` (header runtime esteso 13 campi `:117-122` — riferimento di Parte 9). Verifica che A Cap.62 e Cap.64 distinguano correttamente i due, e che la correzione `:605-617` vs `:119-122` (introdotta dal Developer post-task-card) sia accurata e cross-consistente fra A e B.
+   - **Marker normativi**: `RUNTIME_GAP|BACKFILL_FROM|RECONCILE_|BOOTSTRAP_COMPLETE|WARMUP_COMPLETE|SESSION_OPEN|SESSION_CLOSE|RUNTIME_STALE_RESTART|CONTRACT_SWITCH|RUNTIME_DEGRADED` su perimetro + `CAP_09_parte_9.md`. Verifica che ogni marker citato da A esista realmente in Parte 9 nel capitolo dichiarato (es. `RUNTIME_GAP_*` Cap.50, `WARMUP_COMPLETE` Cap.51, `SESSION_*` Cap.52, `RUNTIME_STALE_RESTART` Cap.51 D-9-11).
+   - **`bar_synthetic` semantica**: `bar_synthetic` su perimetro + `CAP_08_parte_8.md` + `CAP_09_parte_9.md`. Verifica regola "booleano trade/no-trade, MAI live/ricostruito" (Cap.58 regola 2/3) coerente con D-9-7.
+   - **Cash low/high**: `f8|f9|day_low|day_high|cash.*low|6/6 mismatch|low rado` su perimetro + STATO M-9. Verifica regola D-10-4 (cash via CANDLE ufficiale `f8`/`f9`, MAI tick realtime) e prova [PROVA-EMPIRICA 2026-06-01 V-1 afternoon §2.4.5 lettera A] in C.
+   - **Immutabilita' T+3 morning**: `T\+1|T\+3|60/60|60 / 60|immutabil|rewriting|bit-identic|bit-exact` su perimetro. Verifica perimetro empirico onesto (morning, FIB6F/DITAS, T+3, ~100gg) sistematico in A blocchi RM-1 e in REPORT B.
+   - **Citazioni cross-CAP** (per coerenza inter-file): `CAP_06_parte_VI.md:276|CAP_08_parte_8.md Cap.|CAP_09_parte_9.md Cap.|CAP_02_parte_II.md Cap.10` su perimetro. Verifica con Read che i referenti esistano e contengano cio' che A afferma.
 
----
+   Il Reviewer documenta nell'audit la lista comandi eseguiti con esito sintetico (file/righe principali).
 
-## Scaletta capitoli proposta (~9-12 pp totali, Cap.57-Cap.65)
+3. **RM-3 — fonti etichettate** (`METODO.md:97-136`). Il Reviewer verifica che:
+   - ogni `[PROVA-EMPIRICA <data>]` citata in A/B abbia il dump corrispondente esistente in `probe_out/*` (verifica esistenza con `Glob probe_out/*`, NON ri-apertura del contenuto contro DAPI);
+   - le 4 prove cardine (V-1 morning §2.3, V-1 afternoon §2.4, V-2 cut-off §4.2/§4.3, T+1 §2.5, schema PRICE W2 M-9) siano citate in A esattamente con i numeri canonici delle fonti (55/60 morning, 49 match / 13 mismatch su 62 afternoon, saturazione `2026-02-18 09:56` da N=80, daily senza cut-off fino N=160, 60/60 T+3 morning, cash 6/6 mismatch sul solo low DITAS, `f8`/`f9` = day_low/day_high) — eventuali numeri divergenti sono finding;
+   - il wiki Directa compaia **solo** come `[WIKI-HINT, da verificare]` (atteso: Cap.64 punto 4, riavvio Darwin mezzanotte) e con dichiarazione esplicita di inaffidabilita' (RM-3 caso reale);
+   - nessuna conclusione del perimetro si appoggi **solo** a livello 4: il fact-check e' "ogni asserzione strutturale ha almeno una fonte livello 1/2/3".
 
-L'ultimo capitolo di Parte 9 è Cap.56 (tabella decisioni). Parte 10 parte da **Cap.57**.
+4. **RM-4 — output non-CAP** (`METODO.md:139-208`). Il Reviewer NON deve produrre probe nuovi ne' script nuovi: l'audit e' documento + lettura + grep. Se l'audit rivela un'asserzione del perimetro che richiede prova empirica nuova (es. immutabilita' oltre T+3, afternoon/usopen, strumento ≠ FIB6F/DITAS), questa entra nella sezione **"Empirico-CLI da verificare"** dell'audit come handoff (NON viene eseguita dentro questo task). Lista attesa **VUOTA** perche' l'empirico e' chiuso; se non vuota, il Reviewer indica esplicitamente il motivo (asserzione che eccede il perimetro empirico chiuso).
 
-### Cap.57 — Premessa e collocazione (~1 pp)
-Cosa formalizza Parte 10, relazione con Parte 8 (convenzione storica) e Parte 9 (canale runtime), invariante research = runtime esteso al ciclo di vita del tape (non solo al singolo bar di Cap.49). Distinzione esplicita rispetto a quanto già normato (Parte 9 Cap.51 warm-up nominale, Cap.50 riavvio mezzanotte, Cap.54 audit log): Parte 10 si occupa del comportamento del tape **fuori dal flusso nominale**. Sintesi delle 4 domande operative (continuità, recupero, riconciliazione, storicizzazione). Riferimento esplicito a Parte 9 Cap.55 rinvio originale.
+### Inputs AUTORITATIVI — fatti CHIUSI, NON ri-verificare, l'audit ne controlla l'USO
 
-### Cap.58 — Continuità tape: definizione e tassonomia dei gap (~1-1.5 pp)
-Definizione formale di "gap" sul tape runtime: intervallo $[t_{start}, t_{end}]$ contiguo di barre 1-min mancanti (o con `bar_synthetic=True` ma senza forward-fill semantico valido). Tassonomia normativa dei gap con riferimento ai marker Parte 9 già definiti:
-- **Gap intra-sessione**: intervallo entro `[SESSION_OPEN, SESSION_CLOSE]` con `RUNTIME_GAP_START`/`RUNTIME_GAP_END` (cause: perdita feed transitoria, conflitto DGo brevemente risolto, hiccup TCP). Durata tipica minuti-ore.
-- **Gap cross-midnight**: causato da riavvio Darwin (Parte 9 Cap.50 procedura 1-7). Durata tipica 1-5 minuti, sempre prima di `SESSION_OPEN` del giorno successivo (fuori sessione, basso impatto operativo).
-- **Gap cross-session**: tape mancante per ≥1 sessione completa (es. server-side outage prolungato). Durata tipica 1-N giorni di trading, dentro la finestra 100gg.
-- **Gap fuori finestra DAPI (>100gg)**: `RUNTIME_STALE_RESTART` (Parte 9 Cap.51 r261). Durata tipica >100gg di calendario. Richiede procedura speciale (Cap.61).
+Sono livello-1 / livello-2 gia' acquisiti, citati come hard constraint da CAP-DATA-03 e gia' autoritativi dopo AUDIT-RM-RETRO CAP-DATA-01 + CAP-DATA-02 WEB+CLI chiusi PASS. Il Reviewer di questo task NON li ri-deriva. Li USA come pietre di paragone: A e/o C che li citano devono citarli **fedelmente**; eventuali divergenze sono finding.
 
-Sezione "Composizione semantica della griglia": ogni tipo di gap, una volta colmato dal backfill di Cap.59-Cap.61, deve produrre una sequenza di barre **identica per schema** a quella che il tape nominale avrebbe prodotto, con propagazione del `bar_synthetic` simmetrica al training (Parte 8 Cap.40, Parte 9 Cap.49 r173-180). Distinzione esplicita: una barra ricostruita via backfill con dato reale dal gateway è `bar_synthetic=False`, NON `True` (anche se cronologicamente "ricostruita post-hoc"); il flag `bar_synthetic` resta booleano "trade vs no-trade", mai "live vs ricostruito". La provenienza è tracciata dal campo `source` (Cap.62), non dal flag.
+5. **Schema CANDLE canonico `C;L;H;O;V`** = `UFF;MIN;MAX;APE;V`. Fonte level-1: V-1 morning §3.3 (PROBE_RECUPERO_GAP_DAPI). Fonte level-2: D `:467-481` (commento r.477 + assegnazioni r.478-481). Wiki Directa (`O;H;L;C`) dimostrato inesatto (RM-3 caso reale).
 
-### Cap.59 — Recupero gap entro la finestra 100gg (~1.5 pp)
-Procedura normativa per il recupero gap di durata ≤ ~100gg di calendario (entro il limite scorrevole `CANDLERANGE` intraday `[PROVA-EMPIRICA 2026-05-29 V-2 dump probe_out/v2_cutoff_period60_20260529_104927.csv]`). Algoritmo formale (numerato):
+6. **CANDLERANGE intraday — limite ~100gg di calendario, finestra scorrevole** che tronca **al minuto** del limite (NON al giorno). Fonte level-1: V-2 dump `probe_out/v2_cutoff_period60_20260529_104927.csv` (saturazione `first_ts=2026-02-18 09:56`, 38.567 candele identica su FIB6F+DITAS+CM.MESM6 da N=80 a N=160). Fonte level-2: D `:61` `DEFAULT_INTRADAY_MAX_DAYS=100`.
 
-1. Identificazione del gap: rilevazione automatica via gap detector sulla griglia 1-min (timestamp mancanti tra `RUNTIME_GAP_START` e `RUNTIME_GAP_END`, oppure rilevati post-hoc nel ciclo di riconciliazione di Cap.60).
-2. Richiesta `CANDLERANGE` su porta 10003 (storico, già normata Parte 9 Cap.48/Cap.51): sintassi `CANDLERANGE <ticker_front_month> <YYYYMMDDHHMMSS_start> <YYYYMMDDHHMMSS_end> 60` `[CODICE-EXISTENTE export_directa_history_parametric.py:228-230]`.
-3. Decodifica risposta con schema canonico `C;L;H;O;V` `[CODICE-EXISTENTE export_directa_history_parametric.py:467-481]`.
-4. Validazione idempotenza: confronto barre ricevute con barre già presenti nel tape (eventualmente già archiviate); regola di **idempotenza T+3 morning** `[PROVA-EMPIRICA T+1 dump probe_out/v1_hist_*]` — per finestre intraday entro T+3 morning sui ticker FIB6F/DITAS testati, le barre CANDLERANGE sono bit-identiche tra fetch successivi (60/60 verificato). Limite di validità onesto da dichiarare: oltre T+3 e per finestre afternoon/usopen e altri strumenti non testato, marker `BACKFILL_VERIFIED_T3` solo se la finestra rientra nell'orizzonte empirico; altrimenti `BACKFILL_UNVERIFIED` con flag operativo che richiede check di riconciliazione di Cap.60.
-5. Inserimento barre ricostruite nella griglia 1-min con campo `source = BACKFILL_FROM_CANDLERANGE` (nuovo valore del dominio, vedi Cap.62), `bar_synthetic` derivato dalla regola Parte 9 Cap.49 (presenza/assenza minuto nella risposta CANDLE), `tick_count = NULL` (regime storico, Parte 9 Cap.49 r172).
-6. Marker `RUNTIME_GAP_END` + `BACKFILL_FROM_CANDLERANGE` in audit log (Parte 9 Cap.54).
+7. **CANDLERANGE daily (period 86400) — nessun limite pratico a 100gg**. Fonte level-1: V-2 dump `probe_out/v2_cutoff_period86400_20260529_105739.csv` (first_ts regredisce fino al 2026-01-05 a N=160).
 
-Vincoli operativi:
-- **Connessione persistente** su porta 10003 (Parte 9 Cap.46): no burst di connessioni anche per backfill multipli (regola Parte 9 invariata).
-- **Backoff esponenziale** su errori (Parte 9 Cap.50 procedura sui codici 1003/1004/1007/1015/1017): retry con 5/10/20/40/60s, dopo 5 fallimenti consecutivi marker `RUNTIME_DEGRADED` (Parte 9 Cap.50) e notifica supervisore.
-- **Cut-off finestra**: se il gap risale a oltre ~100gg di calendario dalla data corrente, `CANDLERANGE` tronca al limite (V-2 verifica empirica: tronca al minuto esatto, NON al giorno). Caso `gap parzialmente oltre 100gg` (es. gap di 30 giorni che inizia 95 giorni fa, finisce 65 giorni fa, parzialmente recuperabile): la procedura recupera la parte recuperabile e marca il complemento `RUNTIME_GAP_BEYOND_100D` per fallback Cap.61.
+8. **Sintassi CANDLERANGE**: `CANDLERANGE <sym> <YYYYMMDDHHMMSS_start> <YYYYMMDDHHMMSS_end> <period_s>` (4 arg, period LAST). Fonte level-2: D `:228-230`.
 
-### Cap.60 — Riconciliazione canonica giornaliera (~2 pp)
-Procedura normativa di **gate operativo end-of-day** che verifica la coerenza del tape DAPI runtime del giorno $d$ con la convenzione di Parte 8 e con la disponibilità del gateway.
+9. **Equivalenza realtime ↔ CANDLERANGE confermata su due finestre indipendenti**: morning 09:00-09:30 (55/60 match tol 0.05, V-1 morning §2.3) + afternoon 14:55-15:25 (49 match / 13 mismatch su 62, V-1 afternoon §2.4); nessuno swap O/C su nessuno dei 7 FIB6F afternoon (test discriminante `local_O ≠ hist_C`); schema `C;L;H;O` regge.
 
-Algoritmo:
-1. Trigger: chiusura sessione 22:00 CET, marker `SESSION_CLOSE` (Parte 9 Cap.52).
-2. Costruzione del **tape giornaliero canonico atteso**: 840 barre 1-min sulla griglia uniforme della sessione (epoca E5, 08:00-22:00 CET, Parte 8 Cap.41), con composizione di:
-   - barre realtime accumulate dal canale push porta 10001 durante la sessione, già processate da Parte 9 Cap.49 (`bar_synthetic` derivato da `BOOK_5` count);
-   - eventuali barre ricostruite da Cap.59 per gap intra-sessione, con `source ∈ {BACKFILL_FROM_CANDLERANGE}`.
-3. **Verifica integrità schema**: header CSV, dominio `source`, dominio `bar_synthetic`, presenza di tutti i 840 timestamp, monotonia temporale. Failure → marker `RECONCILE_SCHEMA_FAIL` + notifica supervisore.
-4. **Verifica coerenza CANDLE ufficiale del giorno**: il tape composto del giorno $d$ è confrontato con una `CANDLERANGE` di controllo dello stesso giorno $d$ richiesta a end-of-day (es. 22:30 CET) sul **ticker front-month FIB**. Le due fonti devono produrre la **stessa serie 1-min** sui minuti non-sintetici, a meno di errori di confine minuto (≤1 tick = ≤5pt FIB, tolleranza già documentata `[PROVA-EMPIRICA 2026-05-29/06-01 §2.3+§2.4]` — 5/60 e 7/62 mismatch tutti confinati al primo/ultimo minuto o salto 1-tick). Divergenza > tolleranza su un numero di minuti > `θ_reconcile` (parametro provvisorio non congelato — vedi Done when domanda d3) → marker `RECONCILE_DIVERGENT_FIB` + notifica supervisore.
-5. **Verifica low/high giornaliero**: per il **ticker FIB**, il low e high giornalieri del tape composto sono confrontati con i campi `day_low`/`day_high` (`f8`/`f9`) della CANDLE ufficiale daily (period 86400) del giorno $d$ `[PROVA-EMPIRICA M-9 W2 2026-06-01]`. Tolleranza ≤ 1 tick FIB (5pt). Per i **ticker cash europei** (DGER/DSTX50/DITAS/DFRA, gating qualitativo Cap.53), la riconciliazione del low/high USA **esclusivamente** la CANDLE ufficiale daily (`f8`/`f9`), NON l'aggregato dei tick realtime, perché il feed PRICE cash è rado (~6 tick/min) e perde i minimi intraday `[PROVA-EMPIRICA 2026-06-01 V-1 afternoon §2.4.5 lettera A — 6/6 mismatch DITAS sul solo low]`. Divergenza > 1 tick FIB → marker `RECONCILE_DIVERGENT_HIGHLOW`.
-6. Stato finale del giorno:
-   - **`RECONCILE_OK`**: tutti i check passano. Marker in audit, tape giornaliero promosso ad archivio (Cap.62).
-   - **`RECONCILE_DIVERGENT_*`**: uno o più check falliti. Marker dettagliato in audit, notifica supervisore, **flag di sessione successiva** che impedisce l'emissione segnali del giorno $d+1$ finché il supervisore non interviene (gate operativo, analogo al gate Brier $f_5^{live}$ Parte VI Cap.30).
-   - **`RECONCILE_DEGRADED`**: tape composto incompleto (es. session interrotta da `RUNTIME_DEGRADED` senza recovery), marker con dettaglio, archivio parziale del giorno con flag `partial=true` nel manifest (Cap.62).
+10. **Immutabilita' barre intraday CANDLERANGE verificata fino a T+3 morning** sui ticker FIB6F/DITAS (T+1 §2.5: re-fetch 29/05 eseguito il 01/06 = T+3 attraverso weekend, 60/60 barre OHLCV bit-identiche). **Perimetro empirico onesto esplicito**: T+3, morning, FIB6F/DITAS, finestra ~100gg. Oltre = "assunto per estensione, sorvegliato dal gate Cap.60".
 
-Vincoli operativi:
-- **Replay deterministico preservato** (Parte II Cap.10 + Parte VII Cap.31): la riconciliazione è procedura **non-mutativa** sulla griglia 1-min (NON modifica i prezzi delle barre composte); è solo un layer di verifica che emette marker.
-- **Coerenza con sanity validation Parte 8 Cap.43**: la riconciliazione di Cap.60 USA lo **stesso schema** di metriche (quantili, autocorrelazione, $\sigma$ realized) ma su finestra **giornaliera**, NON 18-24 mesi. La soglia $\theta_{reconcile}$ è parametro provvisorio (vedi Done when).
+11. **Feed cash realtime rado** (~6 tick/min su DITAS): il flusso PRICE perde i minimi intraday del cash; la CANDLE ufficiale daily ha il low corretto. Fonte level-1: V-1 afternoon §2.4.5 lettera A (6/6 mismatch DITAS sul solo low).
 
-### Cap.61 — Restart >100gg e fallback Portara (~1.5 pp)
-Procedura normativa per il caso `RUNTIME_STALE_RESTART` (Parte 9 Cap.51 r261): downtime continuativo della pipeline >100gg, oltre la finestra `CANDLERANGE` intraday DAPI. Il warm-up Parte 9 Cap.51 non è sufficiente; il bundle EGARCH calibrato su Portara ratio-adjusted (Parte 8 Cap.38) non può essere eseguito su warm-up cross-source mescolato.
+12. **Schema PRICE realtime (M-9 W2 [PROVA-EMPIRICA 2026-06-01])**: `f4=last`, `f6=volume_cum`, `f8=day_low`, `f9=day_high`; `f5`/`f7` parziali. L'ipotesi Web "bid/ask" e' **FALSIFICATA** da W2.
 
-Procedura normativa:
-1. Trigger: rilevazione di `RUNTIME_STALE_RESTART` (Parte 9 Cap.51 r261), payload `{downtime_days: N, reason: "gap_exceeds_DAPI_100d_window"}`.
-2. **Intervento supervisore obbligatorio**: la pipeline NON riparte automaticamente (Parte 9 Cap.51 invariato). Procedura manuale assistita:
-   - **Step A — Recupero archivio locale**: verifica esistenza dei dump per il periodo di gap in `C:\Users\AN\Documents\Projects\ga-zone-engine\exports\directa_history\` (391 dump live al 28/05/2026) e in `C:\directa_history_parametric_export_overlay\exports\directa_history\` (256 dump archeologici pre-25/04, incluso `DITAS_20110404_20260402` = 15 anni daily). Se l'archivio copre il periodo: backfill da archivio locale con `source = BACKFILL_FROM_ARCHIVE`.
-   - **Step B — Recupero CANDLERANGE daily ≤ ora corrente**: per ulteriore copertura, `CANDLERANGE period 86400` (daily) entro il limite "nessun cut-off pratico" `[PROVA-EMPIRICA 2026-05-29 V-2 dump probe_out/v2_cutoff_period86400_20260529_105739.csv]`. Le barre daily NON sono surrogato delle barre 1-min ma servono per cross-check di riconciliazione giornaliera retroattiva.
-   - **Step C — Fallback Portara**: se né archivio locale né CANDLERANGE daily coprono completamente il periodo di gap, fallback all'archivio Portara/CQG (Parte 8 Cap.37-38). Le barre Portara entrano con `source = BACKFILL_FROM_PORTARA` e sono **convertite alla convenzione runtime** (unadjusted nativa del contratto front-month corrente, NON ratio-adjusted: il ratio-adjusted è di training, non di runtime). Vincolo di coerenza esplicito: il bundle frozen EGARCH NON viene mai eseguito su un tape mescolato cross-source (DAPI + Portara intraday) **senza re-warm-up completo post-bootstrap**. Il re-bootstrap del warm-up (`L_warmup=30gg di trading IDEM` Parte 9 D-9-NB4) è **obbligatorio** dopo bootstrap >100gg e si esegue **solo dopo** che il periodo di gap è coperto. Marker `BOOTSTRAP_COMPLETE` analogo a `WARMUP_COMPLETE` di Parte 9 Cap.51.
-3. **Vincolo di non mescolamento**: durante il re-bootstrap >100gg, il tape NON è ammesso come input dell'inference live (la pipeline resta in `RUNTIME_STALE_RESTART`). Solo dopo `BOOTSTRAP_COMPLETE` + `WARMUP_COMPLETE` la pipeline esce dallo stato degraded e può tornare a emettere segnali.
-4. **Coerenza ratio-adjusted vs unadjusted**: documentazione esplicita che il tape archiviato dopo bootstrap >100gg è **unadjusted nativa del front-month corrente** (Parte 9 Cap.48 r140), NON ratio-adjusted (che è convenzione di training); l'invariante research = runtime non viene violato perché il bundle EGARCH è calibrato su tape ratio-adjusted ricostruito in preprocessing (Parte 8 Cap.38) e l'adapter runtime di Parte 9 Cap.49 produce una griglia 1-min con schema simmetrico, NON una serie ratio-adjusted.
+13. **Codici errore DAPI** (M-3): 1004 cmd ignoto, 1007 ticker inesistente/non abilitato, 1017 sintassi malformata, 1015 data/parametro invalido, 1003 comando storico su porta realtime. 1030 realtime non sottoscritto **non riprodotto** sul FIB (servizio base IDEM). Confini disambiguati [PROVA-EMPIRICA 2026-05-29 + 2026-06-01 CLI].
 
-### Cap.62 — Storicizzazione strutturata del tape DAPI (~1.5-2 pp)
-Procedura normativa di archiviazione del tape DAPI runtime in archivio canonico locale.
+14. **Cooldown "14/~30s" REFUTATO** (M-5): 850 connessioni open/close fino a ~907Hz su 10003, 0 onset. Rate-limit a regimi estremi lato server non escludibile in assoluto (ipotesi minore aperta, non costante dichiarata).
 
-Formato dell'archivio:
-- **Struttura cartelle**: `exports/directa_history/<TICKER>_<START_YYYYMMDD>_<END_YYYYMMDD>/` (pattern già esistente nello script `[CODICE-EXISTENTE export_directa_history_parametric.py]`). Granularità: una cartella per ticker per finestra temporale chiusa.
-- **File CSV**: una riga per timestamp 1-min, header `symbol, timeframe, timestamp, date, time, open, high, low, close, volume, tick_count, bar_synthetic, source` (format **runtime esteso** di Parte 9 Cap.48 r117-122 B-2, NON format legacy a 11 campi dei sample committati).
-- **File manifest JSON**: per ogni esecuzione di archiviazione, manifest con i campi documentati Parte 9 Cap.48 r140 + estensione Parte 10:
-  - `symbol`, `start_date`, `end_date`, `host`, `port_historic`, `account_code` (mascherabile), `banner_darwin`, `config_resolved`;
-  - per ogni timeframe: `mode`, `rows_received`, `first_timestamp`, `last_timestamp`, `commands_sent`, `warnings`;
-  - estensioni Parte 10: `reconcile_status ∈ {OK, DIVERGENT_FIB, DIVERGENT_HIGHLOW, DEGRADED}`, `bar_counts_by_source` (es. `{DIRECTA: 800, BACKFILL_FROM_CANDLERANGE: 30, AGG_FROM_60s: 10}`), `gap_log` (lista intervalli gap con start/end/source), `partial ∈ {true, false}`, `bootstrap_completed_at` (per archivi di re-bootstrap >100gg).
+15. **BOOK_5 CERTIFICATO** (M-10 W3): `[BID×5 best-first][ASK×5 best-first]`, triplo `(lots, orders, price)`. Posizioni di `bar_synthetic` Cap.49 certificate (`bid1_lots`=campo4, `bid1_orders`=campo5, `bid1_price`=campo6; `ask1_lots`=campo19, `ask1_price`=campo21). NON pertinente al perimetro Parte 10 (backfill via CANDLERANGE, non via book replay); citato come supporto level-2 alla coerenza schema runtime certificato post-AUDIT CAP-DATA-02.
 
-Dominio esteso del campo `source` (estende Parte 9 Cap.48 r131 D-9-5):
-| Valore `source` | Significato | Quando viene prodotto |
-|---|---|---|
-| `DIRECTA` | Record proveniente dal DAPI nel timeframe richiesto, in realtime push o storico (eredità Parte 9). | Realtime su porta 10001 o storico su porta 10003 nominale. |
-| `AGG_FROM_60s` | Record aggregato da dati 1-min DAPI per timeframes superiori (eredità Parte 9). | Timeframe 5M/15M/1H non nativo. |
-| `AGG_FROM_D` | Record aggregato da daily (eredità Parte 9). | Weekly non disponibile. |
-| `BACKFILL_FROM_CANDLERANGE` | Record ricostruito via `CANDLERANGE` per recupero gap (Cap.59). | Gap intra/cross-session ≤100gg. |
-| `BACKFILL_FROM_ARCHIVE` | Record letto dall'archivio locale `exports/` per re-bootstrap >100gg (Cap.61 Step A). | Restart >100gg con copertura archivio. |
-| `BACKFILL_FROM_PORTARA` | Record letto da Portara/CQG come fallback finale (Cap.61 Step C). | Restart >100gg senza copertura archivio, con intervento supervisore. |
+### Da `tasks/CARRYOVER.md` — raccomandazioni di processo pertinenti
 
-Vincoli operativi:
-- **Idempotenza dell'archivio**: la scrittura di un giorno $d$ già archiviato è un **no-op** se il tape del giorno è identico (eredità `[PROVA-EMPIRICA T+1]` immutabilità T+3 morning). Se il tape è divergente (es. recupero gap retroattivo che aggiunge barre): apertura nuova versione dell'archivio con `version=N+1` nel manifest, NON sovrascrittura. Versioning del manifest opzionale; convenzione di lavoro: append-only sui manifest, ultimo manifest valido è il "live".
-- **Immutabilità barre archiviate** (`[PROVA-EMPIRICA T+1 60/60 barre identiche fino a T+3 morning]`, perimetro empirico esplicito): le barre archiviate del giorno $d$ entro T+3 morning sui ticker FIB6F/DITAS sono **immutabili**. Limite di validità onesto da dichiarare nel capitolo: oltre T+3, su finestre afternoon/usopen, e su strumenti non testati l'immutabilità è **assunta per estensione** (non verificata empiricamente), e la procedura di riconciliazione di Cap.60 funge da gate periodico per intercettare eventuali drift.
-- **NON è fonte di training** (vincolo invariato D-9 + Parte 8 Cap.37 + Cap.44): l'archivio Parte 10 è per riconciliazione + replay + bootstrap futuro, NON per re-calibrazione del bundle. L'apertura del flusso DAPI come fonte di training richiederebbe nuovo task Planner (eredità ripresa da Parte 9 Cap.55 invariata).
-- **Integrazione con archivi esistenti**: i 391 dump live in `C:\Users\AN\Documents\Projects\ga-zone-engine\exports\directa_history\` (formato legacy 11 campi) NON sono migrati al format esteso di Parte 10. La migrazione è **fuori scope** Parte 10 (è operazione una-tantum di FASE-D). I dump nuovi prodotti dalla pipeline runtime di FASE-D operativa adottano il format esteso. La coabitazione tra archivio legacy (per Gap-5 test regressione Parte 9 Cap.48) e archivio esteso (per riconciliazione Parte 10) è normata: due sotto-cartelle distinte `exports/legacy/` e `exports/runtime/` se necessario, scelta architetturale di FASE-D che Parte 10 normativamente non vincola.
+16. **RACC-METODO-2** (Re-Review v2 CAP-DATA-02 RM-RETRO, finding #8, **OPEN**): *"Quando una Review/AC dichiara 'OK' sulla correttezza di uno schema-dato di un sistema esterno (DAPI, Telegram, vendor), la verifica deve includere il confronto puntuale col decoder di produzione esistente (RM-2), non la sola completezza strutturale dei campi."* Il Reviewer di questo audit la applica come **vincolo operativo**: ogni AC di B che dichiara "schema X OK" deve essere verificato non solo dalla completezza dei campi citati ma dal **diff puntuale** col decoder canonico D. CARRYOVER nota esplicitamente che RACC-METODO-2 e' gia' stata "onorata in CAP-DATA-03 (Review v1+v2)" su CANDLE/CSV legacy; questo audit **riconferma indipendentemente** che la onoranza sia effettiva e completa.
 
-### Cap.63 — Coerenza inter-temporale e ricostruzione ratio-adjusted (~0.5-1 pp)
-Sezione di **chiusura coerenza** che lega il tape archiviato Parte 10 (unadjusted nativa) alla serie ufficiale di training ratio-adjusted (Parte 8 Cap.38). Riassunto normativo (NON re-inventare):
-- L'archivio Parte 10 è una serie di file unadjusted per contratto (es. `FIB6F_*`, `FIB6I_*`, `MINI6F_*`).
-- La ricostruzione ratio-adjusted (Parte 8 Cap.38) è procedura **deterministica** che prende in input la serie unadjusted concatenata via `roll_log` e produce la serie continua per training. Parte 10 NON ri-definisce la procedura, la **richiama** come riferimento e dichiara che il tape archiviato di Parte 10 è input legittimo per Parte 8 Cap.38 a condizione che (a) la coerenza con Portara/CQG sia verificata (riconciliazione canonica giornaliera Cap.60), (b) il filtro pre-expiry $N=3$ giorni di Parte 8 Cap.39 sia applicato in preprocessing prima dell'ingresso nel training set.
-- L'apertura del flusso DAPI come fonte di training resta fuori scope (eredità Parte 8 Cap.44 + Parte 9 Cap.55 + #16 di Eredità di questo task), perché la finestra effettiva DAPI è limitata (100gg intraday) e non garantisce profondità storica.
+17. **RACC-METODO-1** (Re-Review v3 FONDAMENTA-01, **OPEN**): de-numerizzare rimandi residui `METODO.md:NN` / `reviewer.md:NN`. **NON pertinente al perimetro A-D** di questo audit (e' manutenzione del processo, non del documento metodologico v2). Citato per completezza del censimento; non si applica.
 
-### Cap.64 — Punti aperti fuori scope (~0.5 pp)
-Lista esplicita di punti che Parte 10 NON normizza, con destinazione:
-- **Migrazione formato legacy → esteso** dei 391 dump live esistenti: operazione una-tantum di FASE-D, NON normata in metodologia.
-- **Implementazione codice operativo** della pipeline runtime di backfill, riconciliazione, archiviazione: FASE-D del roadmap (eredità Parte 9 Cap.55 ultima riga invariata).
-- **Calibrazione fine della soglia $\theta_{reconcile}$** di Cap.60: parametro provvisorio non congelato, da rifinire in FASE-D su dati operativi reali; carryover a futuro CAP-DATA-04 o monitoring post-go-live (analogo trattamento di $L_{max}=30$s Telegram in Appendice E).
-- **Riavvio Darwin mezzanotte** osservazione empirica diretta: residuo Empirico-CLI di Parte 9 Cap.50 Gap-3, sessione notturna non eseguita. Parte 10 si appoggia ai marker `RUNTIME_GAP_*` già normati senza richiedere prova diretta del riavvio.
-- **Immutabilità barre CANDLERANGE oltre T+3 / su finestre afternoon/usopen / strumenti non testati**: limite empirico da rifinire con probe addizionale in FASE-D se emerge necessità; Parte 10 dichiara onestamente il perimetro empirico e tratta il caso oltre come "assunto per estensione, sorvegliato dal gate di Cap.60".
-- **PHASE-2 cross-index** (DAX/EuroStoxx 50/ES/MES futures): convenzione Parte 8 Cap.42 invariata; Parte 10 NON si applica ai cross-index PHASE-2 (sono fuori scope PHASE-1).
-- **Telegram latenza M-2**: Appendice E, fuori perimetro DAPI (eredità #19 invariata).
+### Da `tasks/STATO_CORRENTE.md` §5 — M-promemoria di sessione (input critico)
 
-### Cap.65 — Tabella decisioni del capitolo (~0.5 pp)
-Tabella `D-10-1..D-10-N` con motivazione 1 riga + criterio di rollback registrato in `REPORT_CAP_10.md`. Decisioni attese (provvisorie, il Developer le rifinisce):
-- **D-10-1**: Tassonomia 4-tier dei gap (intra-sessione, cross-midnight, cross-session, fuori-100gg) come vocabolario canonico di Parte 10.
-- **D-10-2**: Procedura `CANDLERANGE` per recupero gap ≤100gg con marker `BACKFILL_FROM_CANDLERANGE`, idempotenza T+3 morning con perimetro empirico esplicito.
-- **D-10-3**: Riconciliazione canonica giornaliera come gate operativo end-of-day, con marker `RECONCILE_OK/DIVERGENT_*/DEGRADED` e gate sulla sessione successiva.
-- **D-10-4**: Regola low/high giornaliero del cash europeo via CANDLE ufficiale (`f8`/`f9`), MAI via aggregato tick realtime (motivato dal feed cash rado).
-- **D-10-5**: Procedura re-bootstrap >100gg con 3 step (archivio locale, CANDLERANGE daily, Portara) e marker `BOOTSTRAP_COMPLETE`.
-- **D-10-6**: Dominio esteso `source` con 3 nuovi valori `BACKFILL_FROM_*`, complemento del dominio Parte 9 D-9-5.
-- **D-10-7**: Format archiviazione runtime esteso (header CSV con `tick_count` e `bar_synthetic`) + manifest JSON esteso con `reconcile_status`, `bar_counts_by_source`, `gap_log`.
-- **D-10-8**: Immutabilità archivio entro T+3 morning con perimetro empirico esplicito, versioning append-only per recovery retroattivi.
-- **D-10-9**: Vincolo "tape DAPI archiviato NON è fonte di training" invariato da Parte 8 Cap.37/Cap.44 e Parte 9 Cap.55.
-- **D-10-10**: $\theta_{reconcile}$ parametro provvisorio non congelato, rifinito in FASE-D.
+Il Reviewer USA i M-promemoria di sessione come "fonte autoritativa versionata" dei fatti empirici, in alternativa all'apertura diretta dei dump in `probe_out/*` (non versionati). Sono livello-1 acquisiti.
 
-Criterio di rollback registrato in `REPORT_CAP_10.md`:
-- D-10-2 (T+3 morning) parzialmente reversibile se prove empiriche future allargano/restringono il perimetro; revisione richiede nuovo task Planner.
-- D-10-3 (gate operativo riconciliazione) reversibile in capitolo successivo se sperimentazione operativa dimostra che il gate produce troppi falsi positivi; rollback non richiede re-training.
-- D-10-5 (procedura 3-step re-bootstrap) non reversibile dentro Parte 10 (impatta lo stato condizionato post-bootstrap come D-9-NB4); revisione richiede nuovo task Planner.
-- D-10-9 (vincolo training) ereditato non reversibile in Parte 10.
+18. **M-1**: schema CANDLE `C;L;H;O;V` — autoritativo per W1 dell'audit.
+19. **M-2**: sintassi `CANDLERANGE <sym> <start> <end> <period_s>` (period ultimo) — autoritativo per W2/W4.
+20. **M-3**: codici errore 1004/1007/1017/1015/1003 ri-confermati 2026-06-01 — autoritativo per il check di completezza/coerenza dei codici se A li cita; A Cap.59 r.97 li cita.
+21. **M-5**: cooldown "14/~30s" refutato a 907Hz/850conn — autoritativo se A cita rate-limit.
+22. **M-9**: schema PRICE `f4/f6/f8/f9`; ipotesi Web "bid/ask" falsificata — autoritativo per W7/W8 del cash low/high (regola D-10-4).
+23. **M-10**: BOOK_5 certificato — supporto level-2.
+
+### Da `.claude/CLAUDE.md` — workflow e divieti di sede CLI
+
+24. **Workflow Review-First su perimetro esistente**: nessuna v1 Developer prima della Review. Macchina a stati Orchestratore: se la Review emette PASS, il task chiude come `AUDIT-RM CAP-DATA-03` confermativo, senza riaprire Parte 10. Se emette CONDITIONAL/FAIL, l'Orchestratore esegue il **punto di controllo supervisore** standard (tabella di classificazione `BUG REALE / MIGLIORA PERFORMANCE / NEUTRO / RISCHIO PEGGIORAMENTO`), il supervisore decide cosa va a Developer, e il Developer riceve un prompt di rework MIRATO ai soli finding approvati.
+
+25. **Divieti di sede CLI** (`.claude/agents/reviewer.md`, ribaditi in CLAUDE.md §"Workflow per output non-CAP"): il CLI reviewer (a) NON esegue probe DAPI massivi di mero zelo; (b) verifica le citazioni `[CODICE-ESISTENTE]` leggendo i sorgenti committati con Read (sola lettura); (c) le fondamenta empiriche sono CHIUSE e NON si ri-eseguono in questo task; (d) tutto cio' che richiederebbe prova diretta DAPI live va come "Empirico-CLI da verificare" in handoff a sessione futura, NON eseguito qui. (Per coerenza con la sede WEB: il WEB reviewer NON dichiara "verificato empiricamente" niente che richieda DAPI/filesystem locale — qui non rilevante perche' siamo CLI; ma il vincolo simmetrico CLI sopra e' il vincolo attivo.)
+
+26. **Subagent registry CLI**: in sessione CLI locale `reviewer` e' invocabile direttamente come `subagent_type`. L'Orchestratore della CLI invoca il Reviewer e lascia push diretto su `origin/main` (Push policy MEMORY).
 
 ---
 
-## Acceptance Criteria
+## Perimetro dei file dell'audit
 
-Tutti i criteri devono essere soddisfatti per PASS in Review (verifica esplicita nel `REPORT_CAP_10.md` sezione "Verifica esplicita degli Acceptance Criteria"). Acceptance Criteria numerati per capitolo + acceptance trasversali.
+| ID | Path (assoluto rispetto a project root) | Ruolo | Audit |
+|----|------------------------------------------|-------|-------|
+| **A** | `docs/methodology_v2/CAP_10_parte_10.md` | Capitolo CAP-DATA-03 (Cap.57-Cap.65, ~10-11 pp). Oggetto primario dell'audit RM-1/2/3. | RM-1 + RM-2 + RM-3 + coerenza interna (no auto-contraddizioni, no leakage, no residui multi-indice). |
+| **B** | `reports/REPORT_CAP_10.md` | Report supervisore Developer (5 sezioni + verifica AC + Iterazione 2 risposta finding). | Onesta' claim → evidenza (i 43/43 AC dichiarati OK hanno evidenza puntuale verificabile in A?); coerenza B ↔ A (B non afferma di A cose che A non dice); RM-2 sezione "Decoder/convenzioni esistenti" e' veritiera (i decoder citati esistono e contengono cio' che il REPORT afferma — `:467-481`, `:228-230`, `:61`, `:282-285`, `:605-617`, `:159`, `:230`, `:333`). |
+| **C** | `tasks/PROBE_RECUPERO_GAP_DAPI.md` | Documento-sorgente empirico (prerequisito) da cui A attinge V-1/V-2/T+1. Ha **self-review RM-4 opzione A** (§"Self-review RM-4" in fondo, r.384-433). | Le citazioni di A verso C sono fedeli? Il perimetro empirico onesto (T+3 morning FIB6F/DITAS ~100gg) e' riportato correttamente da A? Il blocco self-review RM-4 di C copre realmente le sue asserzioni? Numeri canonici (49/13 afternoon, 60/60 T+3 morning, saturazione `2026-02-18 09:56` da N=80) coincidono con quelli usati da A? |
+| **D** | `scripts/export_directa_history_parametric.py` | Decoder canonico di produzione (fonte CODICE-ESISTENTE level-2). Riferimento di verita' per RM-2. **NON modificabile in questo task.** | Verifica delle citazioni di A e C verso D, **leggendo D direttamente** alle righe citate: schema CANDLE `C;L;H;O;V` (`:467-481` + commento r.477), sintassi CANDLERANGE period-last (`:228-230`), `DEFAULT_INTRADAY_MAX_DAYS=100` (`:61`), terminatore `END CANDLES` (`:282-285`, `:245`, `:255`), header CSV legacy 11-campi (`:605-617`, distinto da Cap.62 esteso 13-campi di Parte 9 `:117-122`). |
 
-### AC per capitolo
+**Cross-reference fuori perimetro (citate dall'audit, NON auditate come perimetro a se')**:
 
-- [ ] **AC-57-1** Cap.57 cita esplicitamente il rinvio Parte 9 Cap.55 r393-398 e dichiara la copertura dei 4 temi (continuità, recupero, riconciliazione, storicizzazione).
-- [ ] **AC-57-2** Cap.57 dichiara l'invariante research = runtime esteso al ciclo di vita del tape, con riferimento esplicito a Parte 9 Cap.45 e Parte 8 Cap.37.
-- [ ] **AC-58-1** Cap.58 definisce formalmente "gap" come intervallo contiguo di barre 1-min mancanti su griglia uniforme.
-- [ ] **AC-58-2** Cap.58 contiene tabella tassonomia 4-tier (intra-sessione, cross-midnight, cross-session, fuori-100gg) con riferimento esplicito ai marker Parte 9 (`RUNTIME_GAP_*`, `RUNTIME_STALE_RESTART`).
-- [ ] **AC-58-3** Cap.58 dichiara esplicitamente "barra ricostruita via backfill con dato reale = `bar_synthetic=False`" e la provenienza è in `source`, NON in `bar_synthetic` (preserva l'invariante D-9-7 booleano trade/no-trade).
-- [ ] **AC-59-1** Cap.59 contiene algoritmo formale numerato (almeno 6 step) per recupero gap ≤100gg.
-- [ ] **AC-59-2** Cap.59 cita `[CODICE-EXISTENTE export_directa_history_parametric.py:228-230]` per la sintassi CANDLERANGE e `[CODICE-EXISTENTE :467-481]` per lo schema CANDLE canonico.
-- [ ] **AC-59-3** Cap.59 cita `[PROVA-EMPIRICA 2026-05-29 V-2 dump probe_out/v2_cutoff_period60_*]` per il limite ~100gg e `[PROVA-EMPIRICA T+1 dump probe_out/v1_hist_*]` per immutabilità T+3 morning, con dichiarazione esplicita del perimetro empirico onesto (T+3, morning, FIB6F/DITAS).
-- [ ] **AC-59-4** Cap.59 contiene blocco RM-1 4-righe per l'asserzione "recupero CANDLERANGE produce barre indistinguibili dal realtime entro la finestra ≤100gg", con alternative escluse (path-inference, distorsione volatilità) e alternative NON escluse (cash low rado — eccezione documentata + caso oltre T+3).
-- [ ] **AC-59-5** Cap.59 normizza il caso parziale "gap che attraversa il limite 100gg" (recupero parte recuperabile + marker `RUNTIME_GAP_BEYOND_100D` per fallback Cap.61).
-- [ ] **AC-60-1** Cap.60 contiene algoritmo formale numerato (almeno 6 step) per riconciliazione end-of-day.
-- [ ] **AC-60-2** Cap.60 dichiara la riconciliazione come gate operativo (analogo Brier $f_5^{live}$ Parte VI Cap.30) e gli stati finali `RECONCILE_OK/DIVERGENT_*/DEGRADED` con effetto sulla sessione successiva.
-- [ ] **AC-60-3** Cap.60 contiene regola esplicita "low/high giornaliero cash europeo via CANDLE ufficiale `f8`/`f9`, MAI via aggregato tick realtime" con citazione `[PROVA-EMPIRICA V-1 afternoon §2.4.5 lettera A]` e `[PROVA-EMPIRICA M-9 W2 2026-06-01]`.
-- [ ] **AC-60-4** Cap.60 dichiara $\theta_{reconcile}$ come **parametro provvisorio non congelato** con riferimento alla Done when domanda d3.
-- [ ] **AC-60-5** Cap.60 dichiara che la riconciliazione è **non-mutativa** sulla griglia (preserva replay deterministico Parte II Cap.10 + Parte VII Cap.31).
-- [ ] **AC-61-1** Cap.61 contiene procedura 3-step (archivio locale, CANDLERANGE daily, Portara) per re-bootstrap >100gg.
-- [ ] **AC-61-2** Cap.61 dichiara obbligatorietà intervento supervisore (NON automatica) coerente con Parte 9 Cap.51 r261 D-9-11.
-- [ ] **AC-61-3** Cap.61 dichiara vincolo di non-mescolamento cross-source e obbligo re-warm-up `L_warmup=30gg` post-bootstrap (eredità D-9-NB4 invariata).
-- [ ] **AC-61-4** Cap.61 dichiara la coerenza unadjusted nativa runtime vs ratio-adjusted training (Parte 8 Cap.38 invariato).
-- [ ] **AC-62-1** Cap.62 contiene specifica formato CSV + manifest JSON dell'archivio runtime esteso, distinto dal format legacy (Parte 9 Cap.48 r129).
-- [ ] **AC-62-2** Cap.62 contiene tabella estesa del dominio `source` con 3 nuovi valori `BACKFILL_FROM_*`, complemento (NON sostituto) di Parte 9 D-9-5.
-- [ ] **AC-62-3** Cap.62 dichiara idempotenza e immutabilità con perimetro empirico onesto, e versioning append-only.
-- [ ] **AC-62-4** Cap.62 dichiara vincolo invariato "archivio NON è fonte di training" (eredità Parte 8 Cap.37/Cap.44 + Parte 9 Cap.55).
-- [ ] **AC-62-5** Cap.62 dichiara integrazione con archivi esistenti (`exports/legacy/` + `exports/runtime/` opzionale) senza vincolare scelta architetturale FASE-D.
-- [ ] **AC-63-1** Cap.63 cita la procedura ratio-adjusted Parte 8 Cap.38 come riferimento, NON la ri-definisce.
-- [ ] **AC-63-2** Cap.63 dichiara fuori scope l'apertura del flusso DAPI come fonte di training.
-- [ ] **AC-64-1** Cap.64 contiene lista esplicita ≥6 punti aperti con destinazione (FASE-D, CAP-DATA-04, Appendice E, ecc.).
-- [ ] **AC-65-1** Cap.65 contiene tabella decisioni `D-10-1..D-10-N` con motivazione 1 riga.
-- [ ] **AC-65-2** Cap.65 dichiara criteri di rollback per ogni decisione, registrati in `REPORT_CAP_10.md`.
+- `scripts/probe_dapi.py` — decoder DAPI post-rettifica `a12ae32` (CAP-DATA-01 PASS). Citato come supporto level-2 (`:230` `parse_line`, `:159` `DapiConn`, `:333` `run_candlerange`). Verificabile con Read se necessario per disambiguazione.
+- `docs/methodology_v2/CAP_08_parte_8.md` — Cap.37/Cap.38/Cap.40/Cap.41/Cap.43/Cap.44. Citato come referente DOC-INTERNO; il Reviewer verifica con Read le righe citate quando A le richiama puntualmente.
+- `docs/methodology_v2/CAP_09_parte_9.md` — Cap.45/Cap.46/Cap.47/Cap.48/Cap.49/Cap.50/Cap.51/Cap.52/Cap.54/Cap.55/Cap.56. Verifica con Read i marker citati (`RUNTIME_GAP_*`, `WARMUP_*`, `SESSION_*`, `RUNTIME_STALE_RESTART` = D-9-11, dominio `source` D-9-5, `L_warmup=30gg` D-9-NB4, header CSV runtime esteso 13 campi Cap.48).
+- `docs/methodology_v2/CAP_06_parte_VI.md:276` — riga critica della Iterazione 2 NB-1 (test che il fix v2 non ha sostituito un errore con un altro). Verifica con Read riga 276 ("L'alert non chiude il loop di re-training").
+- `docs/methodology_v2/CAP_02_parte_II.md:23,131` — replay deterministico bit-exact (Cap.10).
+- `tasks/STATO_CORRENTE.md` §5 M-1/M-3/M-9/M-10 — versione M-promemoria delle prove empiriche, autoritativa.
+- `tasks/CARRYOVER.md` riga RACC-METODO-2 — vincolo operativo per AC su schemi esterni.
 
-### AC trasversali (verificabili per documento intero)
+---
 
-- [ ] **AC-T-1 (RM-1)** Ogni asserzione "verificato/confermato/fatto" del documento ha il blocco 4-righe `VERIFICA / PROVE / ALTERNATIVE COMPATIBILI ESCLUSE / ALTERNATIVE COMPATIBILI NON ESCLUSE`. Asserzioni in prosa libera senza blocco = BUG REALE.
-- [ ] **AC-T-2 (RM-2)** Ogni richiamo a struttura/format DAPI è etichettato `[CODICE-EXISTENTE <path>:<linea>]` con citazione puntuale; il REPORT include la sezione "Decoder/convenzioni esistenti nel repo letti prima della stesura" che documenta il grep eseguito (`grep -rn` con pattern e numero risultati).
-- [ ] **AC-T-3 (RM-3)** Ogni prova empirica è etichettata `[PROVA-EMPIRICA <data>]` con dump puntuale citato; il wiki Directa è citato solo come `[WIKI-HINT, da verificare]` o non citato. Nessuna asserzione si appoggia solo a livello 4.
-- [ ] **AC-T-4 (RM-4)** Il Developer NON produce probe nuovi né script nuovi né handoff dentro questo task; se ne emerge necessità, Q-XX in QUESTIONS.md e stop. Verifica nel diff del PR.
-- [ ] **AC-T-5 (research = runtime)** Tutte le procedure di Cap.59-Cap.62 preservano l'invariante research = runtime esteso al ciclo di vita del tape: il bundle frozen continua a leggere lo stesso schema di griglia 1-min con stesso `bar_synthetic` semantico, stesso dominio `source` (esteso), stesso replay bit-exact.
-- [ ] **AC-T-6 (coerenza CAP-08 / CAP-09)** Nessun riapertura di decisioni D-8-* o D-9-* esistenti. Eventuali estensioni vivono come nuove decisioni `D-10-*`.
-- [ ] **AC-T-7 (orientamento GA — regola fondamentale)** Il documento dichiara esplicitamente in Cap.57 l'impatto sul ranking/fitness/conversione signal-to-trade (riferimento Cap.60 gate operativo + Cap.62 archivio per replay deterministico).
-- [ ] **AC-T-8 (perimetro empirico onesto)** Tutte le asserzioni che si appoggiano ai dump V-1/V-2/T+1 dichiarano esplicitamente il perimetro empirico testato (T+3, morning, FIB6F/DITAS, finestra ~100gg, ecc.) e segnano come "assunto per estensione" / "non testato" / "sorvegliato dal gate Cap.60" tutto ciò che esce dal perimetro.
-- [ ] **AC-T-9 (M-promemoria)** Nessun M-promemoria nuovo emesso dal Developer in v1. Eventuali M-promemoria emessi dalla Review vengono ratificati dal supervisore e registrati in CARRYOVER.md dall'Orchestratore al PASS.
-- [ ] **AC-T-10 (naming β2)** File `CAP_10_parte_10.md` / `REPORT_CAP_10.md`, identifier interno "Parte 10" (arabo), coerente con Parte 8/Parte 9.
-- [ ] **AC-T-11 (lunghezza)** Documento totale ~9-12 pp; ogni capitolo dimensionato come dichiarato in scaletta (~0.5 pp tolleranza per capitolo).
-- [ ] **AC-T-12 (indice aggiornato)** `00_indice.md` aggiornato con voce Parte 10 e stato corrente.
+## Inventario W — asserzioni a rischio nel perimetro A-D (lista iniziale, il Reviewer estende nel secondo giro)
 
-### AC-GO (checklist go-live / replay deterministico)
+Il Reviewer parte da questa lista, la **estende** durante l'audit (e' normale e atteso scoprire asserzioni W aggiuntive durante la lettura; al modello degli AUDIT-RM-RETRO 01/02 sono emerse asserzioni Wn+1, Wn+2 in corsa). Ogni voce dell'inventario va auditata con il framework dei Check A-E della sezione successiva.
 
-- [ ] **AC-GO-1** Replay deterministico bit-exact (Parte II Cap.10 + Parte VII Cap.31) NON impattato: due esecuzioni indipendenti su stesso input (tape composito + gap_log) producono stessi marker, stesso `reconcile_status`, stesso archivio.
-- [ ] **AC-GO-2** Backfill `CANDLERANGE` su stessa finestra produce barre bit-identiche (eredità immutabilità T+3 morning verificata).
-- [ ] **AC-GO-3** Riconciliazione canonica giornaliera è procedura **non-mutativa** sulla griglia (verifica esplicita).
-- [ ] **AC-GO-4** Marker di Parte 10 (`RECONCILE_*`, `BACKFILL_*`, `BOOTSTRAP_COMPLETE`) sono complementari a quelli Parte 9 (`RUNTIME_GAP_*`, `RUNTIME_DEGRADED`, `RUNTIME_STALE_RESTART`, `CONTRACT_SWITCH`, `WARMUP_COMPLETE`, `SESSION_OPEN/CLOSE`), nessuna sovrapposizione semantica.
+| ID | Asserzione del perimetro | File:linea (citazione iniziale) | Test RM rilevante |
+|----|---------------------------|----------------------------------|-------------------|
+| **W1** | Schema CANDLE canonico `C;L;H;O;V` = `UFF;MIN;MAX;APE;V` come fonte di verita' del backfill | A Cap.59 step 3 r.89 `[CODICE-ESISTENTE :467-481]`; A Cap.65 D-10-* dipendenza implicita; B sez. "Decoder esistenti" + AC-59-2; C §3.2-§3.6 + §7.2 + Self-review §"Grep RM-2"; **D `:467-481` canonico** | RM-2 puntuale + coerenza A/C ↔ D (verificare riga-per-riga r.471 split + r.477 commento + r.478-481 assegnazioni); RM-1 implicito (asserzione e' "CONFERMATO" perche' `[CODICE-ESISTENTE]` level-2 e [PROVA-EMPIRICA] V-1) — nessun blocco 4-righe richiesto se l'asserzione e' una citazione level-2 verificata, ma l'audit verifica che il documento NON dichiari "schema CANDLE verificato" senza il riferimento level-2 |
+| **W2** | Cut-off intraday CANDLERANGE ~100gg di calendario, finestra scorrevole, tronca al minuto (saturazione `2026-02-18 09:56` da N=80, 38.567 candele) | A Cap.59 r.79-82 (blocco RM-1 cut-off) `[PROVA-EMPIRICA V-2 dump probe_out/v2_cutoff_period60_*]`; B AC-59-3; C §4.2 tabella N=50..160; **D `:61` `DEFAULT_INTRADAY_MAX_DAYS=100`** | RM-1 formato 4-righe + sostanza (alternative escluse: "limite al giorno intero" escluso dal minuto-preciso, "limite specifico di period 60" escluso dalla simultaneita' 3 ticker); RM-2 D `:61`; RM-3 [PROVA-EMPIRICA] livello-1 + [CODICE-ESISTENTE] livello-2 |
+| **W3** | CANDLERANGE daily (period 86400) — nessun limite pratico fino N=160 (first_ts regredisce al 2026-01-05) | A Cap.61 r.168-171 (blocco RM-1 daily) `[PROVA-EMPIRICA V-2 dump probe_out/v2_cutoff_period86400_*]`; B AC-61-1; C §4.3 | RM-1 formato 4-righe + sostanza ("alternative escluse: limite a 100gg anche sul daily"); RM-3 livello-1; coerenza con W2 (intraday vs daily distinti) |
+| **W4** | Sintassi CANDLERANGE `CANDLERANGE <sym> <YYYYMMDDHHMMSS_start> <YYYYMMDDHHMMSS_end> <period_s>` (period LAST, 4 arg) | A Cap.59 step 2 r.88 `[CODICE-ESISTENTE :228-230]`; B sez. "Decoder esistenti" + AC-59-2; C §2.2/§2.4.3/§4.1; **D `:228-230`** | RM-2 puntuale (verificare token-per-token `f"CANDLERANGE {symbol} {start} {end} {period_seconds}"` a `:228-230`) |
+| **W5** | Equivalenza realtime ↔ CANDLERANGE confermata su 2 finestre indipendenti (morning 55/60 + afternoon 49 match/13 mismatch su 62), schema regge, nessuno swap O/C su nessuno dei 7 FIB6F afternoon (test discriminante `local_O ≠ hist_C`) | A Cap.59 r.103-106 (blocco RM-1 equivalenza/immutabilita'); B AC-59-4 + AC-GO-2; C §2.3 + §2.4.4 + §2.4.5 + §3.3-§3.4 | RM-1 formato 4-righe + sostanza (alternative escluse: path-inference/distorsione vol/swap O/C; non escluse: low cash rado, oltre T+3 non testato, afternoon/usopen non testato, strumenti ≠ FIB6F/DITAS non testato); numeri canonici coincidenti tra A e C |
+| **W6** | Immutabilita' barre intraday CANDLERANGE entro T+3 morning (60/60 OHLCV bit-identiche), perimetro empirico onesto (morning, FIB6F/DITAS, T+3, ~100gg) | A Cap.59 r.103-106 + Cap.62 vincolo idempotenza/immutabilita' r.207-208; B AC-GO-2 + Decisione D-10-2/D-10-8; C §2.5 | RM-1 perimetro onesto sistematicamente dichiarato ("ALTERNATIVE NON ESCLUSE: oltre T+3 non testato, afternoon/usopen non testato, strumenti ≠ FIB6F/DITAS non testato"); D-10-2/D-10-8 motivazione coerente |
+| **W7** | Cash low/high via CANDLE ufficiale `f8`/`f9`, MAI tick realtime (6/6 mismatch DITAS sul solo low; densita' ~6 tick/min) | A Cap.60 r.123 step 5 + Cap.60 r.135-139 (blocco RM-1 cash); B AC-60-3 + D-10-4; C §2.4.5 lettera A; STATO M-9 W2 | RM-1 formato 4-righe + sostanza (alternative escluse: low realtime corretto sul cash, swap di schema; NON escluse: densita' ~6 tick/min stima, DGER/DSTX50/DFRA assunti per estensione, FIB futures non si applica); RM-3 [PROVA-EMPIRICA] livello-1 + cross-check con M-9 W2 (ipotesi Web "bid/ask" falsificata) |
+| **W8** | Schema PRICE realtime `f4=last, f6=volume_cum, f8=day_low, f9=day_high`; `f5`/`f7` parziali (cross-check daily CANDLE; hypothesis Web "bid/ask" falsificata da BOOK_5 simultaneo) | A Cap.60 step 5 r.123 `[PROVA-EMPIRICA W2 M-9]`; STATO M-9 | RM-1 sostanza (verifica parziale dichiarata per `f5`/`f7`); citazione "ipotesi Web falsificata" coerente con M-9 |
+| **W9** | Schema CSV runtime esteso 13 campi (`symbol, timeframe, timestamp, date, time, open, high, low, close, volume, tick_count, bar_synthetic, source`) — Cap.62 r.185 + dominio `source` esteso a 6 valori (3 ereditati Parte 9 + 3 nuovi `BACKFILL_FROM_*`) | A Cap.62 r.185 + tabella domino source r.196-204 (6 righe); B AC-62-1/AC-62-2 + D-10-6/D-10-7; **A Cap.62/Cap.64 referenzia legacy D `:605-617` 11-campi vs runtime esteso 13-campi di Parte 9 Cap.48 r.117-122** | RM-2: distinzione legacy-11 (`:605-617` D) vs runtime-esteso-13 (Cap.48 Parte 9 r.117-122) DEVE essere accurata; RM-1: domain `source` esteso come complemento (non sostituto) coerente con D-9-5 invariato |
+| **W10** | Codici errore DAPI (1004/1007/1017/1015/1003) come trigger del backoff e marker `RUNTIME_DEGRADED` (Cap.59 r.97) — semantica esatta dei singoli codici dichiarata "verifica parziale ereditata da Parte 9 Cap.50" | A Cap.59 "Vincoli operativi" r.96-97 `[PROVA-EMPIRICA 2026-05-29 + 2026-06-01 CLI]`; STATO M-3 | RM-1 sostanza: A dichiara "verifica parziale ereditata"? Coerente con M-3 (5 codici ri-confermati 01/06; 1030 non riprodotto); e' onesto NON re-claim semantica completa |
+| **W11** | Marker normativi Parte 10 complementari (no sovrapposizione con Parte 9): `RUNTIME_GAP_BEYOND_100D` (Cap.59 cut-off), `BACKFILL_VERIFIED_T3`/`BACKFILL_UNVERIFIED` (Cap.59 step 4), `RECONCILE_SCHEMA_FAIL` (Cap.60 step 3), `BACKFILL_FROM_CANDLERANGE` (Cap.59 step 5), `BACKFILL_FROM_ARCHIVE`/`BACKFILL_FROM_PORTARA` (Cap.61), `BOOTSTRAP_COMPLETE` (Cap.61), `RECONCILE_OK/DIVERGENT_FIB/DIVERGENT_HIGHLOW/DEGRADED` (Cap.60 step 6) | A Cap.58 r.62 (dopo OM-2 fix v2) + Cap.59 + Cap.60 + Cap.61 + Cap.65 tabella D-10-*; B sez. Misura prima/dopo "Marker complementari" + AC-GO-4; cross-reference con Parte 9 Cap.50/51/52/54 | Coerenza cross-CAP: Parte 9 marker citati esistono e dicono quello che A afferma (Read `CAP_09_parte_9.md` Cap.50 r.224,229,233; Cap.51 r.257,259-263; Cap.52 r.299; Cap.54 catalogo); marker Parte 10 sono complementari (zero sovrapposizione semantica); fix OM-2 v2 (i sotto-marker in-body sono dichiarati esplicitamente in-body, NON tutti in Cap.65) regge |
+| **W12** | Citazione cross-CAP critica `CAP_06_parte_VI.md:276` (post-fix NB-1 v2 — gate Cap.60 bloccante a differenza del monitoraggio non-bloccante di Cap.30) | A Cap.57 r.42 + Cap.60 r.126 + Cap.65 D-10-3 r.250; B "Iterazione 2 — NB-1" + Misura prima/dopo + AC-60-2 | RM-2 + coerenza inter-file (la riga 276 di CAP_06 contiene verbatim "L'alert non chiude il loop di re-training"); il fix v2 non ha sostituito un errore con un altro; nessuna citazione nuova non verificata altrove |
+| **W13** | Invariante research = runtime esteso al ciclo di vita del tape (non solo singolo bar); `bar_synthetic` resta booleano trade/no-trade per barre ricostruite; provenienza in `source`; non-mutativita' riconciliazione | A Cap.57 + Cap.58 regola 2/3 + Cap.60 r.146 "non-mutativa"; B AC-T-5 + AC-GO-1/AC-GO-3 + D-10-3 | Coerenza con D-9-7 (Parte 9 Cap.49 r.181); replay deterministico Parte II Cap.10 preservato; nessuna asimmetria live/storico introdotta |
+| **W14** | Onesta' claim → evidenza degli AC del REPORT B (43/43 OK): ogni "OK" ha file:linea verificabile in A | B tabella verifica AC (27 per-cap + 12 AC-T + 4 AC-GO) | Audit randomizzato + esaustivo sui sotto-insiemi a rischio (AC-59-2/3/4/5, AC-60-2/3/5, AC-61-2/3/4, AC-62-1/2/4, AC-T-1/2/3/4, AC-GO-1/2/3/4); RACC-METODO-2 (vincolo operativo); ogni AC su schema esterno DEVE avere il diff col decoder canonico gia' onorato (CARRYOVER stato OPEN — e' gia' onorata in CAP-DATA-03 v1/v2 sul CAP, l'audit RICONFERMA su perimetro esteso B) |
+| **W15** | Self-review RM-4 di C (r.384-433): copre realmente le asserzioni (a) afternoon + (b) immutabilita' T+3 morning; grep RM-2 documentato; etichette RM-3; assunzioni non testate dichiarate; lista file letti | C §"Self-review RM-4" + commit `687c744` | RM-4 opzione A applicata: blocco 4-righe asserzione (a) + asserzione (b) presente; grep RM-2 eseguito su pattern del dominio; etichette RM-3 livello 1/2/4 corrette; assunzioni non testate (es. finestra 14:55-15:25 rappresentativa di "afternoon") esplicite |
+
+Il Reviewer estende l'inventario nel secondo giro ostile. Asserzioni emerse vanno numerate W16, W17, ... e auditate con lo stesso framework.
+
+---
+
+## I Check A-E del Reviewer
+
+Ispirato direttamente al framework AUDIT-RM-RETRO CAP-DATA-01/02 (v1+v2+CLI) adattato al perimetro A-D di CAP-DATA-03.
+
+### Check A — RM-1 (formato 4-righe + sostanza) per ogni asserzione W
+
+Per ogni Wi dell'inventario:
+- **A.1 Localizzazione**: cita la riga esatta del file dove l'asserzione compare (`<file>:<linea>` con citazione testuale del costrutto).
+- **A.2 Formato**: l'asserzione ha il blocco 4-righe `VERIFICA / PROVE / ALTERNATIVE COMPATIBILI ESCLUSE / ALTERNATIVE COMPATIBILI NON ESCLUSE` quando si presenta come "verificato / confermato / fatto / dimostrato / stabilito"? Se l'asserzione e' una citazione level-2 (`[CODICE-ESISTENTE]`) verificata, il blocco 4-righe **non e' obbligatorio** ma la verifica del referente si'. Se manca dove dovrebbe esserci: **BUG REALE (formale RM-1)**.
+- **A.3 Sostanza**: le ALTERNATIVE COMPATIBILI ESCLUSE sono **effettivamente escluse** dai dati osservati? Le NON ESCLUSE sono **davvero compatibili**? Eventuali ipotesi non escluse spacciate per escluse: **BUG REALE (sostanziale RM-1)**.
+- **A.4 Patch suggerita** (testuale; il Reviewer NON patcha A/B/C): cosa il Developer dovrebbe correggere se finding e' approvato dal supervisore (riformulazione del blocco RM-1, aggiunta etichetta, citazione mancante, ecc.).
+- **A.5 Confronto empirico** con inputs autoritativi #5..#15: l'asserzione contraddice o ridichiara correttamente la fonte autoritativa? Eventuali contraddizioni: **BUG REALE catastrofico** (analogamente a W1 di CAP-DATA-02 RM-RETRO). Eventuali asserzioni che dichiarano "verificato universalmente" cio' che gli inputs limitano a un perimetro empirico (T+3 morning FIB6F/DITAS): **BUG REALE (sostanziale RM-1)**.
+
+### Check B — RM-2 (grep + citazioni di codice verso D-canonico)
+
+- **B.1 Grep** dei pattern del dominio (lista in eredita' #2) eseguito **dal Reviewer stesso** e citato nell'audit (comando + esito sintetico file:riga).
+- **B.2 Verifica file:linea**: per ogni citazione `[CODICE-ESISTENTE <path>:<linea>]` nel perimetro, leggere il file alla riga citata e verificare token-per-token che il costrutto dichiarato esista. **Tabella obbligatoria** stile review v1 CAP-10 (vedi `REVIEW_CAP_10_review.md:70-80`):
+
+  | Citazione nel perimetro | File:linea | Contenuto atteso | Esito verifica |
+  |---|---|---|---|
+
+- **B.3 Coerenza A/C ↔ D canonico**: per ogni schema/format DAPI dichiarato in A o C, confrontare con D **leggendo D**. Schemi a rischio: CANDLE `C;L;H;O;V` (D `:467-481`), sintassi CANDLERANGE period-last (D `:228-230`), `DEFAULT_INTRADAY_MAX_DAYS=100` (D `:61`), terminatore `END CANDLES` (D `:282-285`, `:245`, `:255`), header CSV legacy 11-campi (D `:605-617`). Eventuali divergenze: **BUG REALE** (analogamente a W1 CAP-DATA-02).
+- **B.4 RACC-METODO-2**: per ogni AC di B che dichiara "schema X OK" con riferimento a un sistema esterno, **diff puntuale col decoder canonico D e' onorato**? (verifica che B non si sia limitato alla completezza strutturale dei campi citati).
+- **B.5 Decoder pre-esistenti non citati**: c'e' un decoder/parser/codec gia' nel repo per il dominio DAPI che il perimetro avrebbe dovuto citare ma non cita? (lookup con grep sui pattern di dominio + lettura risultati). Se si': **MIGLIORA PROCESSO** (RM-2 incompleto).
+
+### Check C — RM-3 (etichettatura fonti per livello)
+
+- **C.1 Etichette presenti**: ogni evidenza nel perimetro ha la sua etichetta `[PROVA-EMPIRICA <data>]` / `[CODICE-ESISTENTE r.NNN]` / `[DOC-INTERNO <path>]` / `[WIKI-HINT, da verificare]`? Etichette assenti dove servono: **MIGLIORA PROCESSO**.
+- **C.2 Livello adeguato**: conclusioni del perimetro che si appoggiano **solo** a livello 4 (wiki) senza supporto da livelli 1/2/3: **BUG REALE (RM-3)**. Wiki Directa atteso solo come `[WIKI-HINT, da verificare]` con dichiarazione esplicita di inaffidabilita'.
+- **C.3 Numeri canonici**: i numeri empirici citati in A (55/60, 49/13, saturazione `2026-02-18 09:56`, N=80→160, 60/60 T+3 morning, 6/6 DITAS sul solo low, 38.567 candele, 14h×60min=840 barre) coincidono coi numeri in C e/o STATO M-1/M-3/M-9? Eventuali discrepanze: **BUG REALE** (numero falso, da correggere).
+- **C.4 Dump esistenti**: per ogni `[PROVA-EMPIRICA <data>]` citata da A o B, il dump corrispondente esiste in `probe_out/*` (verifica con Glob, sola esistenza, NON apertura/ricomputo).
+- **C.5 Perimetro empirico onesto**: A dichiara sistematicamente il perimetro empirico nei blocchi RM-1 ("ALTERNATIVE NON ESCLUSE: oltre T+3 / afternoon-usopen / strumenti ≠ FIB6F-DITAS")? Eventuali "verificato universalmente" senza qualificatore di perimetro: **BUG REALE (sostanziale RM-1)**.
+
+### Check D — Coerenza inter-file (A ↔ B ↔ C ↔ D + cross-CAP)
+
+- **D.1 Citazioni di A verso C** (es. "[PROVA-EMPIRICA V-1 afternoon §2.4.5 lettera A — 6/6 mismatch DITAS sul solo low]"): C effettivamente contiene §2.4.5 lettera A con 6/6 mismatch DITAS sul solo low? Verifica con Read.
+- **D.2 Citazioni di A verso D**: i ranges `:467-481`, `:228-230`, `:61`, `:282-285`, `:605-617` ESISTONO e contengono i costrutti dichiarati (vedi Check B.2).
+- **D.3 Citazioni cross-CAP** di A verso `CAP_06_parte_VI.md:276`, `CAP_08_*`, `CAP_09_*`, `CAP_02_*`: i referenti esistono e contengono cio' che A afferma. Verifica con Read i 5-10 referenti piu' critici (Cap.30 r.276 verbatim, marker `RUNTIME_GAP_*` Cap.50, dominio `source` D-9-5 Cap.48, `L_warmup=30gg` D-9-NB4 Cap.51, replay deterministico Cap.10).
+- **D.4 Coerenza B ↔ A**: ogni AC dichiarato OK dal REPORT con evidenza "Cap.X step Y" punta a una riga di A che effettivamente lo soddisfa.
+- **D.5 Coerenza C ↔ A**: la self-review RM-4 di C copre realmente le asserzioni (a) afternoon (49/13 + nessuno swap O/C) e (b) immutabilita' T+3 morning (60/60 morning T+0 vs T+3); i numeri di C coincidono con quelli di A.
+- **D.6 Coerenza interna A**: nessuna auto-contraddizione (es. tassonomia 4-tier coerente fra Cap.58 e Cap.65; marker Parte 10 ↔ enum manifest 1:1 fra Cap.60 step 6 e Cap.62 r.192 dopo fix OM-3 v2).
+
+### Check E — Onesta' claim → evidenza (specifico per B, applicato per scrupolo anche ad A)
+
+- **E.1 AC del REPORT (B) — 43/43 OK ribaditi v2**: campionamento sistematico (audit a tappeto sugli AC a rischio + audit randomizzato sugli altri). Per ogni AC controllato: `OK` → evidence in A → contenuto in A copre l'AC? Eventuali AC "OK" senza evidenza in A (vuoto, generico, o errato): **BUG REALE (onesta' claim → evidenza)**.
+- **E.2 Iterazione 2 REPORT**: le correzioni NB-1, OM-1, OM-2, OM-3 dichiarate chiuse hanno regredito? (Verifica grep `Brier` su A (atteso 0 match — vedi REVIEW_CAP_10_v2_review.md r.22) e cross-check di OM-2 → distinzione marker principali vs in-body in Cap.58 r.62).
+- **E.3 Domande aperte REPORT**: il Developer dichiara "Nessuna"; verifica che non ci siano effettivamente Q-XX aperte in `tasks/QUESTIONS.md` pertinenti al perimetro.
+- **E.4 Criterio di rollback REPORT**: per ogni decisione D-10-1..D-10-10 il rollback e' registrato in REPORT (vedi sezione "Criterio di rollback") con motivazione coerente con Cap.65 r.259-267.
+
+---
+
+## Acceptance criteria — tutti verificabili, devono essere soddisfatti per PASS
+
+L'audit emette PASS solo se TUTTI i seguenti sono soddisfatti. CONDITIONAL/FAIL se anche uno non lo e' e il finding e' BUG REALE / MIGLIORA PERFORMANCE / RISCHIO PEGGIORAMENTO.
+
+- [ ] **AC-1 (RM-1 perimetro A)**: ogni asserzione del CAP A del tipo "verificato / confermato / fatto / dimostrato / stabilito" ha il blocco 4-righe RM-1 con formato esatto E sostanza non smentita dagli inputs autoritativi #5..#15. Atteso: 4 blocchi RM-1 in A (Cap.59 cut-off r.79-82, Cap.59 equivalenza/immutabilita' r.103-106, Cap.60 cash r.135-139, Cap.61 daily r.168-171), tutti `compliant`. Eventuali asserzioni "verificato" in prosa libera fuori dai 4 blocchi: identificate e classificate.
+
+- [ ] **AC-2 (RM-2 grep + citazioni D)**: il Reviewer ha eseguito grep dei pattern del dominio e citato comando + esito; ogni citazione `[CODICE-ESISTENTE]` del perimetro (A + B + C nella self-review §"Grep RM-2") e' verificata token-per-token leggendo D alle righe esatte; le 6 citazioni cardine in B (`:467-481`, `:228-230`, `:61`, `:282-285`, `:605-617`, `:230` probe_dapi, `:159/:333` probe_dapi) sono confermate o segnalate. Tabella `Citazione | File:linea | Contenuto atteso | Esito` obbligatoria. RACC-METODO-2 onorata (diff col decoder canonico per ogni AC su schema esterno).
+
+- [ ] **AC-3 (RM-3 fonti etichettate)**: ogni evidenza nel perimetro e' etichettata col livello corretto; nessuna conclusione si appoggia solo a livello 4 (wiki); wiki Directa compare solo come `[WIKI-HINT, da verificare]` con dichiarazione esplicita di inaffidabilita' (atteso: A Cap.64 punto 4 riavvio Darwin). Numeri canonici cross-file coincidenti.
+
+- [ ] **AC-4 (coerenza inter-file)**: citazioni di A verso C/D/cross-CAP fedeli ai referenti (verifica con Read); auto-coerenza di A (nessuna contraddizione interna fra Cap.58 e Cap.65, fra Cap.60 step 6 e Cap.62 r.192 dopo OM-3); coerenza B ↔ A (43/43 AC ribaditi v2 OK con evidenza puntuale verificata) e C ↔ A (numeri canonici, self-review RM-4 di C copre afternoon + T+3).
+
+- [ ] **AC-5 (onesta' claim → evidenza B)**: campione di almeno 15 AC su 43 verificato direttamente leggendo A; nessun AC dichiarato OK senza evidenza puntuale nel CAP A.
+
+- [ ] **AC-6 (correzioni Iterazione 2 reggono)**: NB-1 (Brier sparito 0 match grep su A); OM-1 (notazione 49 match/13 mismatch su 62 a Cap.59 r.104); OM-2 (Cap.58 r.62 distingue marker principali vs in-body); OM-3 (Cap.62 r.192 corrispondenza marker↔enum manifest 1:1). Nessuna regressione, fix accurati e non sostituiti con altri errori (es. la citazione `CAP_06_parte_VI.md:276` e' verbatim corretta).
+
+- [ ] **AC-7 (Self-review RM-4 in C)**: blocco self-review §"Self-review RM-4 (opzione A)" di C (r.384-433) copre realmente le asserzioni (a) equivalenza afternoon + (b) immutabilita' T+3; ha formato 4-righe RM-1 per ogni asserzione; grep RM-2 eseguito su `parse_directa_candle|parse_line|run_candlerange|UFF|APE|DapiConn`; etichette RM-3 corrette; assunzioni non testate (es. "finestra 14:55-15:25 rappresentativa di afternoon" come "assunto, non dimostrato") dichiarate esplicite.
+
+- [ ] **AC-8 (RM-1 applicato al Reviewer)**: ogni "CONFERMATO ESATTO" / "MATCH" / "verificato esatto" / "non trovato dopo grep" del Reviewer ha sostegno operativo (citazione + esito); sezione finale "Applicazione RM-1 a me stesso" e' presente come nelle review v1/v2 CAP-10 (`REVIEW_CAP_10_review.md:149-153`).
+
+- [ ] **AC-9 (Lista "Empirico-CLI da verificare" esplicita)**: attesa **VUOTA** (l'empirico e' chiuso). Se non vuota: il Reviewer indica esplicitamente quale asserzione del perimetro eccede il perimetro empirico chiuso e perche' richiederebbe DAPI live in sessione futura (NON eseguita qui).
+
+- [ ] **AC-10 (Tabella classificazione per il supervisore)**: per ogni finding del Reviewer, riga in tabella con `# | Problema | file:riga | Classificazione | Mandare a Development?`; classificazione fra `BUG REALE` / `MIGLIORA PERFORMANCE` / `NEUTRO` / `RISCHIO PEGGIORAMENTO` (i 4 valori standard); se nessun finding: dichiarazione esplicita "Nessun finding — perimetro A-D RM-compliant".
+
+- [ ] **AC-11 (Verdetto motivato PASS / CONDITIONAL / FAIL)**: verdetto in apertura con motivazione sintetica (≤3 righe); regola di decisione applicata: PASS se 0 BUG REALE e 0 MIGLIORA PERFORMANCE/RISCHIO PEGGIORAMENTO bloccanti; CONDITIONAL se finding non bloccanti ma da decidere col supervisore; FAIL solo se BUG REALE bloccante.
+
+- [ ] **AC-12 (Naming + path output)**: file di review pubblicato a `reviews/REVIEW_CAP_DATA_03_RM_AUDIT_review.md` (NON "RETRO" — il task e' confermativo, non retroattivo). Commit dell'audit con tag `[REVIEW] CAP-DATA-03 RM-AUDIT — verdetto: <PASS|CONDITIONAL|FAIL>`.
+
+- [ ] **AC-13 (audit indipendente, non copia-incolla di v1/v2)**: il Reviewer NON riproduce verbatim sezioni della review v1/v2; usa v1/v2 come **input di consapevolezza** (sa cosa e' gia' stato controllato — 4 finding NEUTRO chiusi) e si concentra su (a) verificare che i fix v2 reggano (E.2), (b) audit RM trasversale **esteso al perimetro A-D** che v1/v2 hanno toccato meno (B come perimetro a se', C come perimetro a se' incluso il self-review, D come fonte di verita' leggibile). Indipendenza dichiarata esplicitamente nel verdetto.
 
 ---
 
 ## Out-of-scope esplicito
 
-Development NON include queste cose in CAP-10:
+NON entrano in questo audit. Per ciascuno: motivazione e destinazione.
 
-1. **Schema CANDLE / mappatura DAPI runtime** — chiuso definitivamente in AUDIT-RM-RETRO CAP-DATA-02 (WEB+CLI PASS). Parte 10 USA lo schema, NON lo riapre. Dove va trattato: Parte 9 Cap.49 (PASS storico).
-2. **Policy switch front-month / rollover** — chiusa D-9-NB2 in Parte 9 Cap.47/Cap.56. Dove va trattato: Parte 9 (PASS storico). Parte 10 cita il rollover SOLO come trigger potenziale di gap, NON ne ridiscute la policy.
-3. **Warm-up nominale ≤30gg** — chiuso D-9-NB4 in Parte 9 Cap.51/Cap.56. Dove va trattato: Parte 9 (PASS storico). Parte 10 tratta SOLO il warm-up post-bootstrap >100gg (Cap.61), NON il warm-up nominale di sessione.
-4. **Audit log e retention** — chiusi D-9-15 + Gap-4 in Parte 9 Cap.54. Dove va trattato: Parte 9 (PASS storico). Parte 10 USA i marker già definiti, NON re-definisce il formato JSON Lines né la retention 90gg/permanente.
-5. **Decisione Q-A-3 cash gating** — chiusa D-9-14 in Parte 9 Cap.53. Dove va trattato: Parte 9 (PASS storico). Parte 10 tocca il cash europeo SOLO per la regola "low/high via CANDLE ufficiale, non via tick rado" (Cap.60), NON per riapertura del gating.
-6. **Convenzione cross-index PHASE-2 (DAX, EuroStoxx 50, ES/MES futures)** — Parte 8 Cap.42 invariato, Parte 10 NON si applica.
-7. **Telegram latenza $L_{max}=30$s (M-2 OPEN)** — dichiarato esplicitamente fuori perimetro DAPI. Dove va trattato: Appendice E nella sessione di consolidamento delle Appendici (eredità Parte 9 Cap.55 invariata).
-8. **Implementazione codice operativo della pipeline runtime** (parser, adapter, layer recovery, layer backfill, layer archiviazione, layer riconciliazione) — FASE-D del roadmap (eredità Parte 9 Cap.55 r406 invariata). Parte 10 è metodologia, NON codice.
-9. **Migrazione dei 391 dump live esistenti** dal format legacy al format esteso — operazione una-tantum di FASE-D. Dove va trattato: FASE-D operativa, NON metodologica.
-10. **Calibrazione fine della soglia $\theta_{reconcile}$** — parametro provvisorio non congelato; rifinitura in FASE-D su dati operativi reali o in futuro CAP-DATA-04 / monitoring post-go-live.
-11. **Riavvio Darwin mezzanotte osservazione empirica diretta** — residuo Empirico-CLI di Parte 9 Cap.50 Gap-3, sessione notturna non eseguita. Parte 10 si appoggia ai marker `RUNTIME_GAP_*` di Parte 9, NON ne richiede prova diretta.
-12. **Apertura del flusso DAPI come fonte di training** — Parte 8 Cap.37/Cap.44 invariati; richiederebbe nuovo task Planner con riesame ratio-adjusted/filtro pre-expiry. Esplicitamente fuori scope (eredità Parte 9 Cap.55 r404 invariata).
-13. **Migrazione formato sample legacy `data/runtime/exports_sample/*`** al format esteso — la coabitazione legacy ↔ esteso è dichiarata in Cap.62 senza vincolare scelta architetturale FASE-D.
-14. **Estensione immutabilità barre oltre T+3 / su finestre afternoon/usopen / strumenti non testati** — perimetro empirico onesto dichiarato; estensione richiederebbe nuovo probe empirico (Q-XX al Planner, NON dentro Parte 10).
-15. **Apertura riavvio Darwin diversa da mezzanotte** (es. manutenzione straordinaria) — fuori scope, la procedura `RUNTIME_GAP_*` Parte 9 copre per costruzione qualunque riavvio.
+- **Ri-derivare l'empirico (V-1 morning/afternoon, V-2 cut-off, T+1=T+3 immutabilita', W1-W11 codici/mesi/cooldown/BOOK_5)**. **Destinazione**: chiusi in CAP-DATA-01 PASS + CAP-DATA-02 AUDIT-RM-RETRO PASS WEB+CLI + PROBE_RECUPERO_GAP_DAPI committato. Il Reviewer USA i M-1/M-3/M-5/M-9/M-10 + i numeri canonici di PROBE come inputs autoritativi, non li ri-misura.
+- **Micro-patch Cap.49 di Parte 9** (eventuale tocco di tabella Cap.49 emerso in audit CAP-DATA-02). **Destinazione**: sotto-task separato del supervisore, NON parte del perimetro A-D di Parte 10 di questo audit. Se il Reviewer rileva incidentalmente che la mappatura Cap.49 si e' propagata in citazioni del perimetro A-D, segnala come finding "MIGLIORA PROCESSO — coerenza inter-CAP" SENZA proporre patch a CAP-DATA-02.
+- **Riapertura metodologia / 43 AC del task card di sviluppo CAP-DATA-03**. **Destinazione**: gia' verificati indipendentemente in v1/v2 (entrambe sede CLI). Questo audit verifica **trasversalmente la conformita' RM** al perimetro A-D, non re-valuta il merito metodologico del capitolo.
+- **Riapertura decisioni D-10-1..D-10-10**. **Destinazione**: chiuse in Cap.65 con criteri di rollback in REPORT B. L'audit verifica che siano dichiarate correttamente con RM-1 dove l'oggetto e' una verifica empirica (D-10-2 idempotenza T+3 morning, D-10-4 cash low/high via CANDLE ufficiale), non ne mette in discussione il merito normativo.
+- **Cross-index PHASE-2** (DAX, EuroStoxx 50, ES, MES futures). **Destinazione**: Parte 10 Cap.64 dichiara fuori scope; PHASE-2 e' perimetro autonomo (task Planner separato in futuro).
+- **Esecuzione DAPI**. **Destinazione**: vincolo di sede CLI — niente probe massivi di mero zelo; lista "Empirico-CLI da verificare" attesa VUOTA (l'empirico e' chiuso); se non vuota, handoff a sessione CLI futura.
+- **Modifica dei file del perimetro A/B/C/D in v1**. **Destinazione**: il Reviewer NON patcha (regola assoluta di Reviewer). Eventuali fix approvati dal supervisore dopo il punto di controllo → Developer in rework con prompt mirato; D non si modifica MAI.
+- **Apertura di Q-XX nuove in `tasks/QUESTIONS.md`**. **Destinazione**: l'audit NON apre nuove Q-XX (e' un audit confermativo); eventuali ambiguita' reali emerse durante l'audit vanno classificate come finding nella tabella supervisore, non come Q-XX (a meno che siano ambiguita' non risolvibili dai documenti del progetto — nel qual caso il Reviewer si ferma e il Planner apre Q-XX).
+- **Cross-CAP integrale Parte 8/9/VI/II**. **Destinazione**: l'audit verifica le citazioni che A fa verso questi CAP (Check D.3), NON re-audita Parte 8/9/VI/II integralmente.
+- **Migrazione formato legacy → esteso dei 391 dump live**. **Destinazione**: A Cap.64 dichiara fuori scope (operazione una-tantum FASE-D).
+- **Implementazione codice operativo pipeline runtime backfill/riconciliazione/archiviazione**. **Destinazione**: A Cap.64 + REPORT dichiarano fuori scope (FASE-D del roadmap).
 
 ---
 
-## Done when (domande operative cui il documento deve rispondere)
+## Done when — domande operative a cui l'audit risponde
 
-Il documento Parte 10 deve rispondere senza ambiguità a queste domande:
+L'audit chiude con un report che risponde univocamente a queste domande:
 
-**Continuità tape**
-- **d1**: data una griglia 1-min con barre mancanti tra $t_a$ e $t_b$ entro una sessione, qual è la procedura passo-passo per ricostruirla, con quale schema delle barre ricostruite (campi `source`, `bar_synthetic`, `tick_count`), e qual è la condizione di idempotenza?
-- **d2**: una barra ricostruita via backfill con dato reale dal gateway è `bar_synthetic = True` o `False`? Come è tracciata la provenienza "ricostruita" se non nel flag `bar_synthetic`?
-
-**Recupero gap**
-- **d3**: qual è la soglia operativa `θ_reconcile` (in numero di minuti) oltre la quale la divergenza tape DAPI runtime vs CANDLERANGE ufficiale fa scattare il gate `RECONCILE_DIVERGENT_FIB`? È congelata in Parte 10 o è parametro provvisorio rifinito in FASE-D? *(Risposta attesa Developer: parametro provvisorio non congelato, rifinitura FASE-D / monitoring post-go-live.)*
-- **d4**: se un gap di 30 giorni inizia 95 giorni fa e finisce 65 giorni fa, parzialmente recuperabile via CANDLERANGE entro 100gg, qual è la regola di composizione (recupero parziale + fallback Cap.61 per la parte fuori 100gg)?
-- **d5**: in caso di errore DAPI codice 1003/1004/1007/1015/1017 durante il backfill CANDLERANGE, qual è la regola di backoff e qual è il marker emesso?
-
-**Riconciliazione canonica giornaliera**
-- **d6**: end-of-day, in che ordine vengono eseguiti i 3 check (integrità schema, coerenza CANDLE 1-min, coerenza low/high giornaliero), e qual è la regola di propagazione del verdetto finale?
-- **d7**: cosa succede operativamente alla sessione $d+1$ se la riconciliazione di $d$ è `RECONCILE_DIVERGENT_*`? Il bundle frozen può emettere segnali, o è bloccato fino a intervento supervisore?
-- **d8**: per il cash europeo DITAS, la regola di riconciliazione del low giornaliero USA quale fonte? La CANDLE ufficiale daily (`f8`/`f9`) o l'aggregato dei tick realtime?
-
-**Storicizzazione strutturata**
-- **d9**: il file CSV archiviato di un giorno $d$ ha header con quanti campi (11 legacy o 13 esteso)? Quali sono i 3 nuovi valori del dominio `source` introdotti da Parte 10?
-- **d10**: quale è la struttura del manifest JSON esteso? Quali sono le estensioni Parte 10 (es. `reconcile_status`, `bar_counts_by_source`, `gap_log`)?
-- **d11**: se un giorno $d$ è già archiviato e arriva un recupero gap retroattivo, l'archivio viene sovrascritto o ne viene creata una nuova versione?
-
-**Restart >100gg**
-- **d12**: dopo `RUNTIME_STALE_RESTART`, qual è la sequenza 3-step (archivio locale, CANDLERANGE daily, Portara) e il marker finale prima che la pipeline torni operativa?
-- **d13**: il re-warm-up `L_warmup=30gg` post-bootstrap >100gg è obbligatorio o opzionale? Quali sono i prerequisiti per uscire dallo stato `RUNTIME_STALE_RESTART`?
-
-**Coerenza training**
-- **d14**: il tape DAPI archiviato di Parte 10 è fonte di training per il GA? *(Risposta attesa: NO, vincolo invariato Parte 8 Cap.37 + Cap.44 + Parte 9 Cap.55.)*
-
----
-
-## Decisioni di scope prese dal Planner (motivazione 1 riga ciascuna)
-
-1. **Sede Reviewer proposta = WEB** — CAP-XX completo è documento metodologico + grep di codice committato; i prerequisiti empirici sono dump già committati come livello-1, NON richiedono ri-esecuzione contro DAPI. Decisione finale dell'Orchestratore a valle del Developer in base agli AC residui.
-2. **Scaletta 9 capitoli (Cap.57-Cap.65)** — copre i 4 temi rinviati con granularità sufficiente per AC verificabili, lunghezza ~9-12 pp coerente con Parte 8 (~10 pp) e Parte 9 (~9-12 pp).
-3. **Marker complementari, NON sostitutivi, dei marker Parte 9** — `RECONCILE_*`/`BACKFILL_*`/`BOOTSTRAP_COMPLETE` vivono accanto a `RUNTIME_*`/`CONTRACT_SWITCH`/`WARMUP_*`/`SESSION_*` senza sovrapposizione, per preservare la chiusura Cap.56 di Parte 9.
-4. **Dominio `source` esteso, NON sostituito** — i 3 nuovi valori `BACKFILL_FROM_*` complementano `{DIRECTA, AGG_FROM_60s, AGG_FROM_D}` di D-9-5, perché Cap.62 esplicitamente dichiara complemento, NON sostituzione. Coerente con principio "no riapertura decisioni precedenti".
-5. **$\theta_{reconcile}$ parametro provvisorio** — non congelato dentro Parte 10, rifinitura in FASE-D operativa. Coerente con trattamento $L_{max}$ Telegram (Appendice E carryover) e $\theta_{DSR}/\theta_{PBO}/\ldots$ in Parte VII Cap.31 (12 parametri provvisori non congelati). NO numeri inventati dal Planner.
-6. **Restart >100gg gestito con intervento supervisore obbligatorio** — eredità Parte 9 D-9-11 invariata, NON auto-recovery. Decisione conservativa: il caso è raro (downtime >5 mesi solari), il rischio di mescolamento cross-source è alto, l'intervento manuale è preferibile a procedura automatica complessa.
-7. **Immutabilità barre con perimetro empirico esplicito (T+3, morning, FIB6F/DITAS)** — NON estesa per default a tutti i casi, dichiarata onestamente come "assunto per estensione, sorvegliato da gate Cap.60". Coerente con RM-1 (no asserzioni "verificate" oltre il perimetro testato).
-8. **Cash europeo low/high via CANDLE ufficiale** — decisione forte motivata da `[PROVA-EMPIRICA V-1 afternoon 6/6 mismatch sul solo low]`, indipendente dalla decisione Q-A-3 di Parte 9 Cap.53 (gating qualitativo). NON apre il gating, normizza solo la fonte del low/high.
-9. **Riconciliazione = procedura non-mutativa** — non modifica le barre, emette solo marker. Coerente con principio di replay deterministico bit-exact (Parte II Cap.10 + Parte VII Cap.31). Eventuale rewriting va in un capitolo successivo o in FASE-D.
-10. **Carryover M-2 (Telegram) dichiarato esplicitamente fuori scope** — `OPEN` invariato in CARRYOVER.md, ripreso in sessione futura di Appendice E. Coerente con #19 Eredità del task.
-11. **Migrazione dump legacy fuori scope** — è operazione una-tantum di FASE-D, non normazione metodologica.
+1. **RM-1 formato**: tutti i 4 blocchi RM-1 di A (Cap.59 r.79-82, r.103-106; Cap.60 r.135-139; Cap.61 r.168-171) hanno formato esatto `VERIFICA/PROVE/ALTERNATIVE COMPATIBILI ESCLUSE/ALTERNATIVE COMPATIBILI NON ESCLUSE`? Esistono altre asserzioni "verificato/confermato/fatto" in A fuori dai 4 blocchi (in prosa libera) e sono in forma RM-1-compliant o no?
+2. **RM-1 sostanza**: in ognuno dei 4 blocchi RM-1, le ALTERNATIVE COMPATIBILI ESCLUSE sono effettivamente escluse dai dati osservati (e quali dati lo escludono, file:dump:timestamp)? Le NON ESCLUSE sono davvero compatibili? Il perimetro empirico onesto (T+3, morning, FIB6F/DITAS, ~100gg) e' dichiarato sistematicamente o ci sono "verificato universalmente" non qualificati?
+3. **RM-2 grep**: il Reviewer ha eseguito i grep dei pattern del dominio (lista in eredita' #2)? Comando + esito sintetico per ognuno? Decoder pre-esistenti non citati dal perimetro che avrebbero dovuto essere?
+4. **RM-2 D-canonico**: ogni citazione `[CODICE-ESISTENTE D:NNN]` nel perimetro corrisponde alla riga esatta di D? Lo schema CANDLE `C;L;H;O;V` di D `:467-481` e' citato fedelmente in A/B/C? La sintassi CANDLERANGE period-last `:228-230` e' citata fedelmente? `DEFAULT_INTRADAY_MAX_DAYS=100` `:61` e' citato fedelmente? Header CSV legacy 11-campi `:605-617` e' distinto correttamente da runtime esteso 13-campi di Parte 9 Cap.48?
+5. **RM-2 RACC-METODO-2**: ogni AC del REPORT che dichiara "schema X OK" ha il diff puntuale col decoder canonico gia' onorato?
+6. **RM-3 etichettatura**: ogni `[PROVA-EMPIRICA <data>]` / `[CODICE-ESISTENTE r.NNN]` / `[DOC-INTERNO <path>]` / `[WIKI-HINT, da verificare]` e' presente dove serve? Nessuna conclusione si appoggia solo a livello 4? Wiki Directa compare solo come hint?
+7. **RM-3 numeri canonici**: i numeri empirici di A (55/60, 49/13, saturazione `2026-02-18 09:56`, N=80→160, 60/60 T+3 morning, 6/6 DITAS sul solo low, 14h×60min=840 barre) coincidono con quelli di C e STATO M-1/M-3/M-9? Eventuali divergenze identificate?
+8. **Coerenza inter-file**: citazioni A → C, A → D, A → cross-CAP (`CAP_06:276`, `CAP_08_*`, `CAP_09_*`, `CAP_02_*`) verificate con Read? Coerenza interna di A (Cap.58 ↔ Cap.65 marker, Cap.60 step 6 ↔ Cap.62 manifest dopo OM-3) preservata?
+9. **Onesta' claim → evidenza B**: i 43/43 AC dichiarati OK in REPORT hanno evidenza puntuale in A? Campionamento di almeno 15 AC controllato direttamente. Nessuna evidenza vuota/generica/errata?
+10. **Iterazione 2 v2 regge**: NB-1 (Brier sparito), OM-1 (notazione 49/13), OM-2 (Cap.58 r.62), OM-3 (Cap.62 r.192) confermati; nessuna regressione; nessun fix che sostituisce un errore con un altro?
+11. **Self-review C**: il blocco RM-4 di C (r.384-433) copre realmente afternoon + T+3 con formato 4-righe per ogni asserzione?
+12. **Lista Empirico-CLI**: vuota (atteso), oppure motivata se non vuota?
+13. **Classificazione per il supervisore**: tabella di finding con classificazione finale; oppure dichiarazione "Nessun finding"?
+14. **Verdetto**: PASS / CONDITIONAL / FAIL con motivazione e regola di decisione applicata?
+15. **Indipendenza dichiarata**: il Reviewer dichiara esplicitamente di NON aver copia-incollato v1/v2, e indica come ha esteso l'audit al perimetro A-D rispetto al solo CAP A delle review precedenti?
 
 ---
 
 ## Pipeline attesa
 
+**Modalita' Review-First su perimetro esistente**:
+
 ```
-Planner v1 (questo task card)
+Planner (questo task card)
   ↓ Orchestratore committa task card
-Developer v1 (CAP_10_parte_10.md + REPORT_CAP_10.md + 00_indice.md)
-  ↓ READY_FOR_REVIEW
-Orchestratore check post-Developer (6 condizioni)
-  ↓ se PASS condizioni → Reviewer Web v1
-Reviewer Web v1 (review piena RM-1/2/3 + AC + classificazione finding)
+Reviewer v1 (CLI, audit indipendente sul perimetro A-D)
   ↓ verdetto PASS / CONDITIONAL / FAIL
-  ↓ se CONDITIONAL/FAIL → punto di controllo supervisore con tabella classificazione
-Eventuale rework Developer v2 (solo finding approvati)
-  ↓ Reviewer Web v2 → ... → PASS
-Chiusura sessione (7 condizioni Orchestratore) + notifica + prompt-template nuova sessione
+  ↓ se PASS → chiusura task (audit confermativo)
+  ↓ se CONDITIONAL/FAIL → punto di controllo supervisore con tabella classificazione finding
+Eventuale rework Developer (solo finding approvati; D NON si tocca; A/B/C eventualmente)
+  ↓ Reviewer v2 → ... → PASS
+Chiusura sessione + notifica
 ```
 
-Iterazioni attese: 1-2 cicli Review (in linea con i cicli Parte 8 v1→v2 e Parte 9 v1→v2). Se a 3 iterazioni il loop non chiude su un finding specifico, regola di terminazione `.claude/CLAUDE.md` § "Regola di terminazione del loop": segnalazione supervisore per arbitraggio.
+L'Orchestratore di sessione:
+- Letto il task card, invoca direttamente il **Reviewer** (subagent `reviewer` se disponibile nativamente in CLI, oppure general-purpose adottando `.claude/agents/reviewer.md`).
+- Allega al prompt del Reviewer: il path di questo `ACTIVE_TASK.md` + la dichiarazione di **sede CLI** + i **divieti per sede CLI** (no probe massivi di zelo, no DAPI; verifica via Read del codice committato; lista "Empirico-CLI" attesa VUOTA).
+- A esito Reviewer: se PASS, chiude la sessione lasciando il task card storico; se CONDITIONAL/FAIL applica il punto di controllo standard CLAUDE.md §"Punto di controllo supervisore obbligatorio dopo CONDITIONAL/FAIL".
+
+**Vincoli per il Reviewer della v1**:
+
+- NON ri-esegue probe DAPI (fondamenta empiriche CHIUSE — inputs autoritativi #5..#15).
+- NON modifica A/B/C/D (vincolo assoluto Reviewer).
+- USA i numeri canonici degli inputs autoritativi come pietre di paragone, NON ri-misura contro DAPI.
+- Applica RM-1 a se' stesso: ogni "CONFERMATO ESATTO" ha sostegno operativo nell'audit (citazione + esito).
+- Verifica via Read le righe citate di D (`scripts/export_directa_history_parametric.py`) e dei cross-CAP critici (`CAP_06_parte_VI.md:276`, marker Parte 9 Cap.50/51/52/54).
+- Estende l'inventario W se durante la lettura emergono asserzioni W16, W17, ... non previste.
+- Produce il file `reviews/REVIEW_CAP_DATA_03_RM_AUDIT_review.md` con la struttura standard degli AUDIT-RM (header con perimetro A-D, inventario W, Check A-E per ogni Wi, lista "Empirico-CLI", tabella classificazione supervisore, AC, applicazione RM-1 a se').
+- Push diretto su `origin/main` con tag commit `[REVIEW] CAP-DATA-03 RM-AUDIT — verdetto: <PASS|CONDITIONAL|FAIL>`.
+
+**In caso di rework Developer (se supervisore approva finding)**:
+
+- L'Orchestratore aggiorna questo `ACTIVE_TASK.md` con sezione "Finding di Review da risolvere" (solo finding approvati).
+- Developer riceve prompt mirato; modifica A e/o B e/o C; **NON modifica D**; aggiorna `00_indice.md` se necessario (es. Parte 10 status); aggiorna REPORT B con sezione "Iterazione N — risposta ai finding di Review" con prima→dopo + misura prima/dopo + impatto GA.
+- Reviewer v2 verifica chiusura finding + nessuna regressione (analogamente alla v2 CAP-10 sede CLI gia' fatta).
 
 ---
 
-## Note operative per il Developer (riepilogo dei vincoli RM-1..RM-4 applicabili in pre-consegna)
+## Self-review del Planner (RM-1 applicata al task card stesso)
 
-Il Developer di Parte 10:
+In coerenza con `tasks/METODO.md` RM-1 e con l'eredita' che il Planner pone come premesse, qui dichiaro esplicitamente:
 
-- Prima di iniziare la stesura, esegue **grep RM-2** sui pattern dichiarati (#2 di Eredità) e documenta l'esito nella sezione "Decoder/convenzioni esistenti nel repo letti prima della stesura" del REPORT.
-- Etichetta TUTTE le fonti con livello (`[PROVA-EMPIRICA <data>]` / `[CODICE-EXISTENTE <path>:<linea>]` / `[DOC-INTERNO]` / `[WIKI-HINT, da verificare]`). Wiki Directa = mai fonte autorevole.
-- Per ogni asserzione "verificato/confermato/fatto" applica blocco 4-righe RM-1 (`METODO.md:28-33`).
-- NON produce output non-CAP collaterali (probe, script, handoff). Se serve, Q-XX al Planner.
-- Pre-consegna (autoverifica prima di `READY_FOR_REVIEW`):
-  1. Tutti gli AC della sezione "Acceptance Criteria" sono verificabili sul documento prodotto?
-  2. Tutte le citazioni file:linea sono accurate (controllo via Read sui path citati)?
-  3. Tutti i blocchi RM-1 sono nel formato 4-righe esatto?
-  4. Nessuna riapertura di decisioni D-8-* o D-9-*?
-  5. Nessun M-promemoria nuovo emesso (al massimo segnalato come "potenziale per Review")?
-  6. Naming β2 rispettato (`CAP_10_parte_10.md`, identifier "Parte 10" arabo)?
-  7. `00_indice.md` aggiornato con voce Parte 10 e stato "IN REVIEW"?
-  8. `REPORT_CAP_10.md` contiene le 5 sezioni standard + Verifica AC + Criterio rollback + sezione grep RM-2?
+- **VERIFICATO (level-2)** che le 6 citazioni cardine di D usate come pietre di paragone (`:467-481`, `:228-230`, `:61`, `:282-285`, `:605-617`, `:245/:255`) corrispondono al contenuto di `scripts/export_directa_history_parametric.py` letto in questa sessione (Read righe 1-90, 100-300, 460-622). Specificamente: r.471 contiene `kind, symbol, ymd, hms, uff, min_, max_, ape, qty = parts[:9]`; r.477 contiene il commento `# Documentazione Directa: UFF, MIN, MAX, APE => close, low, high, open.`; r.478-482 contengono le assegnazioni `close_v/low_v/high_v/open_v/volume_v`; r.228-230 contiene `f"CANDLERANGE {symbol} {start_dt.strftime(DIRECTA_TS_FMT)} {end_dt.strftime(DIRECTA_TS_FMT)} {period_seconds}"` (period last); r.61 contiene `DEFAULT_INTRADAY_MAX_DAYS = 100`; r.605-617 contiene `fieldnames=[...]` 11 campi `symbol, timeframe, timestamp, date, time, open, high, low, close, volume, source` (NO `tick_count` e NO `bar_synthetic`); r.245 e r.255 contengono le regole "accetto buffer raccolto" su timeout/socket-close dopo dati. **ALTERNATIVE COMPATIBILI ESCLUSE**: nessun decoder candle alternativo in D (D contiene `parse_directa_candle` unico a `:467-481`); nessuna definizione dell'header CSV alternativa in D (l'header e' solo a `:605-617`). **NON ESCLUSE**: non ho letto integralmente le ~620 righe di D; possono esserci righe non lette con costrutti rilevanti per asserzioni W non ancora identificate — e' normale e atteso che il Reviewer durante l'audit estenda l'inventario W.
 
-Se uno solo dei 8 punti non passa, NON scrivere `READY_FOR_REVIEW`: completa la revisione interna.
+- **VERIFICATO (level-2 via Read parziale)** che la review v2 CAP-10 (`reviews/REVIEW_CAP_10_v2_review.md` r.1-80) conferma fix NB-1 (Brier 0 match), OM-1 (49/13 → "49 match / 13 mismatch su 62 minuti"), OM-2 (Cap.58 r.62 distinzione marker principali vs in-body), OM-3 (Cap.62 r.192 mappatura 1:1 manifest↔marker). La review v2 PASS e' fonte autoritativa per AC-6 del task card. **NON ESCLUSE**: non ho riletto integralmente A v2 in questa sessione di Planner (CAP_10_parte_10.md letto r.1-219 + r.220-268, quasi integrale ma il Reviewer rilegge per scrupolo); il Reviewer durante l'audit DEVE rileggere A e ri-verificare per scrupolo (E.2).
 
----
+- **VERIFICATO (per costruzione del task card)** che CARRYOVER.md riga RACC-METODO-2 nota "onorata in CAP-DATA-03 v1+v2" e' una dichiarazione **del Planner CAP-DATA-03 dopo-PASS**, non un fatto auto-verificato; il Reviewer di questo audit la **riconferma** o la segnala come incompleta (B.4 RACC-METODO-2 onorata in modo COMPLETO sui 43 AC?).
 
-## Finding di Review da risolvere — Iterazione 2 (v2)
+- **AMBIGUITA' POTENZIALI** che ho risolto come Planner (NON Q-XX, perche' non sono ambiguita' non risolvibili dai documenti):
+  - Naming output Reviewer: `REVIEW_CAP_DATA_03_RM_AUDIT_review.md` (NON `RETRO`, perche' Parte 10 e' post-RM e l'audit e' confermativo, non un recupero di debito).
+  - Workflow Review-First (non c'e' Developer in v1 — Parte 10 e' gia' PASS, c'e' solo audit RM trasversale).
+  - Sede CLI (non richiesta WEB dal supervisore; audit e' documento + lettura + grep, niente DAPI).
+  - Lista Empirico-CLI attesa VUOTA (l'empirico e' chiuso ed e' hard constraint).
 
-**Origine**: `reviews/REVIEW_CAP_10_review.md` (Review v1, verdetto **PASS**, commit `ab80d96`).
-**Approvazione supervisore**: 2026-06-01 — il supervisore ha approvato la correzione di **tutti e 4** i finding NEUTRO in una v2 cosmetica (scelta "v2: correggi tutti e 4"). **Nessun finding è bloccante; il verdetto v1 resta PASS.** Questa è una v2 di pulizia di accuratezza, NON correzione di BUG né ristrutturazione.
+- **NON dichiarato come "verificato" dal Planner**:
+  - Non ho letto integralmente B (REPORT_CAP_10.md tutto letto in 214 righe — verifica completa attesa al Reviewer per E.1).
+  - Non ho letto C integralmente in questa sessione di Planner (PROBE r.1-433 letto integralmente, ma il Reviewer rilegge per cross-check con A).
+  - I 43/43 AC ribaditi v2 sono presi come **autoritativi dalla review v2 PASS gia' fatta**: il Reviewer di questo audit NON li ri-valuta nel merito, ma campionamento sostantivo dell'onesta' claim → evidenza in B (E.1) e' obbligatorio.
 
-Il Developer: (1) corregge i 4 finding sotto nel `CAP_10_parte_10.md` + propagazioni in `00_indice.md` e `REPORT_CAP_10.md`; (2) aggiunge al REPORT la sezione "## Iterazione 2 — risposta ai finding di Review" (cosa modificato per ogni finding, prima/dopo); (3) ri-esegue la pre-consegna 13 punti; (4) scrive `READY_FOR_REVIEW`. **Vincolo RM-2/RM-3**: NON introdurre nuove citazioni cross-CAP non verificate — ogni riferimento deve puntare a un referente che lo contiene davvero (verificalo con Read prima di citarlo). **Vincolo di scope**: NON toccare altro oltre questi 4 punti e le loro propagazioni; non modificare AC, scope, decisioni D-10-*, né i blocchi RM-1 (eccetto la sola notazione OM-1 interna al blocco Cap.59).
-
-### NB-1 (NEUTRO, sostanziale) — analogia cross-CAP inaccurata "gate Brier $f_5^{live}$ Parte VI Cap.30"
-- **Dove**: `CAP_10_parte_10.md:42`, `:126`, `:248` (Cap.65 D-10-3) + `00_indice.md:99` (propagato) + `REPORT_CAP_10.md` (sezione "Ipotesi di partenza" + tabella AC-60-2).
-- **Problema** (verificato da Reviewer e Orchestratore leggendo `CAP_06_parte_VI.md`): Parte VI Cap.30 NON contiene un "gate Brier". $f_5^{live}$ (Cap.30.3, `CAP_06_parte_VI.md:278-291`) è la metrica di **stabilità cross-regime**, non un Brier score (il Brier appartiene a CAP_05 Fine-Gray vs Cox). Inoltre il meccanismo $f_1$-$f_5$ live di Cap.30 è un **alert NON bloccante**: `CAP_06_parte_VI.md:276` "L'alert non chiude il loop di re-training"; `:345` "puramente di monitoraggio… non può intervenire sull'operatività". Il gate di riconciliazione di Cap.60 INVECE **blocca** l'emissione $d+1$. L'analogia è errata su entrambi i punti (no "Brier"; Cap.30 non blocca).
-- **Fix richiesto**: rimuovere "Brier $f_5^{live}$" e riformulare in modo accurato. **Opzione consigliata (più sicura)**: trasformare l'analogia in un **contrasto** — il gate di Cap.60 è un gate operativo *bloccante*, **a differenza** del monitoraggio non-bloccante di Parte VI Cap.30 (che emette alert ma non chiude il loop, `CAP_06_parte_VI.md:276`). In alternativa, rendere la giustificazione del gate **self-contained** su Cap.60 senza falso precedente. Se citi un altro referente come precedente di "gate bloccante" (es. Parte VII Cap.36), **devi prima leggerlo e verificarne il contenuto** — non sostituire una citazione inaccurata con un'altra non verificata. Correggere TUTTE le 4 occorrenze + le 2 propagazioni (indice, report).
-
-### OM-1 (NEUTRO) — notazione "49/13 match" ambigua
-- **Dove**: `CAP_10_parte_10.md:104` (blocco RM-1 Cap.59, riga PROVE afternoon).
-- **Problema**: "49/13 match" mescola match e mismatch in uno slash che altrove significa match/totale ("55/60", "60/60"). Dato corretto (49 match / 13 mismatch su 62-63 minuti); notazione imprecisa. Cap.60:122 usa già la forma corretta "13/62 mismatch".
-- **Fix**: uniformare a "49 match / 13 mismatch su 62" (o equivalente non ambiguo). È l'unica modifica ammessa dentro un blocco RM-1.
-
-### OM-2 (NEUTRO) — "tutti definiti in Cap.65" impreciso
-- **Dove**: `CAP_10_parte_10.md:62`.
-- **Problema**: "tutti definiti in Cap.65" non è vero per i sotto-marker `RUNTIME_GAP_BEYOND_100D` (Cap.59), `BACKFILL_VERIFIED_T3`/`BACKFILL_UNVERIFIED` (Cap.59 step 4), `RECONCILE_SCHEMA_FAIL` (Cap.60 step 3), definiti in-body e non consolidati nella tabella Cap.65.
-- **Fix**: ammorbidire ("i marker principali consolidati in Cap.65; i sotto-marker operativi definiti nei rispettivi capitoli") **oppure** aggiungere in Cap.65 una nota/riga che elenchi i sotto-marker in-body. Scelta del Developer; basta che l'affermazione diventi vera.
-
-### OM-3 (NEUTRO) — disallineamento nome-marker `RECONCILE_*` vs enum manifest
-- **Dove**: `CAP_10_parte_10.md:127` (marker `RECONCILE_OK/DIVERGENT_FIB/DIVERGENT_HIGHLOW/DEGRADED`) vs `:188` (`reconcile_status ∈ {OK, DIVERGENT_FIB, DIVERGENT_HIGHLOW, DEGRADED}`, senza prefisso).
-- **Problema**: due nomenclature 1:1 per lo stesso insieme.
-- **Fix**: dichiarare esplicitamente la corrispondenza marker↔enum (es. nota: "il valore `reconcile_status=X` del manifest corrisponde al marker `RECONCILE_X` dell'audit log") oppure uniformare.
-
-Dettaglio completo dei 4 finding (con citazioni testuali ed evidenza): vedi `reviews/REVIEW_CAP_10_review.md` (NB-1 + OM-1/2/3).
+Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>
