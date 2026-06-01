@@ -144,3 +144,51 @@ Tutti gli 11 finding ratificati dal supervisore sono chiusi onestamente con esit
 - **NB-1**: reversibile (esempi normativi possono ruotare al cambio di front-month nel ciclo Q3/Q4 2026); il valore `F = giugno` e' fattuale, `I = settembre` empirico verificato.
 
 Globale: la rework v2 e' un set di correzioni chirurgiche puntuali coerenti con i finding ratificati dal supervisore; nessuna riscrittura strutturale del capitolo. Se Review v2 emettesse FAIL, il Planner valuterebbe se i finding restano gli stessi o se sono nuovi; in entrambi i casi, l'iterazione v3 sarebbe ancora chirurgica.
+
+---
+
+## Micro-patch post-PASS (2026-06-02) — Cap.49 BOOK_5 bid1/ask1 → CERTIFICATE [W3/M-10]
+
+**Natura**: micro-patch chirurgico di **sola annotazione di stato** su Parte 9 (PASS storico `86425a7`), NON una nuova iterazione del ciclo Planner→Developer→Reviewer. Aggiorna l'etichetta RM-1 sulle posizioni `BOOK_5` da cui dipende la regola `bar_synthetic` di Cap.49: da "Verifica parziale / non certificate / → Empirico-CLI" a "Verificato `[PROVA-EMPIRICA 2026-06-01 W3 / M-10]`".
+
+### Motivazione
+
+Quando Parte 9 fu scritta (PASS `86425a7`), lo schema `BOOK_5` derivava da una singola osservazione del 2026-05-27 (un solo evento FIB6I), con due alternative compatibili non escluse (ordine dei blocchi BID/ASK, indice del triplo `lots`/`orders`/`price`). La regola `bar_synthetic` era quindi correttamente etichettata "verifica parziale". Dopo la chiusura di Parte 9, l'audit empirico CLI **CAP-DATA-02 RM-RETRO** (fase CLI, mercato aperto 2026-06-01) ha **certificato** lo schema `BOOK_5` con prova diretta su 29 eventi / 290 triple del front-month liquido FIB6F. La certificazione e' ora disponibile e va riflessa nell'annotazione di Cap.49, che diversamente resterebbe sotto-dichiarata rispetto allo stato di conoscenza attuale.
+
+### Fonte citata (autoritativa, NON ri-derivata)
+
+- `reviews/REVIEW_CAP_DATA_02_RM_RETRO_CLI_review.md` §W3 (righe 55-73): `BOOK_5` = `[BID×5 best-first][ASK×5 best-first]`, ogni livello triplo `(lots, orders, price)`; **certificato bit-a-bit su 29 eventi / 290 triple FIB6F**. Posizioni (riga 66): `bid1_lots`=campo 4, `bid1_orders`=campo 5, `bid1_price`=campo 6; `ask1_lots`=campo 19, `ask1_price`=campo 21. Ordine BID-poi-ASK escluso invertito (blocco 1 sempre discendente, 29/29); triplo `(lots, orders, price)` confermato da `lots ≥ orders` su 290/290 (esclude `(orders, lots, price)`); `bid1_price < ask1_price` su 29/29; anomalia 27/05 `bid1>ask1` **NON riprodotta** (artefatto del campione illiquido FIB6I, non inversione di schema).
+- `tasks/STATO_CORRENTE.md` §5 **M-10** (riga 77): stessa certificazione, "posizioni di `bar_synthetic` Cap.49 certificate".
+
+**RM-1 onesto**: la fonte certifica le posizioni a **livello-1** (`bid1`/`ask1`) — esattamente i campi usati dalla regola `bar_synthetic` (mid level-1 e gate `bid1_lots≥1 AND ask1_lots≥1`). L'annotazione patchata dichiara "certificate a livello-1", non sovra-estende ai livelli 2-5 (non interrogati dalla regola). `ask1_orders` (campo 20) non e' enumerato esplicitamente dalla fonte e NON e' citato nelle nuove annotazioni.
+
+### Prima → dopo (testuale)
+
+**(A) Cap.49, riga tabella `bar_synthetic` (file `docs/methodology_v2/CAP_09_parte_9.md:173`)**
+
+- PRIMA: "*(**Verifica parziale RM-1:** questa regola dipende dalle posizioni `bid1_lots`/`ask1_lots`/`bid1_price`/`ask1_price` nello schema `BOOK_5`, **non certificate** — lo schema deriva da osservazione singola 2026-05-27, alternative su ordine BID/ASK e indice `lots`/`price` non escluse, vedi Cap.47; se l'ordine dei livelli o l'indice del triplo fosse diverso, la regola si applicherebbe su campi sbagliati → Empirico-CLI.)*"
+- DOPO: "*(**Verificato RM-1 `[PROVA-EMPIRICA 2026-06-01 W3 / M-10]`:** le posizioni `bid1_lots` (campo 4), `bid1_price` (campo 6), `ask1_lots` (campo 19) e `ask1_price` (campo 21) nello schema `BOOK_5` sono **certificate** a livello-1 — schema `[BID×5 best-first][ASK×5 best-first]`, ogni livello triplo `(lots, orders, price)`, confermato su 29 eventi / 290 triple su FIB6F front-month liquido `[rif. reviews/REVIEW_CAP_DATA_02_RM_RETRO_CLI_review.md, M-10]`. L'ordine dei blocchi (BID-poi-ASK) e' escluso essere invertito (blocco 1 sempre discendente = BID, 29/29 eventi); l'indice del triplo `(lots, orders, price)` e' confermato da `lots >= orders` su 290/290 triple (l'alternativa `(orders, lots, price)` e' esclusa). L'anomalia `bid1_price > ask1_price` del campione singolo 27/05, che a Cap.47 lasciava aperta l'ipotesi di blocchi invertiti, e' risultata **NON riprodotta** (artefatto del contratto illiquido FIB6I a scadenza lontana, non inversione di schema): `bid1_price < ask1_price` su 29/29 eventi. La regola `bar_synthetic` si applica quindi su campi certi. La cautela \"verifica parziale → Empirico-CLI\" di Cap.47 e' qui **saldata**.)*"
+
+**(B) Cap.49, bullet prosa "Regola `bar_synthetic = True`" (file `docs/methodology_v2/CAP_09_parte_9.md:177`)**
+
+- PRIMA: "*(**Verifica parziale RM-1:** dipende dalle posizioni `bid1_lots`/`ask1_lots` dello schema `BOOK_5`, non certificate — schema da osservazione singola 2026-05-27, alternative ordine BID/ASK e indice `lots`/`price` non escluse, vedi Cap.47 → Empirico-CLI.)*"
+- DOPO: "*(**Verificato RM-1 `[PROVA-EMPIRICA 2026-06-01 W3 / M-10]`:** le posizioni `bid1_lots` (campo 4) e `ask1_lots` (campo 19) dello schema `BOOK_5` sono **certificate** — schema `[BID×5 best-first][ASK×5 best-first]`, triplo `(lots, orders, price)`, confermato su 29 eventi / 290 triple FIB6F `[rif. reviews/REVIEW_CAP_DATA_02_RM_RETRO_CLI_review.md, M-10]`; ordine BID-poi-ASK confermato e indice del triplo risolto da `lots >= orders` (290/290). La cautela \"verifica parziale → Empirico-CLI\" di Cap.47 e' **saldata**.)*"
+
+### File:riga toccati
+
+| File | Riga | Modifica |
+|------|------|----------|
+| `docs/methodology_v2/CAP_09_parte_9.md` | 173 | annotazione (A) tabella `bar_synthetic` — parentesi RM-1 da "verifica parziale" a "certificato W3/M-10" |
+| `docs/methodology_v2/CAP_09_parte_9.md` | 177 | annotazione (B) bullet prosa — idem |
+| `reports/REPORT_CAP_09.md` | — | questa sezione |
+
+Nessun'altra riga di `CAP_09_parte_9.md` toccata. In particolare **NON toccati**: la mappatura schema CANDLE (Cap.49:155-171), la regola `bar_synthetic` stessa (formula mid, gate `bid1_lots≥1 AND ask1_lots≥1`, casi b/c), Cap.47:93 (home dello schema `BOOK_5`, fuori scope del task), la tabella codici errore Cap.50, l'indice, gli AC.
+
+### Note di stato
+
+- **Parte 9 resta PASS storico `86425a7`**; questa modifica e' **solo annotazione di stato** (Verifica parziale → Certificato), **nessun cambiamento alla mappatura/metodologia**, alla regola di derivazione `bar_synthetic`, alle posizioni-campo dichiarate, ne' al comportamento runtime. I campi citati (campo 4/6/19/21) coincidono con quelli gia' impliciti nello schema `BOOK_5` di Cap.47:93 — la patch non introduce numeri nuovi, ridenomina lo *stato di certezza*.
+- **Soggetto a probe-review RM-4(b) prima del commit**: la patch modifica un fatto gia' dichiarato in un CAP PASS (RM-4 criterio (b) — "modifica un fatto gia' dichiarato 'verificato' in CAP precedenti") → probe-review obbligatoria. **Nessun commit eseguito**: gli edit restano nel working tree; `tasks/DEV_STATUS.md = READY_FOR_PROBE_REVIEW docs/methodology_v2/CAP_09_parte_9.md`. Il commit e' compito dell'Orchestratore dopo PASS della probe-review.
+
+### Criterio di rollback (micro-patch)
+
+Reversibile per pura sostituzione testuale: se la probe-review smentisse la certificazione (es. trovasse che l'audit CLI ha certificato solo l'ordine dei blocchi ma non l'indice del triplo, o solo un sottoinsieme delle posizioni), si ripristina l'annotazione "verifica parziale → Empirico-CLI" originale, o la si riscrive al livello di certezza effettivamente supportato. Il rollback non tocca codice ne' metodologia (l'annotazione e' descrittiva). Trigger: qualunque finding BUG REALE della probe-review sulla fedelta' della citazione rispetto a `REVIEW_CAP_DATA_02_RM_RETRO_CLI_review.md` / M-10.
