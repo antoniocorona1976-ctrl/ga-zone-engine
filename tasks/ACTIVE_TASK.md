@@ -466,3 +466,34 @@ Il Developer di Parte 10:
   8. `REPORT_CAP_10.md` contiene le 5 sezioni standard + Verifica AC + Criterio rollback + sezione grep RM-2?
 
 Se uno solo dei 8 punti non passa, NON scrivere `READY_FOR_REVIEW`: completa la revisione interna.
+
+---
+
+## Finding di Review da risolvere — Iterazione 2 (v2)
+
+**Origine**: `reviews/REVIEW_CAP_10_review.md` (Review v1, verdetto **PASS**, commit `ab80d96`).
+**Approvazione supervisore**: 2026-06-01 — il supervisore ha approvato la correzione di **tutti e 4** i finding NEUTRO in una v2 cosmetica (scelta "v2: correggi tutti e 4"). **Nessun finding è bloccante; il verdetto v1 resta PASS.** Questa è una v2 di pulizia di accuratezza, NON correzione di BUG né ristrutturazione.
+
+Il Developer: (1) corregge i 4 finding sotto nel `CAP_10_parte_10.md` + propagazioni in `00_indice.md` e `REPORT_CAP_10.md`; (2) aggiunge al REPORT la sezione "## Iterazione 2 — risposta ai finding di Review" (cosa modificato per ogni finding, prima/dopo); (3) ri-esegue la pre-consegna 13 punti; (4) scrive `READY_FOR_REVIEW`. **Vincolo RM-2/RM-3**: NON introdurre nuove citazioni cross-CAP non verificate — ogni riferimento deve puntare a un referente che lo contiene davvero (verificalo con Read prima di citarlo). **Vincolo di scope**: NON toccare altro oltre questi 4 punti e le loro propagazioni; non modificare AC, scope, decisioni D-10-*, né i blocchi RM-1 (eccetto la sola notazione OM-1 interna al blocco Cap.59).
+
+### NB-1 (NEUTRO, sostanziale) — analogia cross-CAP inaccurata "gate Brier $f_5^{live}$ Parte VI Cap.30"
+- **Dove**: `CAP_10_parte_10.md:42`, `:126`, `:248` (Cap.65 D-10-3) + `00_indice.md:99` (propagato) + `REPORT_CAP_10.md` (sezione "Ipotesi di partenza" + tabella AC-60-2).
+- **Problema** (verificato da Reviewer e Orchestratore leggendo `CAP_06_parte_VI.md`): Parte VI Cap.30 NON contiene un "gate Brier". $f_5^{live}$ (Cap.30.3, `CAP_06_parte_VI.md:278-291`) è la metrica di **stabilità cross-regime**, non un Brier score (il Brier appartiene a CAP_05 Fine-Gray vs Cox). Inoltre il meccanismo $f_1$-$f_5$ live di Cap.30 è un **alert NON bloccante**: `CAP_06_parte_VI.md:276` "L'alert non chiude il loop di re-training"; `:345` "puramente di monitoraggio… non può intervenire sull'operatività". Il gate di riconciliazione di Cap.60 INVECE **blocca** l'emissione $d+1$. L'analogia è errata su entrambi i punti (no "Brier"; Cap.30 non blocca).
+- **Fix richiesto**: rimuovere "Brier $f_5^{live}$" e riformulare in modo accurato. **Opzione consigliata (più sicura)**: trasformare l'analogia in un **contrasto** — il gate di Cap.60 è un gate operativo *bloccante*, **a differenza** del monitoraggio non-bloccante di Parte VI Cap.30 (che emette alert ma non chiude il loop, `CAP_06_parte_VI.md:276`). In alternativa, rendere la giustificazione del gate **self-contained** su Cap.60 senza falso precedente. Se citi un altro referente come precedente di "gate bloccante" (es. Parte VII Cap.36), **devi prima leggerlo e verificarne il contenuto** — non sostituire una citazione inaccurata con un'altra non verificata. Correggere TUTTE le 4 occorrenze + le 2 propagazioni (indice, report).
+
+### OM-1 (NEUTRO) — notazione "49/13 match" ambigua
+- **Dove**: `CAP_10_parte_10.md:104` (blocco RM-1 Cap.59, riga PROVE afternoon).
+- **Problema**: "49/13 match" mescola match e mismatch in uno slash che altrove significa match/totale ("55/60", "60/60"). Dato corretto (49 match / 13 mismatch su 62-63 minuti); notazione imprecisa. Cap.60:122 usa già la forma corretta "13/62 mismatch".
+- **Fix**: uniformare a "49 match / 13 mismatch su 62" (o equivalente non ambiguo). È l'unica modifica ammessa dentro un blocco RM-1.
+
+### OM-2 (NEUTRO) — "tutti definiti in Cap.65" impreciso
+- **Dove**: `CAP_10_parte_10.md:62`.
+- **Problema**: "tutti definiti in Cap.65" non è vero per i sotto-marker `RUNTIME_GAP_BEYOND_100D` (Cap.59), `BACKFILL_VERIFIED_T3`/`BACKFILL_UNVERIFIED` (Cap.59 step 4), `RECONCILE_SCHEMA_FAIL` (Cap.60 step 3), definiti in-body e non consolidati nella tabella Cap.65.
+- **Fix**: ammorbidire ("i marker principali consolidati in Cap.65; i sotto-marker operativi definiti nei rispettivi capitoli") **oppure** aggiungere in Cap.65 una nota/riga che elenchi i sotto-marker in-body. Scelta del Developer; basta che l'affermazione diventi vera.
+
+### OM-3 (NEUTRO) — disallineamento nome-marker `RECONCILE_*` vs enum manifest
+- **Dove**: `CAP_10_parte_10.md:127` (marker `RECONCILE_OK/DIVERGENT_FIB/DIVERGENT_HIGHLOW/DEGRADED`) vs `:188` (`reconcile_status ∈ {OK, DIVERGENT_FIB, DIVERGENT_HIGHLOW, DEGRADED}`, senza prefisso).
+- **Problema**: due nomenclature 1:1 per lo stesso insieme.
+- **Fix**: dichiarare esplicitamente la corrispondenza marker↔enum (es. nota: "il valore `reconcile_status=X` del manifest corrisponde al marker `RECONCILE_X` dell'audit log") oppure uniformare.
+
+Dettaglio completo dei 4 finding (con citazioni testuali ed evidenza): vedi `reviews/REVIEW_CAP_10_review.md` (NB-1 + OM-1/2/3).
