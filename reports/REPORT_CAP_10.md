@@ -21,7 +21,7 @@
 Parte 10 estende l'invariante `research = runtime` dal singolo bar (Parte 9 Cap.49) all'intero **ciclo di vita del tape**. Comportamento del GA che il capitolo intende garantire:
 
 - **Ranking/fitness**: il bundle frozen in inference legge una griglia 1-min runtime che, se ha gap non-conciliati o `bar_synthetic` non simmetrici al training, produce feature contaminate (EGARCH su barre fittizie, regime mis-classificato, pivot instabili). Parte 10 garantisce che il tape live sia metricamente lo stesso del tape di training anche dopo backfill/riconciliazione/storicizzazione.
-- **Conversione signal-to-trade**: la riconciliazione canonica giornaliera (Cap.60) e' un gate operativo end-of-day analogo al gate Brier $f_5^{live}$ (Parte VI Cap.30): se fallisce, blocca l'emissione del giorno $d+1$ fino a intervento supervisore. Protezione contro la deriva silenziosa del feed.
+- **Conversione signal-to-trade**: la riconciliazione canonica giornaliera (Cap.60) e' un gate operativo **bloccante** end-of-day: se fallisce, blocca l'emissione del giorno $d+1$ fino a intervento supervisore. A differenza del monitoraggio **non bloccante** di Parte VI Cap.30 (che emette alert di deriva sulle metriche di lifecycle ma non chiude il loop, `CAP_06_parte_VI.md:276` "L'alert non chiude il loop di re-training"), il gate di Cap.60 interviene sull'operativita'. Protezione contro la deriva silenziosa del feed.
 - **Validita' metriche live**: la storicizzazione (Cap.62) permette replay deterministico bit-exact anche dopo restart >100gg, evitando intervalli "n/a" recuperabili dall'archivio locale.
 
 ---
@@ -67,7 +67,7 @@ Grep eseguiti prima della stesura (comando + esito):
 | Capitoli normativi del documento v2 | Cap.45-56 (Parte 9 ultimo = Cap.56) | + Cap.57-65 (Parte 10) | +9 capitoli |
 | Tassonomia dei gap definita | assente (gap trattati solo come marker `RUNTIME_GAP_*` puntuali) | 4-tier canonica (D-10-1) | +1 vocabolario |
 | Valori dominio `source` | 3 (`DIRECTA`, `AGG_FROM_60s`, `AGG_FROM_D`) | 6 (+3 `BACKFILL_FROM_*`) | +3 (complemento) |
-| Gate operativi end-of-day | 0 sul tape (esisteva gate Brier $f_5^{live}$ Parte VI Cap.30 sui segnali) | 1 (riconciliazione canonica giornaliera) | +1 |
+| Gate operativi bloccanti end-of-day | 0 sul tape (Parte VI Cap.30 monitora le metriche di lifecycle dei segnali ma e' alert non bloccante, `CAP_06_parte_VI.md:276`) | 1 (riconciliazione canonica giornaliera, blocca emissione $d+1$) | +1 |
 | Decisioni normative DATA | D-9-1..D-9-17 + NB2/NB3/NB4 (Parte 9) | + D-10-1..D-10-10 (Parte 10) | +10 |
 | Marker complementari | `RUNTIME_*`/`CONTRACT_SWITCH`/`WARMUP_*`/`SESSION_*` (Parte 9) | + `RECONCILE_*`/`BACKFILL_FROM_*`/`BOOTSTRAP_COMPLETE`/`RUNTIME_GAP_BEYOND_100D`/`BACKFILL_VERIFIED_T3`/`BACKFILL_UNVERIFIED` (Parte 10) | +marker complementari, 0 sovrapposizioni |
 
@@ -94,7 +94,7 @@ Onesta' obbligatoria: gli AC dichiarati OK hanno evidenza puntuale file:riga. Ri
 | AC-59-4 | Cap.59 blocco RM-1 4-righe per equivalenza CANDLERANGE/realtime | OK | CAP_10 Cap.59 blocco RM-1 (ESCLUSE: path-inference, distorsione vol, swap O/C; NON ESCLUSE: cash low, oltre T+3, afternoon, altri strumenti) |
 | AC-59-5 | Cap.59 normizza caso parziale gap che attraversa 100gg + marker RUNTIME_GAP_BEYOND_100D | OK | CAP_10 Cap.59 "Cut-off finestra" (caso parziale + RUNTIME_GAP_BEYOND_100D -> Cap.61) |
 | AC-60-1 | Cap.60 algoritmo formale numerato >=6 step | OK | CAP_10 Cap.60 "Algoritmo formale di riconciliazione end-of-day" (6 step numerati) |
-| AC-60-2 | Cap.60 gate operativo (analogo Brier) + stati finali con effetto sessione successiva | OK | CAP_10 Cap.60 step 6 (RECONCILE_OK/DIVERGENT_*/DEGRADED, gate analogo Brier Parte VI Cap.30, blocco emissione d+1) |
+| AC-60-2 | Cap.60 gate operativo bloccante (a differenza del monitoraggio non bloccante di Parte VI Cap.30) + stati finali con effetto sessione successiva | OK | CAP_10 Cap.60 step 6 (RECONCILE_OK/DIVERGENT_*/DEGRADED, gate bloccante vs monitoraggio non bloccante Parte VI Cap.30 `CAP_06_parte_VI.md:276`, blocco emissione d+1) |
 | AC-60-3 | Cap.60 regola low/high cash via CANDLE ufficiale + V-1 afternoon + M-9 W2 | OK | CAP_10 Cap.60 step 5 + blocco RM-1 cash ([PROVA-EMPIRICA V-1 afternoon] + [PROVA-EMPIRICA W2]) |
 | AC-60-4 | Cap.60 theta_reconcile parametro provvisorio non congelato, rif. d3 | OK | CAP_10 Cap.60 "Parametro theta_reconcile" (provvisorio non congelato, FASE-D, "Risponde alla domanda operativa d3") |
 | AC-60-5 | Cap.60 riconciliazione non-mutativa (replay deterministico) | OK | CAP_10 Cap.60 "Vincoli operativi" 1deg bullet (non-mutativa, Parte II Cap.10 + Parte VII Cap.31) |
@@ -173,3 +173,41 @@ Criteri di rollback per ciascuna decisione D-10-* (registrati anche in CAP_10 Ca
 #### Conferma lettura regole metodologiche
 
 Letti come prima azione della sessione: `tasks/METODO.md` (RM-1..RM-4) e `.claude/agents/developer.md` (ruolo, formato REPORT, pre-consegna 13 punti). Vincoli RM-1 (blocchi 4-righe), RM-2 (grep documentato + citazioni verificate con Read), RM-3 (etichette fonte), RM-4 (nessun output non-CAP collaterale) applicati rigorosamente.
+
+---
+
+#### Iterazione 2 — risposta ai finding di Review
+
+**Origine**: `reviews/REVIEW_CAP_10_review.md` (Review v1, verdetto **PASS**, commit `ab80d96`). Il supervisore (2026-06-01) ha approvato la correzione di **tutti e 4** i finding NEUTRO in una v2 di pulizia di accuratezza. **Nessun finding e' bloccante; il verdetto v1 resta PASS.** Modifiche **chirurgiche e minime**: nessun AC, scope, decisione D-10-*, blocco RM-1 (eccetto la sola notazione interna OM-1), numero empirico o citazione di codice e' stato toccato. Il capitolo resta **43/43 AC** soddisfatti.
+
+**Vincolo RM-2/RM-3 rispettato**: l'unica citazione cross-CAP introdotta dalla v2 e' `[DOC-INTERNO docs/methodology_v2/CAP_06_parte_VI.md:276]`. Verificata con Read **prima** di citarla: la riga 276 contiene esattamente "**L'alert non chiude il loop di re-training**" e la sezione 30.3 (`:278-291`) conferma che $f_5^{live}$ e' la metrica di **stabilita' cross-regime** (NON un Brier score) e che il meccanismo $f_1$-$f_5$ live e' di **monitoraggio non bloccante**. Nessuna nuova citazione non verificata introdotta.
+
+**NB-1 (NEUTRO, sostanziale) — analogia cross-CAP inaccurata "gate Brier $f_5^{live}$ di Parte VI Cap.30"**
+- **Cosa modificato**: rimosso il termine "Brier $f_5^{live}$" da tutte le occorrenze e riformulata l'analogia come **contrasto** accurato (gate bloccante di Cap.60 *a differenza* del monitoraggio non bloccante di Cap.30), con citazione `CAP_06_parte_VI.md:276`.
+- **Occorrenze corrette (4 nel CAP + 2 propagazioni = 6 totali)**:
+  - `CAP_10_parte_10.md:42` — prima: "Direttamente analogo al gate Brier $f_5^{live}$ di Parte VI Cap.30." → dopo: "gate operativo **bloccante** ... A differenza del monitoraggio **non bloccante** di Parte VI Cap.30 (... non chiude il loop, `[DOC-INTERNO ...CAP_06_parte_VI.md:276]` ...), il gate di Cap.60 **interviene sull'operativita'** bloccando l'emissione del giorno $d+1$."
+  - `CAP_10_parte_10.md:126` (Cap.60 step 6) — prima: "(gate operativo, analogo al gate Brier $f_5^{live}$ di Parte VI Cap.30)." → dopo: "(gate operativo bloccante, a differenza del monitoraggio non bloccante di Parte VI Cap.30 che emette alert ma non chiude il loop, `[DOC-INTERNO ...CAP_06_parte_VI.md:276]`)."
+  - `CAP_10_parte_10.md:248` (Cap.65 D-10-3) — prima: "analogo al gate Brier $f_5^{live}$ di Parte VI Cap.30" → dopo: "gate **bloccante** sull'emissione $d+1$, a differenza del monitoraggio non bloccante di Parte VI Cap.30 (`CAP_06_parte_VI.md:276`)".
+  - **Propagazione 1** `00_indice.md:99` (riga Cap.60) — prima: "(analogo gate Brier $f_5^{live}$ Parte VI Cap.30)" → dopo: "(a differenza del monitoraggio non bloccante di Parte VI Cap.30)".
+  - **Propagazione 2** `REPORT_CAP_10.md` "Ipotesi di partenza" (riga 24) — prima: "gate operativo end-of-day analogo al gate Brier $f_5^{live}$ (Parte VI Cap.30)" → dopo: "gate operativo **bloccante** ... A differenza del monitoraggio **non bloccante** di Parte VI Cap.30 (... `CAP_06_parte_VI.md:276` ...)". Corretto anche il riferimento nella tabella "Misura prima/dopo" (riga Gate operativi) e nella riga AC **AC-60-2** della tabella di verifica AC: in entrambe "Brier" sostituito dal contrasto accurato con Cap.30.
+- **Misura prima/dopo**: prima = 6 riferimenti a un "gate Brier $f_5^{live}$" inesistente (concatenazione di due concetti non correlati + attribuzione di un comportamento "bloccante" a un alert che esplicitamente non blocca); dopo = 0 occorrenze di "Brier" in CAP_10 / 00_indice / REPORT (grep finale: 0 match), analogia sostituita da contrasto verificato.
+- **Impatto GA**: nullo. Il gate di Cap.60 era ed e' definito autonomamente e correttamente (blocco $d+1$ su `RECONCILE_DIVERGENT_*`, congiunzione dei 3 check, non-mutativita'); non dipendeva dall'analogia. Correzione di sola accuratezza della citazione cross-Parte.
+
+**OM-1 (NEUTRO) — notazione "49/13 match" ambigua**
+- **Cosa modificato**: uniformata la notazione nella riga PROVE del blocco RM-1 di Cap.59; nient'altro del blocco RM-1 toccato (unica modifica ammessa dentro un blocco RM-1, da task card).
+- **Prima→dopo**: `CAP_10_parte_10.md:104` — prima: "(49/13 match sulla finestra 14:55-15:25)" → dopo: "(49 match / 13 mismatch su 62 minuti, finestra 14:55-15:25)".
+- **Misura prima/dopo**: prima = notazione "49/13 match" ambigua (lo slash altrove significa match/totale, es. "55/60", "60/60"); dopo = forma esplicita non ambigua, coerente con "13/62 mismatch" gia' usato in Cap.60. Il dato numerico e' invariato (49 match, 13 mismatch, 62 minuti). Impatto GA: nullo.
+
+**OM-2 (NEUTRO) — "tutti definiti in Cap.65" impreciso**
+- **Cosa modificato**: ammorbidita l'affermazione di `CAP_10_parte_10.md:62` per renderla vera, distinguendo i marker principali (consolidati in Cap.65) dai sotto-marker operativi (definiti in-body nei rispettivi capitoli).
+- **Prima→dopo**: prima: "introduce marker complementari per la copertura (Cap.59 `BACKFILL_FROM_CANDLERANGE`, Cap.61 `BOOTSTRAP_COMPLETE`, Cap.60 `RECONCILE_*`), tutti definiti in Cap.65." → dopo: "i marker principali (...) sono consolidati nella tabella decisioni di Cap.65, mentre i sotto-marker operativi (`RUNTIME_GAP_BEYOND_100D` ..., `BACKFILL_VERIFIED_T3`/`BACKFILL_UNVERIFIED` ..., `RECONCILE_SCHEMA_FAIL` ...) sono definiti in-body nei rispettivi capitoli dove vengono introdotti."
+- **Misura prima/dopo**: prima = affermazione falsa per 4 sotto-marker non tabulati in Cap.65; dopo = affermazione vera (i sotto-marker in-body sono esplicitamente attribuiti ai capitoli di origine). Scelta dell'opzione "ammorbidisci" (la tabella Cap.65 non e' stata modificata). Impatto GA: nullo (i marker sono vocabolario di audit log, non input di feature).
+
+**OM-3 (NEUTRO) — disallineamento nome-marker `RECONCILE_*` vs enum manifest**
+- **Cosa modificato**: aggiunta una nota esplicita di corrispondenza 1:1 tra il campo `reconcile_status` del manifest (Cap.62) e i marker `RECONCILE_*` dell'audit log (Cap.60 step 6), inserita subito dopo la definizione dell'enum manifest.
+- **Prima→dopo**: prima = due nomenclature per lo stesso insieme senza mapping esplicito (`RECONCILE_OK/DIVERGENT_FIB/...` in Cap.60 `:126` vs `reconcile_status ∈ {OK, DIVERGENT_FIB, ...}` nel manifest `:188`); dopo = nuovo paragrafo "**Corrispondenza marker audit log <-> enum manifest**" (dopo `CAP_10_parte_10.md:190`): "il valore `reconcile_status = X` del manifest corrisponde 1:1 al marker `RECONCILE_X` dell'audit log (es. `reconcile_status = OK` <-> marker `RECONCILE_OK`; ...). Il manifest omette il prefisso `RECONCILE_` per concisione, ma l'insieme dei valori e la semantica sono identici."
+- **Misura prima/dopo**: prima = corrispondenza implicita (chiara dal contesto ma non dichiarata); dopo = corrispondenza esplicita e univoca. Impatto GA: nullo.
+
+**Tabella AC dopo l'iterazione 2**: invariata nei verdetti (43/43 OK). L'unica riga con evidenza ritoccata e' **AC-60-2** (riga 97), dove il riferimento "Brier" e' stato sostituito dal contrasto accurato con Cap.30; il verdetto resta **OK** e l'evidenza punta sempre a Cap.60 step 6. Nessun'altra riga AC cambia file:riga (le correzioni NB-1 su `:42`, `:126`, `:248` sono in sezioni "Ipotesi di partenza"/Cap.65 D-10-3, non in righe di evidenza AC per-capitolo diverse da AC-60-2). OM-1 e' interno al blocco RM-1 di Cap.59 (AC-59-4, evidenza "blocco RM-1 4-righe" invariata come riferimento). 
+
+**Verifica finale v2**: grep su `CAP_10_parte_10.md` + `00_indice.md` + `REPORT_CAP_10.md` per `Brier`, `49/13`, `tutti definiti in Cap.65` → **0 match**. Nessun residuo. Nessuna regressione di AC (modifiche di sola accuratezza testuale).
