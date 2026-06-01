@@ -192,3 +192,46 @@ Nessun'altra riga di `CAP_09_parte_9.md` toccata. In particolare **NON toccati**
 ### Criterio di rollback (micro-patch)
 
 Reversibile per pura sostituzione testuale: se la probe-review smentisse la certificazione (es. trovasse che l'audit CLI ha certificato solo l'ordine dei blocchi ma non l'indice del triplo, o solo un sottoinsieme delle posizioni), si ripristina l'annotazione "verifica parziale → Empirico-CLI" originale, o la si riscrive al livello di certezza effettivamente supportato. Il rollback non tocca codice ne' metodologia (l'annotazione e' descrittiva). Trigger: qualunque finding BUG REALE della probe-review sulla fedelta' della citazione rispetto a `REVIEW_CAP_DATA_02_RM_RETRO_CLI_review.md` / M-10.
+
+---
+
+## Micro-patch post-PASS #2 (2026-06-02) — Cap.47:93 schema BOOK_5 → CERTIFICATE [W3/M-10]
+
+**Natura**: secondo micro-patch chirurgico di **sola annotazione di stato** su Parte 9 (PASS storico `86425a7`), NON una nuova iterazione del ciclo Planner→Developer→Reviewer. Aggiorna la caveat RM-1 della **home dello schema `BOOK_5`** (Cap.47, riga 93) da "Verifica parziale (RM-1) … Empirico-CLI" a "Verificato `[PROVA-EMPIRICA 2026-06-01 W3 / M-10]`".
+
+### Motivazione
+
+La micro-patch #1 (sezione precedente) ha aggiornato a CERTIFICATE le sole **annotazioni di Cap.49** (riga 173 tabella `bar_synthetic` + riga 177 bullet prosa), entrambe ora chiuse con la frase "la cautela 'verifica parziale → Empirico-CLI' di Cap.47 e' **saldata**". Ma la **home dello schema `BOOK_5`** (Cap.47:93) — la caveat che Cap.49 dichiara saldata — era rimasta ancora in stato "Verifica parziale (RM-1) … Empirico-CLI". Restava quindi una **incoerenza interna**: Cap.49 rimandava a una cautela di Cap.47 dichiarata saldata mentre Cap.47 la presentava ancora come aperta. Questa patch #2 **chiude OM-2 della probe-review della patch #1** (coerenza Cap.47↔Cap.49), allineando la caveat sorgente di Cap.47 allo stato di certezza gia' riflesso in Cap.49. Nota chiave: la caveat originale chiedeva esplicitamente "cattura di ≥N eventi `BOOK_5` su FIB front-month liquido (Empirico-CLI)" — ed e' **esattamente** cio' che l'audit CLI W3 ha fatto (29 eventi su FIB6F front-month).
+
+### Fonte citata (autoritativa, NON ri-derivata)
+
+- `reviews/REVIEW_CAP_DATA_02_RM_RETRO_CLI_review.md` §W3 (righe 55-73): `BOOK_5` = `[BID×5 best-first][ASK×5 best-first]`, ogni livello triplo `(lots, orders, price)`; **certificato bit-a-bit su 29 eventi / 290 triple FIB6F front-month liquido**. Ordine BID-poi-ASK escluso invertito (blocco 1 sempre discendente = BID, 29/29 eventi, riga 62); triplo `(lots, orders, price)` confermato da `lots ≥ orders` su 290/290 (esclude `(orders, lots, price)`, riga 65); `bid1_price < ask1_price` su 29/29 (riga 64); anomalia 27/05 `bid1>ask1` **NON riprodotta** = artefatto del campione illiquido FIB6I a scadenza lontana, non inversione di schema (righe 68, 72).
+- `tasks/STATO_CORRENTE.md` §5 **M-10** (riga 77): stessa certificazione; "`f1≥f2` su 290/290 (lots≥orders) esclude triplo invertito; `bid1<ask1` su 29/29; anomalia 27/05 `bid1>ask1` = artefatto del campione (FIB6I illiquido scadenza lontana), NON inversione schema".
+
+**RM-1 onesto**: la nuova caveat certifica SOLO cio' che W3 certifica davvero — ordine blocchi, indice del triplo, `bid1<ask1`, non-riproduzione dell'anomalia. Mantiene esplicitamente la nota che **il decoder canonico D non parsa `BOOK_5`**: la certificazione e' empirica **level-1** (probe CLI diretto), NON level-2 (codice di produzione). Non sovra-estende oltre il campione (non dichiara nulla sui livelli 2-5 oltre l'ordinamento dei prezzi gia' osservato).
+
+### Prima → dopo (testuale)
+
+**Cap.47, bullet `BOOK_5`, riga 93 (`docs/methodology_v2/CAP_09_parte_9.md:93`)** — sostituita SOLO la caveat finale del bullet; la definizione dello schema `BOOK_5;<TICKER>;...` e l'esempio del probe `BOOK_5;FIB6I;14:02:33;...` restano identici.
+
+- PRIMA: "*__Verifica parziale (RM-1): lo schema BOOK_5 deriva da una singola osservazione del 2026-05-27__ (un solo evento FIB6I) e non è corroborato dal decoder canonico (D non parsa BOOK_5). Alternative compatibili __non escluse__: ordine dei blocchi BID/ASK (potrebbe essere invertito — nel campione `bid1_price=49715.0` risulta maggiore di `ask1_price=49275.0`, anomalo per un book regolare, plausibilmente perché contratto a scadenza lontana ma non disambiguato), indice del triplo `lots`/`orders`/`price` per livello. La struttura va disambiguata con cattura di ≥N eventi `BOOK_5` su FIB front-month liquido (Empirico-CLI).*"
+- DOPO: "*__Verificato (RM-1) `[PROVA-EMPIRICA 2026-06-01 W3 / M-10]`:__ lo schema `BOOK_5` e' __certificato__ dalla cattura di 29 eventi / 290 triple su FIB6F front-month liquido `[rif. reviews/REVIEW_CAP_DATA_02_RM_RETRO_CLI_review.md, M-10]` — esattamente la disambiguazione che questa caveat richiedeva (cattura di ≥N eventi `BOOK_5` su FIB front-month liquido). Risolte le alternative prima non escluse: __ordine dei blocchi BID-poi-ASK confermato__ (blocco 1 sempre discendente = BID su 29/29 eventi, NON invertito), __indice del triplo `(lots, orders, price)` confermato__ da `lots >= orders` su 290/290 triple (esclusa l'alternativa `(orders, lots, price)`), e `bid1_price < ask1_price` su 29/29 eventi. L'__anomalia `bid1_price=49715.0 > ask1_price=49275.0` del campione singolo 27/05__ (che lasciava aperta l'ipotesi di blocchi invertiti) e' risultata __NON riprodotta__ sul front-month liquido: era un artefatto del contratto illiquido FIB6I a scadenza lontana (book rado/crossato su contratto poco scambiato), non un'inversione di schema. Il decoder canonico D continua a non parsare `BOOK_5`: la certificazione e' empirica diretta a livello-1 via probe CLI `[PROVA-EMPIRICA 2026-06-01]`, non level-2 da codice di produzione.*"
+
+### File:riga toccati
+
+| File | Riga | Modifica |
+|------|------|----------|
+| `docs/methodology_v2/CAP_09_parte_9.md` | 93 | caveat finale del bullet `BOOK_5` — da "Verifica parziale (RM-1) … Empirico-CLI" a "Verificato `[PROVA-EMPIRICA 2026-06-01 W3 / M-10]`" |
+| `reports/REPORT_CAP_09.md` | — | questa sezione |
+
+Nessun'altra riga di `CAP_09_parte_9.md` toccata. In particolare **NON toccati**: la **definizione dello schema** `BOOK_5;<TICKER>;...` (resta identica) e l'**esempio del probe** `BOOK_5;FIB6I;14:02:33;...` sul medesimo rigo 93; il bullet `ANAG` (r.92) e il bullet `PRICE` (r.94); le annotazioni Cap.49 r.173/177 (gia' patchate dalla micro-patch #1); la tabella codici errore Cap.50; l'indice; gli AC.
+
+### Note di stato
+
+- **Parte 9 resta PASS storico `86425a7`**; modifica = **solo annotazione di stato della caveat** (Verifica parziale → Certificato), **schema ed esempio del probe invariati**, nessun cambiamento alla mappatura/metodologia, alla regola di derivazione `bar_synthetic`, alle posizioni-campo dichiarate, ne' al comportamento runtime.
+- Con questa patch #2, Cap.47:93 (home dello schema) e Cap.49:173/177 (annotazioni che vi rimandano) sono **coerenti**: la cautela dichiarata "saldata" in Cap.49 e' ora effettivamente saldata anche nella sua sorgente di Cap.47.
+- **Soggetto a probe-review RM-4(b) prima del commit**: la patch modifica un fatto gia' dichiarato in un CAP PASS (RM-4 criterio (b) — "modifica un fatto gia' dichiarato 'verificato' in CAP precedenti") → probe-review obbligatoria. **Nessun commit eseguito**: gli edit restano nel working tree; `tasks/DEV_STATUS.md = READY_FOR_PROBE_REVIEW docs/methodology_v2/CAP_09_parte_9.md`. Il commit e' compito dell'Orchestratore dopo PASS della probe-review.
+
+### Criterio di rollback (micro-patch #2)
+
+Reversibile per pura sostituzione testuale: se la probe-review smentisse la certificazione o la fedelta' della citazione rispetto a `REVIEW_CAP_DATA_02_RM_RETRO_CLI_review.md` §W3 / M-10, si ripristina la caveat "Verifica parziale (RM-1) … Empirico-CLI" originale (riportata integralmente sopra in "PRIMA"), o la si riscrive al livello di certezza effettivamente supportato. Il rollback non tocca codice ne' metodologia (la caveat e' descrittiva). Trigger: qualunque finding BUG REALE della probe-review sulla fedelta' della citazione o sull'eventuale sovra-dichiarazione (es. certificazione che in realta' copre solo un sottoinsieme delle alternative escluse).
