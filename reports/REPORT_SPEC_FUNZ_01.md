@@ -119,3 +119,57 @@ SPEC-FUNZ-01 e' un documento di consolidamento, non una modifica al motore: il r
 - Deviazione di lunghezza >=40% dal target 12-16 pp (AC-G10 BUG REALE): la spec e' amputata o bloated -> re-bilanciamento.
 
 Il rollback e' sempre **chirurgico** sul requisito o sulla sezione interessata, mai re-stesura integrale, salvo FAIL strutturale.
+
+---
+
+## Iterazione 2 — risposta ai finding di Review
+
+**Contesto.** Review v1 = **PASS** (`d8a40a0`): 0 bloccanti, 0 BUG REALE. I 3 finding sono **NEUTRO** (igiene-citazione), approvati dal supervisore come micro-pass opzionale. Patch **chirurgiche** su `docs/spec_funzionale/SPEC_FUNZ_01.md` (solo le 3 zone OM-1/2/3); nessuna re-stesura, nessuna altra modifica. **Impatto sulla correttezza: nullo** (la spec era gia' tracciabilmente corretta); **impatto: +precisione di citazione** (puntatore a riga esatta dell'asserzione invece che a riga di intestazione capitolo / adiacente).
+
+**Vincolo RM-1 applicato.** Ogni nuovo numero di riga e' stato verificato con `Read` del file di destinazione PRIMA di scriverlo: la riga deve contenere davvero il costrutto citato. Nessun target ha richiesto fallback al capitolo (tutti hanno risolto alla riga esatta).
+
+### OM-1 — 6 numeri di riga corretti (puntatore header/adiacente → riga esatta)
+
+Tutti su `SPEC_FUNZ_01.md`. Ogni mapping confermato con `Read` del CAP di destinazione.
+
+| # | Citazione | Prima | Dopo | Riga spec | Contenuto reale della riga di destinazione (verificato con Read) |
+|---|---|---|---|---|---|
+| 1 | `CAP_10_parte_10.md` (Sez.9.2, invariante research=runtime esteso al tape) | `:11` (header "Capitolo 57") | `:5` | 384 | r5 = "l'invariante `research semantics = runtime semantics` ... e' esteso ... all'**intero ciclo di vita del tape**". MATCH col testo spec "fino all'intero ciclo di vita del tape". |
+| 2 | `CAP_10_parte_10.md` (R-22, Cap.59 limite ~100gg) | `:74` (header "Capitolo 59") | `:76` | 390 | r76 = "Questo capitolo norma il recupero gap di durata $\leq \sim 100$gg ... Il limite e' stabilito empiricamente". MATCH. |
+| 3 | `CAP_10_parte_10.md` (R-22, Cap.61 fallback Portara) | `:151` (header "Capitolo 61") | `:161` | 390 | r161 = "**Step C — Fallback Portara.** Se ne' archivio locale ne' `CANDLERANGE` daily coprono ... fallback all'archivio Portara/CQG". E' la riga esatta del costrutto "fallback Portara" nel corpo del capitolo. MATCH. |
+| 4 | `CAP_10_parte_10.md` (Sez.10.1, PHASE-2 fuori scope) | `:226` (header "Capitolo 64") | `:236` | 417 | r236 = "**Convenzione cross-index PHASE-2** ... Parte 10 NON si applica ai cross-index PHASE-2 (fuori scope PHASE-1)". MATCH. |
+| 5 | `CAP_10_parte_10.md` (Sez.10.3 voce 4, riavvio Darwin mezzanotte) | `:234` (estensione immutabilita' barre, riga adiacente) | `:233` | 428 | r233 = "**Riavvio Darwin mezzanotte** — osservazione empirica diretta: residuo Empirico-CLI di Parte 9 Cap.50 Gap-3". MATCH col costrutto "riavvio Darwin mezzanotte". |
+| 6 | `CAP_07_parte_VII.md` (NFR-4, tag "AC-GO-4") | `:574` (AC-GO-3, expected net return) | `:576` | 301 | r576 = "**AC-GO-4 — Lifecycle stabile cross-regime.** $|f_5^{global}(\theta^*)| < \theta_{f_5} = 0{,}30$". MATCH col tag (AC-GO-4) gia' presente nella spec. |
+
+**Verifica anti-regressione**: `grep` sulla spec dei 5 vecchi numeri `CAP_10:11/74/151/226/234` e `CAP_07:574` → **0 occorrenze residue** (nessuna citazione stale lasciata). I nuovi 6 numeri tutti presenti. La citazione `CAP_10_parte_10.md:230` (DEFAULT_INTRADAY_MAX_DAYS / migrazione legacy, Sez.9.3 + self-review (b)) NON e' nella lista OM-1 ed e' stata **lasciata invariata** (corretta).
+
+**Impatto OM-1**: nullo sulla tracciabilita' sostanziale (gia' risolveva al capitolo corretto col costrutto presente); +precisione "riga-esatta", ora allineata allo standard di citazione tenuto nelle Sez. 1-8.
+
+### OM-2 — R-17 (Sez.6): rimosso "per direzione" dal titolo
+
+- **Prima** (spec r256): "**R-17 — Singolo segnale attivo per direzione.** Vincolo $|\mathcal{A}(t)|\le 1$: nessuna politica multi-segnale concorrente."
+- **Dopo** (spec r256): "**R-17 — Singolo segnale attivo.** Vincolo $|\mathcal{A}(t)|\le 1$: nessuna politica multi-segnale concorrente."
+- **Razionale**: il vincolo chiuso e' $|\mathcal{A}(t)|\le 1$ **globale** (`[DOC-INTERNO CAP_02_parte_II.md:81]`; cfr. CAP_02:87 "elimina tutte le politiche multi-segnale concorrente"), non "uno per direzione". La locuzione "per direzione", isolata, poteva suggerire $|\mathcal{A}|\le 2$. La forma corretta era gia' enunciata **in-linea** ed e' stata **mantenuta**; rimosso solo il wording lasco dal titolo, allineandolo a R-7 (Sez.3.2) che era gia' senza "per direzione". Il riferimento autoritativo `CAP_02_parte_II.md:81` resta invariato.
+- **Impatto**: nullo sulla correttezza (il constraint corretto gia' governava in-linea, AC-G6 reggeva); +coerenza terminologica titolo↔formula e R-17↔R-7.
+
+### OM-3 — Sez.9.2: aggiunta ancora puntuale STATO_CORRENTE:76 per la numerazione `fN` di PRICE
+
+- **Prima** (spec r384): "...il feed cash usa `PRICE` (schema realtime `f4=last`/`f6=volume_cum`/`f8=day_low`/`f9=day_high`, M-9 `[DOC-INTERNO CAP_09_parte_9.md:94]`)."
+- **Dopo** (spec r384): "...il feed cash usa `PRICE` (schema realtime `f4=last`/`f6=volume_cum`/`f8=day_low`/`f9=day_high`, M-9 `[DOC-INTERNO tasks/STATO_CORRENTE.md:76]`, descritto anche in `[DOC-INTERNO CAP_09_parte_9.md:94]`)."
+- **Razionale**: l'indicizzazione `fN` esatta proviene da **M-9 in `tasks/STATO_CORRENTE.md:76`** (verificato con Read: r76 = "**Schema PRICE realtime (DAPI)** [PROVA-EMPIRICA 2026-06-01 W2, CAP-DATA-02]: `PRICE;<tk>;<HH:mm:ss>;<f4=last>;<f5>;<f6=volume_cum>;<f7>;<f8=day_low>;<f9=day_high>`"), riprodotta dalla spec token-per-token. Aggiunta l'**ancora puntuale** alla numerazione `fN`; **mantenuto** il richiamo descrittivo a `CAP_09_parte_9.md:94` (che riporta lo schema in forma descrittiva, coerente con M-9), come richiesto dal finding.
+- **Impatto**: nullo sulla correttezza (fatto gia' corretto e tracciabile); +precisione di provenienza (ancora alla riga sorgente della numerazione `fN`).
+
+### Misura prima/dopo (Iterazione 2)
+
+| Metrica | Prima (v1) | Dopo (v2) | Delta |
+|---|---|---|---|
+| Citazioni `[DOC-INTERNO]` che puntano a riga di header/adiacente invece che alla riga esatta (OM-1) | 6 | 0 | -6 |
+| Titoli di requisito con wording lasco rispetto alla formula vincolante (OM-2) | 1 (R-17) | 0 | -1 |
+| Ancore di provenienza puntuali per la numerazione `fN` dello schema PRICE (OM-3) | 0 (solo richiamo descrittivo a CAP_09:94) | 1 (STATO_CORRENTE:76 + richiamo CAP_09:94 mantenuto) | +1 |
+| Correttezza sostanziale / tracciabilita' / contraddizioni con CAP chiusi | corretta (PASS) | corretta (invariata) | 0 |
+
+**Onesta'**: nessun target OM-1 ha richiesto di restare al livello capitolo (tutti hanno risolto alla riga esatta con costrutto presente, verificato con Read). Nessun finding contestato. Le modifiche sono confinate alle 3 zone OM-1/2/3 del solo `SPEC_FUNZ_01.md`; nessun CAP, indice o file di stato toccato.
+
+### Criterio di rollback (Iterazione 2)
+
+Trattandosi di sole correzioni di numero-di-riga e di wording (nessun cambiamento di contenuto sostanziale), il rollback dell'Iterazione 2 e' il ripristino dei 6 numeri precedenti + del titolo R-17 + rimozione dell'ancora STATO_CORRENTE:76, senza alcun impatto sul motore. Condizione di rollback: se la re-review v2 rilevasse che un nuovo numero di riga non risolve al costrutto atteso (regressione di citazione), si ripristina quella singola citazione al livello capitolo (livello meno puntuale ma corretto).

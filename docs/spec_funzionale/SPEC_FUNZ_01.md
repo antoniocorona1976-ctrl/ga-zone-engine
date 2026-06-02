@@ -253,7 +253,7 @@ EXEC: 11:07 CET   EXPIRY: 2026-06-16 17:22 CET
 
 - **R-15 — Sessione operativa 8:00-22:00 CET.** Il prodotto emette e processa segnali nella finestra unica e continua 8:00-22:00 CET (epoca E5). *Valore operativo*: copre l'intera negoziazione FIB su IDEM; coerente con la disponibilità mobile dell'operatore. *Origine*: `[DOC-INTERNO CAP_01_parte_I.md:9]`, `[DOC-INTERNO CAP_09_parte_9.md:273]`.
 - **R-16 — Sizing fisso 1 contratto FIB.** Size non parametrabile dall'utente: 1 contratto alla volta. *Valore operativo*: nessuna gestione di size richiesta all'operatore (punto 7 dichiarazione). *Origine*: `[DOC-INTERNO CAP_01_parte_I.md:25]`.
-- **R-17 — Singolo segnale attivo per direzione.** Vincolo $|\mathcal{A}(t)|\le 1$: nessuna politica multi-segnale concorrente. *Valore operativo*: chiarezza operativa, coerenza con 1 contratto. *Origine*: `[DOC-INTERNO CAP_02_parte_II.md:81]`, `[DOC-INTERNO CAP_06_parte_VI.md:81]`.
+- **R-17 — Singolo segnale attivo.** Vincolo $|\mathcal{A}(t)|\le 1$: nessuna politica multi-segnale concorrente. *Valore operativo*: chiarezza operativa, coerenza con 1 contratto. *Origine*: `[DOC-INTERNO CAP_02_parte_II.md:81]`, `[DOC-INTERNO CAP_06_parte_VI.md:81]`.
 - **R-18 — Commissioni 5 EUR/operazione.** Il prodotto assume 5 EUR/op (2 punti FIB equivalenti per ciclo apertura-chiusura) nel calcolo del rendimento netto. *Valore operativo*: il filtro 80pt e le metriche di successo sono al netto del costo reale. *Origine*: `[DOC-INTERNO CAP_01_parte_I.md:25]`, `[DOC-INTERNO CAP_01_parte_I.md:73]`.
 - **R-19 — Policy rollover / contract switch.** Al boot della sessione del giorno di scadenza (terza venerdì del mese) la pipeline sottoscrive direttamente il next-month, con marker `CONTRACT_SWITCH`, saltando la finestra 08:00-09:00 del front in scadenza. *Valore operativo*: il segnale resta coerente sul contratto liquido; evita la patologia di settlement. *Origine*: `[DOC-INTERNO CAP_09_parte_9.md:98]` (D-9-NB2).
 
@@ -298,7 +298,7 @@ La **metrica primaria di successo** è $E[R_{net}\mid executed]$ **positivo dopo
 
 - **NFR-2 (NFR-DSR) — DSR positivo significativo come gate primario.** Il bundle candidato deve avere $DSR>\theta_{DSR}$ ($\theta_{DSR}=0{,}95$ valore di lavoro provvisorio, non congelato). *Valore di prodotto*: prova che la performance non è frutto del numero di prove condotte. *Origine*: `[DOC-INTERNO CAP_07_parte_VII.md:570]` (AC-GO-1).
 - **NFR-3 (NFR-PBO) — PBO sotto soglia come gate di fragilità.** $PBO<\theta_{PBO}$ ($\theta_{PBO}=0{,}50$ provvisorio). *Valore di prodotto*: prova che la scelta del bundle non dipende fragilmente dalla partizione dei dati. *Origine*: `[DOC-INTERNO CAP_07_parte_VII.md:572]` (AC-GO-2).
-- **NFR-4 — Lifecycle stabile cross-regime.** Target hit / executable rate stabili e comparabili fra regime calmo e turbolento; bootstrap stazionario ($B=2000$) per gli intervalli di confidenza. *Valore di prodotto*: il prodotto è robusto al regime di mercato. *Origine*: `[DOC-INTERNO CAP_01_parte_I.md:85]`, `[DOC-INTERNO CAP_07_parte_VII.md:574]` (AC-GO-4).
+- **NFR-4 — Lifecycle stabile cross-regime.** Target hit / executable rate stabili e comparabili fra regime calmo e turbolento; bootstrap stazionario ($B=2000$) per gli intervalli di confidenza. *Valore di prodotto*: il prodotto è robusto al regime di mercato. *Origine*: `[DOC-INTERNO CAP_01_parte_I.md:85]`, `[DOC-INTERNO CAP_07_parte_VII.md:576]` (AC-GO-4).
 - **NFR-5 — Filtro 80pt come pre-condizione di emissione.** L'80pt è gate di emissione, non parametro libero del GA. *Valore di prodotto*: nessun micro-segnale antieconomico pubblicato. *Origine*: `[DOC-INTERNO CAP_01_parte_I.md:83]`.
 
 ### 7.3 Checklist go-live come criteri di accettazione del prodotto
@@ -381,13 +381,13 @@ Catalogo eventi loggati, elencato per riferimento (non ridichiarato): `HANDSHAKE
 
 ### 9.2 Invariante research = runtime e feed runtime
 
-L'invariante **research = runtime** è esteso dall'adapter DAPI → bundle frozen Portara `[DOC-INTERNO CAP_09_parte_9.md:153]` fino all'intero ciclo di vita del tape `[DOC-INTERNO CAP_10_parte_10.md:11]`. Il feed runtime FIB è ricostruito dal `BOOK_5` (i futures IDEM non espongono `PRICE`) `[DOC-INTERNO CAP_09_parte_9.md:73]`; il feed cash usa `PRICE` (schema realtime `f4=last`/`f6=volume_cum`/`f8=day_low`/`f9=day_high`, M-9 `[DOC-INTERNO CAP_09_parte_9.md:94]`).
+L'invariante **research = runtime** è esteso dall'adapter DAPI → bundle frozen Portara `[DOC-INTERNO CAP_09_parte_9.md:153]` fino all'intero ciclo di vita del tape `[DOC-INTERNO CAP_10_parte_10.md:5]`. Il feed runtime FIB è ricostruito dal `BOOK_5` (i futures IDEM non espongono `PRICE`) `[DOC-INTERNO CAP_09_parte_9.md:73]`; il feed cash usa `PRICE` (schema realtime `f4=last`/`f6=volume_cum`/`f8=day_low`/`f9=day_high`, M-9 `[DOC-INTERNO tasks/STATO_CORRENTE.md:76]`, descritto anche in `[DOC-INTERNO CAP_09_parte_9.md:94]`).
 
 ### 9.3 Tape archiviato e backfill
 
 - **R-20 — Tape archiviato in formato runtime esteso (13 campi) + manifest JSON.** L'archivio del tape DAPI usa l'header CSV runtime esteso a **13 campi** (`symbol, timeframe, timestamp, date, time, open, high, low, close, volume, tick_count, bar_synthetic, source`), **distinto** dal legacy CSV a **11 campi** (`[CODICE-ESISTENTE scripts/export_directa_history_parametric.py:605-617]`, senza `tick_count`/`bar_synthetic`); manifest JSON esteso con `reconcile_status`, `bar_counts_by_source`, `gap_log`. *Valore di prodotto*: il tape archiviato è simmetrico al bundle di training e auditabile. *Origine*: `[DOC-INTERNO CAP_10_parte_10.md:185]`, `[DOC-INTERNO CAP_09_parte_9.md:117]`.
 - **R-21 — Immutabilità delle barre storicizzate.** Le barre archiviate sono immutabili (perimetro empirico T+3 morning) con versioning append-only per i recuperi retroattivi; il tape archiviato **non è fonte di training**. *Valore di prodotto*: replay deterministico bit-exact e integrità storica. *Origine*: `[DOC-INTERNO CAP_10_parte_10.md:255]` (D-10-8), `[DOC-INTERNO CAP_10_parte_10.md:256]` (D-10-9).
-- **R-22 — Backfill gap entro 100gg + fallback Portara oltre.** Recupero gap via `CANDLERANGE` entro ~100 giorni (limite DAPI `[CODICE-ESISTENTE scripts/export_directa_history_parametric.py:61]` `DEFAULT_INTRADAY_MAX_DAYS=100`), fallback Portara oltre, con re-warm-up obbligatorio. *Valore di prodotto*: continuità del tape senza buchi che contaminerebbero le feature. *Origine*: `[DOC-INTERNO CAP_10_parte_10.md:74]` (Cap.59), `[DOC-INTERNO CAP_10_parte_10.md:151]` (Cap.61).
+- **R-22 — Backfill gap entro 100gg + fallback Portara oltre.** Recupero gap via `CANDLERANGE` entro ~100 giorni (limite DAPI `[CODICE-ESISTENTE scripts/export_directa_history_parametric.py:61]` `DEFAULT_INTRADAY_MAX_DAYS=100`), fallback Portara oltre, con re-warm-up obbligatorio. *Valore di prodotto*: continuità del tape senza buchi che contaminerebbero le feature. *Origine*: `[DOC-INTERNO CAP_10_parte_10.md:76]` (Cap.59), `[DOC-INTERNO CAP_10_parte_10.md:161]` (Cap.61).
 
 ### 9.4 Riconciliazione canonica giornaliera (gate bloccante)
 
@@ -414,7 +414,7 @@ L'invariante **research = runtime** è esteso dall'adapter DAPI → bundle froze
 ### 10.1 Fasizzazione
 
 - **PHASE-1 FIB-only** = oggetto di SPEC-FUNZ-01 corrente.
-- **PHASE-2 cross-index** (DAX/EuroStoxx50/ES/MES) = **fuori scope**, rinviata a SPEC-FUNZ-02 o equivalente futuro (non definito qui) `[DOC-INTERNO CAP_08_parte_8.md:167]`, `[DOC-INTERNO CAP_09_parte_9.md:391]`, `[DOC-INTERNO CAP_10_parte_10.md:226]`.
+- **PHASE-2 cross-index** (DAX/EuroStoxx50/ES/MES) = **fuori scope**, rinviata a SPEC-FUNZ-02 o equivalente futuro (non definito qui) `[DOC-INTERNO CAP_08_parte_8.md:167]`, `[DOC-INTERNO CAP_09_parte_9.md:391]`, `[DOC-INTERNO CAP_10_parte_10.md:236]`.
 
 ### 10.2 Ponte verso FASE-D
 
@@ -425,7 +425,7 @@ SPEC-FUNZ-01 fornisce la **base requisiti** per la successiva FASE-D di implemen
 1. **M-2 — verifica empirica latenza Telegram** ($L_{max}=30$ s contro bot reale) → Appendice E / FASE-D `[DOC-INTERNO tasks/CARRYOVER.md:21]`.
 2. **Calibrazione fine $\theta_{reconcile}$** (Cap.60) → FASE-D `[DOC-INTERNO CAP_10_parte_10.md:232]` (D-10-10).
 3. **Migrazione legacy→esteso del tape** (11→13 campi, ~391 dump) → operazione una-tantum FASE-D `[DOC-INTERNO CAP_10_parte_10.md:230]`.
-4. **Codici 1030 e riavvio Darwin mezzanotte** (Empirico-CLI residuo) → sessione CLI / FASE-D `[DOC-INTERNO CAP_10_parte_10.md:234]`.
+4. **Codici 1030 e riavvio Darwin mezzanotte** (Empirico-CLI residuo) → sessione CLI / FASE-D `[DOC-INTERNO CAP_10_parte_10.md:233]`.
 5. **Lookup completa codici mese Directa-IDEM** oltre `F`/`I` → runtime-discovery via ANAG, FASE-D `[DOC-INTERNO CAP_09_parte_9.md:389]`.
 6. **Implementazione codice operativo della pipeline runtime** (parser DAPI, adapter, recovery, audit, gating) → FASE-D `[DOC-INTERNO CAP_09_parte_9.md:406]`.
 
