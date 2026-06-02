@@ -127,3 +127,72 @@ Non ho riaperto alcun CAP chiuso (AC-G14): dove la spec riproduce una decisione 
 ---
 
 *Fine review SPEC-FUNZ-01. Verdetto: PASS. 0 bloccanti, 0 BUG REALE, 3 osservazioni NEUTRO (ritocchi opzionali). Sede WEB, statico, no DAPI. Empirico-CLI: vuoto.*
+
+---
+---
+
+# Re-Review v2 SPEC-FUNZ-01 — verdetto: PASS
+
+**Tipo**: re-review LEGGERA focalizzata (modello "re-review v2 cosmetica" di CAP-DATA-03). **NON** ripete l'audit a tappeto di v1 (gia' PASS, `d8a40a0`): verifica solo (a) che i 3 fix NEUTRO approvati risolvano correttamente e (b) zero regressione.
+**Sede**: WEB (audit statico — documento + grep + Read dei CAP committati; nessuna esecuzione DAPI).
+**Oggetto**: commit Developer v2 `314dd1b` — diff = **6 righe** su `docs/spec_funzionale/SPEC_FUNZ_01.md` (6 ins / 6 del), confinato alle 3 zone OM (R-17 Sez.6; NFR-4 Sez.7.2; Sez.9.2; R-22 Sez.9.3; Sez.10.1; Sez.10.3 voce 4).
+**Input autoritativo**: i 3 OM approvati sono in `tasks/ACTIVE_TASK.md` ("Finding di Review da risolvere", r406-418) e in `reports/REPORT_SPEC_FUNZ_01.md` ("Iterazione 2", r125-175). Mapping di review v1: blocco "Osservazioni minori" OM-1/2/3 (sopra in questo file).
+
+## A — OM-1: i 6 nuovi numeri di riga risolvono alla riga ESATTA col costrutto citato?
+
+Aperti con Read `CAP_10_parte_10.md` e `CAP_07_parte_VII.md`. Ognuno confermato token-per-token: la riga di destinazione contiene **davvero** il costrutto che la spec cita in quel punto.
+
+| # | Citazione (spec) | Nuovo target | Costrutto reale alla riga (Read) | Esito |
+|---|---|---|---|---|
+| 1 | invariante research=runtime esteso al ciclo di vita del tape (Sez.9.2) | `CAP_10:5` | r5 = "l'invariante `research semantics = runtime semantics` ... e' esteso ... all'**intero ciclo di vita del tape**" | MATCH |
+| 2 | limite ~100gg, Cap.59 (R-22) | `CAP_10:76` | r76 = "Questo capitolo norma il recupero gap di durata $\leq \sim 100$gg ... Il limite e' stabilito empiricamente" | MATCH |
+| 3 | Step C fallback Portara, Cap.61 (R-22) | `CAP_10:161` | r161 = "**Step C — Fallback Portara.** Se ne' archivio locale ne' `CANDLERANGE` daily coprono ... fallback all'archivio Portara/CQG" | MATCH |
+| 4 | cross-index PHASE-2 fuori scope (Sez.10.1) | `CAP_10:236` | r236 = "**Convenzione cross-index PHASE-2** ... Parte 10 NON si applica ai cross-index PHASE-2 (fuori scope PHASE-1)" | MATCH |
+| 5 | riavvio Darwin mezzanotte (Sez.10.3 voce 4) | `CAP_10:233` | r233 = "**Riavvio Darwin mezzanotte** — osservazione empirica diretta: residuo Empirico-CLI di Parte 9 Cap.50 Gap-3" | MATCH |
+| 6 | AC-GO-4 lifecycle cross-regime (NFR-4) | `CAP_07:576` | r576 = "**AC-GO-4 — Lifecycle stabile cross-regime.** $\|f_5^{global}(\theta^*)\| < \theta_{f_5} = 0{,}30$" | MATCH |
+
+Nota anti-falso-positivo: per #2 r74 = header "## Capitolo 59" (riga vecchia, ora abbandonata); per #6 r574 = AC-GO-3 (expected net return, riga vecchia). I nuovi target (r76, r576) puntano al corpo del costrutto, non all'header/adiacente. **OM-1: tutti e 6 risolvono alla riga esatta. 0 citazioni introdotte dal fix che non risolvano.**
+
+## B — OM-2: R-17 senza "per direzione" + constraint globale preservato
+
+- Diff R-17 (spec r256): titolo "**R-17 — Singolo segnale attivo per direzione.**" → "**R-17 — Singolo segnale attivo.**". Unico token cambiato; il resto della riga e' byte-identico.
+- Vincolo in-linea `$|\mathcal{A}(t)|\le 1$: nessuna politica multi-segnale concorrente` **mantenuto** (non perso).
+- Coerenza con CAP_02 (Read r79-87): r81 = "$$|\mathcal{A}(t)| \leq 1\ \text{per ogni}\ t$$" — vincolo **globale** (al massimo un segnale a ogni istante), r87 "elimina dal dominio del GA tutte le politiche multi-segnale concorrente". La locuzione "per direzione" rimossa dal titolo poteva suggerire $|\mathcal{A}|\le 2$; la sua rimozione **avvicina** il titolo alla semantica del CAP, non la altera.
+- Allineamento a R-7 (spec r112, Read): "**R-7 — Segnale unico attivo.** ... $|\mathcal{A}(t)|\le 1$" — gia' senza "per direzione". Ora R-17 ↔ R-7 coerenti.
+- Riferimento autoritativo `CAP_02_parte_II.md:81` **invariato**. **OM-2: constraint non perso, coerente con CAP_02:81/:87. OK.**
+
+## C — OM-3: ancora STATO_CORRENTE:76 aggiunta + richiamo CAP_09:94 mantenuto
+
+- Diff Sez.9.2 (spec r384): `M-9 [DOC-INTERNO CAP_09_parte_9.md:94]` → `M-9 [DOC-INTERNO tasks/STATO_CORRENTE.md:76], descritto anche in [DOC-INTERNO CAP_09_parte_9.md:94]`.
+- Verifica STATO_CORRENTE:76 (Read r76): r76 = riga **M-9** = "**Schema PRICE realtime (DAPI)** [PROVA-EMPIRICA 2026-06-01 W2, CAP-DATA-02]: `PRICE;<tk>;<HH:mm:ss>;<f4=last>;<f5>;<f6=volume_cum>;<f7>;<f8=day_low>;<f9=day_high>`". E' davvero la riga sorgente della numerazione `f4/f6/f8/f9` riprodotta dalla spec, token-per-token, ed e' etichettata `[PROVA-EMPIRICA]` (provenienza corretta della numerazione `fN`).
+- Il richiamo descrittivo `CAP_09_parte_9.md:94` e' **mantenuto** (come richiesto dal finding). **OM-3: ancora puntuale alla riga M-9 corretta + richiamo CAP_09 mantenuto. OK.**
+
+## D — Zero regressione
+
+1. **Diff confinato alle 3 zone OM**: `git show 314dd1b --numstat` su `SPEC_FUNZ_01.md` = `6  6` (6 ins / 6 del). Ispezione riga-per-riga dei `-`/`+`: ogni coppia differisce SOLO per il token oggetto del fix (numero di riga, titolo R-17, ancora STATO_CORRENTE). Nessun'altra citazione, requisito, formula o sezione alterata.
+2. **Vecchi numeri = 0 occorrenze residue**: grep sulla spec di `CAP_10:11`, `:74`, `:151`, `:226`, `:234`, `CAP_07:574` → **No matches found** (nessuna citazione stale lasciata). I 6 nuovi numeri + `STATO_CORRENTE:76` tutti presenti (NFR-4 r301, Sez.9.2 r384, R-22 r390, Sez.10.1 r417, Sez.10.3 r428).
+3. **Citazioni gia' corrette in v1 invariate**: `CAP_10:230` (r427 + self-review r520), `CAP_10:255` / `:256` (R-21 r389), `CAP_09:94` (r384, richiamo descrittivo conservato) — tutte presenti e immutate. `CAP_10:230` (DEFAULT_INTRADAY_MAX_DAYS) **correttamente** non toccato (non era in lista OM-1).
+4. **Nessun nuovo "verificato X"**: il diff non introduce asserzioni empiriche di prima istanza; tutte le righe modificate restano richiami `[DOC-INTERNO]`/`[CODICE-ESISTENTE]` etichettati. Nessuna nuova contraddizione coi CAP (le 6 righe ora puntano a righe che, lette, confermano l'asserzione della spec).
+
+**D: 0 regressione.**
+
+## Osservazioni fuori-perimetro v2
+
+Nessuna. Non ho ispezionato (per mandato di re-review focalizzata) le zone non toccate dal diff v2: sono gia' PASS in v1 e AC-G14 vieta di riaprire i CAP chiusi. Nessun problema sostanziale notato di sfuggita durante la verifica dei 4 punti.
+
+## Applicazione RM-1 a me stesso (re-review v2)
+
+- **"I 6 nuovi target risolvono alla riga esatta col costrutto"**. PROVE: Read `CAP_10_parte_10.md` r1-12 / r72-81 / r157-164 / r230-238 e `CAP_07_parte_VII.md` r572-578; ogni riga citata contiene il costrutto (tabella sez. A). ALTERNATIVE ESCLUSE: target che cade su header/adiacente (escluso: r5/r76/r161/r236/r233/r576 sono corpo del costrutto, verificato leggendo la riga; gli header r74/adiacente r574 sono i target *vecchi* abbandonati). ALTERNATIVE NON ESCLUSE: nessuna — ho letto direttamente le righe di destinazione, non dedotto.
+- **"OM-2 non perde il constraint ed e' coerente con CAP_02:81"**. PROVE: diff mostra inline `$|\mathcal{A}(t)|\le 1$` mantenuto; Read CAP_02 r79-87 (r81 vincolo globale, r87 elimina multi-segnale); Read spec r112 (R-7 gia' senza "per direzione"). ALTERNATIVE ESCLUSE: constraint $|\mathcal{A}|\le 2$ (escluso da CAP_02:81 "≤ 1 per ogni t"). ALTERNATIVE NON ESCLUSE: nessuna.
+- **"OM-3 ancora la riga M-9 sorgente della numerazione fN"**. PROVE: Read STATO_CORRENTE r73-77 (r76 = M-9 con `f4=last/.../f9=day_high`). ALTERNATIVE ESCLUSE: riga diversa da M-9 (esclusa: r76 e' M-9, r75=M-7, r77=M-10). ALTERNATIVE NON ESCLUSE: nessuna.
+- **"Zero regressione: diff confinato + 0 vecchi numeri + correttezza v1 invariata"**. PROVE: `git show 314dd1b --numstat`=`6 6`; diff `-`/`+` riga-per-riga (solo token-fix); grep vecchi numeri = "No matches found"; grep `CAP_10:230/:255/:256/CAP_09:94` = tutte presenti. ALTERNATIVE ESCLUSE: modifica nascosta fuori dalle 3 zone (esclusa: numstat=6 righe + ispezione integrale dei `-`/`+`); citazione stale residua (esclusa dal grep). ALTERNATIVE NON ESCLUSE: nessuna — il diff e' piccolo e interamente ispezionato.
+
+Non ho riaperto alcun CAP chiuso (AC-G14): ho usato i CAP come autoritativi e verificato solo la **fedelta' della citazione** della spec verso la riga di destinazione, non il merito del CAP.
+
+## Verdetto motivato
+
+**PASS.** I 3 fix NEUTRO approvati risolvono correttamente: OM-1 (6/6 numeri di riga puntano ora alla riga esatta col costrutto, verificato token-per-token), OM-2 (R-17 allineato a R-7, constraint globale $|\mathcal{A}(t)|\le 1$ preservato e coerente con CAP_02:81/:87), OM-3 (ancora `STATO_CORRENTE:76`=M-9 aggiunta come provenienza della numerazione `fN`, richiamo CAP_09:94 mantenuto). Zero regressione: diff di 6 righe interamente confinato alle 3 zone OM, 0 occorrenze residue dei vecchi numeri, citazioni gia' corrette in v1 invariate, nessun nuovo "verificato X". Nessun finding. Nessun handoff CLI richiesto (audit statico sufficiente; il track non produce fatti empirici).
+
+---
+
+*Fine re-review v2 SPEC-FUNZ-01. Verdetto: PASS. 0 finding. A/B/C/D tutti OK. Sede WEB, statico, no DAPI.*
