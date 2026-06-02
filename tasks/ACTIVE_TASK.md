@@ -400,3 +400,25 @@ Per coerenza con la regola RM-1 applicata anche al task card stesso, dichiaro es
 - [x] **RM-4**: per output tecnici determinanti previsti dal task, la modalità di review è specificata (opzione B di RM-4 — Review formale leggera del Reviewer in modalità CAP-review adattata — perché il diff aggregato del commit supererà 200 righe e SPEC-FUNZ-01 introduce asserzioni destinate a essere citate in FASE-D; criterio meccanico (c) di RM-4 in `CLAUDE.md`). Sede Reviewer dichiarata: WEB.
 
 Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>
+
+---
+
+## Finding di Review da risolvere (Review v1 PASS `d8a40a0` — 3 NEUTRO approvati dal supervisore — Iterazione v2)
+
+**Contesto**: Review v1 ha emesso **PASS** (0 bloccanti, 0 BUG REALE). Il supervisore ha approvato l'applicazione dei 3 finding **NEUTRO** come micro-pass di igiene-citazione (iterazione v2). NON sono BUG REALI: la spec è già corretta e tracciabilmente solida. Patch **chirurgiche**, nessuna re-stesura. Dettaglio completo e mapping autorevole in `reviews/REVIEW_SPEC_FUNZ_01_review.md` (sezione "Osservazioni minori" OM-1/OM-2/OM-3 + tabella "Classificazione per il supervisore"). **Leggere quel file come fonte dei mapping esatti.**
+
+- **OM-1** — correggere i 6 numeri di riga citati che puntano all'intestazione del capitolo / riga adiacente invece che alla riga esatta dell'asserzione. **Verificare OGNI nuovo numero con Read di `docs/methodology_v2/...` PRIMA di scriverlo** (RM-1: la citazione deve risolvere alla riga esatta). Mapping (da review OM-1):
+  - `[DOC-INTERNO CAP_10_parte_10.md:11]` → `:5` (invariante research=runtime esteso al ciclo di vita del tape)
+  - `[DOC-INTERNO CAP_10_parte_10.md:74]` → `:76` (limite ~100gg)
+  - `[DOC-INTERNO CAP_10_parte_10.md:151]` → riga esatta del corpo Cap.61 col fallback Portara (review indica r151=header: trovare la riga del costrutto con Read)
+  - `[DOC-INTERNO CAP_10_parte_10.md:226]` → `:236` (cross-index PHASE-2 fuori scope PHASE-1)
+  - `[DOC-INTERNO CAP_10_parte_10.md:234]` → `:233` (riavvio Darwin mezzanotte, residuo Empirico-CLI)
+  - `[DOC-INTERNO CAP_07_parte_VII.md:574]` → `:576` (AC-GO-4 lifecycle cross-regime)
+- **OM-2** — `SPEC_FUNZ_01.md` R-17 (Sez.6): rimuovere "per direzione" dal **titolo** di R-17; il vincolo corretto $|\mathcal{A}(t)|\le 1$ **globale** è già enunciato in-linea — allinearlo a R-7 (Sez.3.2). Verificare che il constraint resti $|\mathcal{A}(t)|\le 1$ (`CAP_02_parte_II.md:81`/`:87`).
+- **OM-3** — `SPEC_FUNZ_01.md` Sez.9.2: aggiungere l'ancora puntuale `[DOC-INTERNO STATO_CORRENTE.md:76]` (M-9) come provenienza della numerazione `f4/f6/f8/f9` dello schema PRICE, mantenendo il richiamo descrittivo a `CAP_09_parte_9.md`.
+
+**Output Developer v2**:
+- Patch chirurgiche a `docs/spec_funzionale/SPEC_FUNZ_01.md` (solo le 3 zone OM-1/2/3; nessun'altra modifica).
+- Sezione nuova `## Iterazione 2 — risposta ai finding di Review` in `reports/REPORT_SPEC_FUNZ_01.md`: per ogni OM, cosa cambiato + riga prima/dopo + impatto (nullo sulla correttezza, +precisione di citazione).
+- **NON** modificare i CAP, `00_indice.md`, `STATO_CORRENTE.md`, `CARRYOVER.md`. Commit tag `[SPEC-FUNZ-01]` v2, push su `origin/main`. `DEV_STATUS` → `READY_FOR_REVIEW`.
+- Re-review **leggera focalizzata** attesa (conferma OM-1/2/3 + nessuna regressione).
