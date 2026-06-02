@@ -18,7 +18,7 @@ L'Orchestratore della **nuova** sessione legge questo file come input obbligator
 
 | M-ID | Origine | Contenuto | Destinazione | Stato |
 |------|---------|-----------|--------------|-------|
-| M-2  | Review v1 CAP-02 | Verifica empirica latenza Telegram ($L_{max}=30$s) | Appendice E | OPEN |
+| M-2  | Review v1 CAP-02 | Verifica empirica latenza Telegram ($L_{max}=30$s) | Appendice E | OPEN — requisito incardinato come **NFR-1** in SPEC-FUNZ-01 (`a16a4c0`, 2026-06-03); la verifica empirica del valore resta a Appendice E / FASE-D |
 | M-4  | Review v4 CAP-01 | Tasso di rimpiazzo NSGA-II che giustifica baseline 12.800-25.600 min | Parte V (Cap.23) | CLOSED-CAP-05 (Cap.23.6: formula $N_{eval}^{actual}=P(1+G(1-r_{cache}))=17.408$ con $r_{cache}$ provvisorio 0,15; range M-4 derivato come $17.408 \cdot t_{eval}$ con $t_{eval}\in[0,74;1,47]$ min/cromosoma, post-rework v2 dimensionalmente coerente) |
 | M-5  | Review v1 CAP-03 (Q-06 / C-4.3) | Benchmark comparativo rolling vs expanding vs EWMA su FIB con test Inoue-Rossi (2011); criterio di rollback automatico | Parte V (Cap.25 window selection del walk-forward) | CLOSED-CAP-05 (Cap.25.3: 7 candidate windows + test Inoue-Rossi 2011 con $p=0,05$ + tie-break + rollback deterministico normativo) |
 | M-6  | Review v1 CAP-03 (Q-09 / C-7.3) | Classificazione di regime in parallelo media e mediana; test di stabilita' con soglia da definire | Parte V (Cap.25-26 gestione regimi nel walk-forward) | CLOSED-CAP-05 (Cap.25.4: formula $\eta_{div}$ + soglia 0,10 + flag instabile) |
