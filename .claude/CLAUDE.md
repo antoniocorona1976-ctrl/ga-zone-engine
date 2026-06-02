@@ -20,6 +20,27 @@ Obiettivo operativo: generare segnali long/short sul FIB (futures mini FTSE MIB,
 Il sistema NON esegue ordini. Pubblica segnali via Telegram. 1 contratto alla volta.
 Sessione operativa: 8:00-22:00 CET. Commissioni: 5 EUR/op. Broker: Directa SIM DAPI.
 
+## Track attivo — router (due track del progetto)
+
+Il progetto ha **due track**, con **base comune** in `.claude/BASE_COMUNE.md` (ciclo Planner→Developer→Reviewer, reviewer **bi-sede CLI+Web**, classificazione finding, punto di controllo supervisore, disciplina dei file di stato, registry subagenti) e regole universali in `tasks/METODO.md` (RM-1..RM-4):
+
+- **Track A — Metodologia v2 (CAP-XX)**: capitoli in `docs/methodology_v2/`. Ruoli `.claude/agents/{planner,developer,reviewer}.md`. **Tutte le sezioni di questo file da "## Macchina a stati" in poi descrivono questo track** (discriminatore `00_indice.md`, 7 condizioni di chiusura CAP, check post-Developer, ecc.).
+- **Track B — Business-spec (SPEC-FUNZ-NN)**: specifiche funzionali/di prodotto in `docs/spec_funzionale/`, ponte fra metodologia v2 e FASE-D. Ruoli **nuovi** `.claude/agents/spec_{planner,developer,reviewer}.md` (invocati via `general-purpose` che li adotta). Vedi **§"Track business-spec (SPEC-FUNZ)"** subito sotto per gli adattamenti.
+
+**Determina il track attivo** dall'intestazione di `tasks/ACTIVE_TASK.md`: `# TASK ATTIVO: CAP-XX ...` → Track A; `# TASK ATTIVO: SPEC-FUNZ-NN ...` → Track B. Applica il set di ruoli e le condizioni di chiusura del track corrispondente. Il track Metodologia **non è stato modificato** dall'introduzione del track Business-spec.
+
+## Track business-spec (SPEC-FUNZ) — adattamenti del ciclo
+
+Il ciclo e la macchina a stati sono gli stessi (pattern in `BASE_COMUNE.md`), con questi **adattamenti** rispetto al track Metodologia:
+
+- **Ruoli**: `spec_planner.md` / `spec_developer.md` / `spec_reviewer.md`, invocati via `general-purpose` che adotta il rispettivo `.md`. Ricorda sempre nel prompt: "leggi `tasks/METODO.md` e `.claude/BASE_COMUNE.md` prima di iniziare".
+- **Output**: `docs/spec_funzionale/SPEC_FUNZ_NN.md` + `reports/REPORT_SPEC_FUNZ_NN.md`. Commit tag `[SPEC-FUNZ-NN]`. Tutto su `main` (trunk); isolamento via cartella dedicata, non via branch.
+- **Indice**: `docs/methodology_v2/00_indice.md` **NON si tocca** (SPEC-FUNZ non è una Parte della metodologia v2). Il discriminatore sessione N/N+1 e la continuità vivono in `tasks/STATO_CORRENTE.md` + `tasks/ACTIVE_TASK.md`, NON nell'indice.
+- **Valore**: la regola "orientamento al comportamento del GA" è **reinterpretata** — ogni requisito traccia a (a) un valore operativo/prodotto reale E (b) un capitolo metodologia v2. Dichiaralo esplicitamente nel prompt ai ruoli `spec_*`.
+- **Check post-Developer**: i 6 controlli di `BASE_COMUNE.md` §5, con **condizione-3 (indice) = N/A**; "commit copre i file attesi" = `SPEC_FUNZ_NN.md` + `REPORT_SPEC_FUNZ_NN.md` + `DEV_STATUS.md`.
+- **Sede Reviewer**: bi-sede CLI+Web (`BASE_COMUNE.md` §3); default **Web-statico** (no DAPI, lista "Empirico-CLI da verificare" attesa vuota); **CLI resta disponibile** se una sezione richiede verifica empirica. Una review documentale no-DAPI è eseguibile anche in sessione CLI applicando il divieto CLI (niente probe di zelo).
+- **Chiusura (7 condizioni adattate)**: (1) Review PASS pubblicata+pushata; (2) `DEV_STATUS` azzerato; (3) doc+report su `origin/main`; (4) **indice = N/A**; (5) `ACTIVE_TASK` lasciato storico su SPEC-FUNZ-NN; (6) `CARRYOVER` aggiornato con eventuali M nuovi (annota anche se un M esistente viene incardinato nella spec); (7) `STATO_CORRENTE` aggiornato (Ultimo aggiornamento + Prossima sessione attesa) + riepilogo al supervisore. Nessun prompt-template automatico per un successore: il track successivo lo decide il supervisore.
+
 ## Macchina a stati — come determini l'azione successiva
 
 Leggi i file di stato nell'ordine seguente e agisci sulla prima condizione vera. Il discriminatore tra **sessione N** (che ha appena prodotto il PASS) e **sessione N+1** (fresh, che apre il capitolo successivo) è lo stato di `docs/methodology_v2/00_indice.md`: se l'indice riporta già Parte X come PASS, le 7 condizioni di chiusura sono state eseguite e siamo in sessione N+1.
