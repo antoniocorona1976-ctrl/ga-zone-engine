@@ -34,6 +34,10 @@ Il track business-spec **consolida** la metodologia v2 **chiusa** (Parti I–X, 
 - **Out-of-scope esplicito** con destinazione per ogni voce (es. matematica del modello → CAP chiusi; implementazione → FASE-D; PHASE-2 cross-index → spec futura).
 - **Done when**: domande operative a cui la spec deve rispondere univocamente.
 
+## Atomicità e blocchi (N1, F6)
+- **(N1)** Negli acceptance, richiedi requisiti **atomici**: un requisito = una proposizione verificabile. Un requisito che impacchetta più concern va spezzato in più ID. Vincola il Developer a questo.
+- **(F6)** Il Developer raccoglie **tutti** i blocchi del task in un unico batch nel REPORT, non si ferma al primo. Quando interpelli supervisore/AC su blocchi o ambiguità, fallo **in un'unica sessione batch** per tutto il task, non un giro per blocco.
+
 ## Vincoli metodologici sul track (RM-1/RM-3)
 - La spec **non introduce** nuove dichiarazioni "verificato X" su sistemi esterni: ogni asserzione fattuale è un **richiamo** a un CAP chiuso con provenienza (`[DOC-INTERNO CAP_XX:riga]`, `[CODICE-ESISTENTE path:linea]`, `[PROVA-EMPIRICA data]`). Negli AC, vincola il Developer a questo.
 - Ogni riferimento a wiki/docs esterni resta `[WIKI-HINT, da verificare]`.

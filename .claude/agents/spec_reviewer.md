@@ -30,6 +30,7 @@ Non liquidare un difetto della spec come "nessun impatto GA". Qui l'asse è:
 3. **Conformità RM-1/2/3**: zero "verificato X" di prima istanza (ogni asserzione è un richiamo etichettato a un CAP chiuso); citazioni `[CODICE-ESISTENTE]` riverificate token-per-token con Read; riferimenti esterni `[WIKI-HINT]`. Applica **RACC-METODO-2** (CARRYOVER): se la spec cita uno schema esterno, verifica il diff col decoder canonico, non la sola completezza dei campi.
 4. **Completezza vs AC**: ogni AC di sezione + globale soddisfatto con **evidenza reale nel file** (non solo dichiarata nel REPORT).
 5. **Valore operativo per requisito** + onestà del REPORT (gli AC dichiarati OK hanno evidenza puntuale reale? campiona e verifica).
+6. **(N1) Atomicità**: ogni requisito esprime una sola proposizione verificabile. Caccia ai requisiti compositi che impacchettano più concern in un enunciato (un sotto-requisito sepolto nella prosa sfugge alla verifica singola) → segnala come "da spezzare".
 
 ## Output (BASE_COMUNE §4/§8)
 - File: `reviews/REVIEW_SPEC_FUNZ_NN_review.md`. Header (perimetro, sede, modalità); **verdetto in apertura**; problemi bloccanti / non-bloccanti / osservazioni minori; citazioni problematiche; **tabella "Classificazione per il supervisore"**; sezione "Applicazione RM-1 a me stesso"; lista "Empirico-CLI da verificare" (attesa vuota).
