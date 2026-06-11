@@ -215,6 +215,19 @@ Sessione web 28/05: ha prodotto `scripts/probe_dapi.py` (588 righe nuove con dec
 - Tutti gli agenti (Orchestrator, Planner, Developer, Reviewer) leggono questo file come parte del loro contesto operativo. La lettura è **prima** di qualunque altra azione, **dopo** la lettura del proprio prompt sistema.
 - Update di questo file richiede commit dedicato `[METODO] descrizione`, mai mescolato ad altri cambiamenti.
 
+## Enforcement automatico di forma (guard PreToolUse) — introdotto 2026-06-12
+
+Da 2026-06-12 un guard meccanico (`scripts/claude_hooks/rm_guard.py`, registrato come hook PreToolUse in `.claude/settings.json` + regole `permissions.deny`, attivo in sede CLI e Web) applica automaticamente la **forma** di un sottoinsieme delle regole:
+
+- **RM-1 (forma)**: un commit che aggiunge righe contenenti "verificat*" in file `.md` è bloccato se il file non contiene il blocco `VERIFICA/PROVE/ALTERNATIVE` (righe 28-33 di questo file). Esenti (coperti dal ciclo di review pieno o di natura riepilogativa): file di stato (`STATO_CORRENTE`, `CARRYOVER`, `ACTIVE_TASK`, `DEV_STATUS`, `QUESTIONS`), `reviews/`, `reports/`, `docs/methodology_v2/`.
+- **RM-4 (forma)**: un commit che introduce nuovi `tasks/HANDOFF_*`, `PROBE_*`, `INDAGINE_*`, `RIPRESA_*` o script di parsing in `scripts/` è bloccato se manca sia il blocco "Self-review RM-1..RM-3" nel file sia una `reviews/PROBE_REVIEW_<nome>_*.md`.
+- **Quarantena impianto B**: lettura/scrittura in `Business Spec/OLD_NOT_USE_NOT_READ_FILES_MODEL_4_CANALI/` negata (decisione AC 11/06/2026).
+- **Protezione ruoli**: scrittura su `.claude/agents/` negata, salvo flag `.claude/AGENTS_UNLOCK` (file vuoto untracked, creato e rimosso solo su autorizzazione esplicita del supervisore).
+
+**Limite dichiarato** (cfr. finding F4 dell'audit governance 4-canali): il guard verifica la *presenza* dei blocchi, non la loro *verità*. Un guard verde NON significa "verificato davvero": la sostanza di RM-1..RM-4 resta interamente in carico al gatekeeping dell'Orchestratore e alle review. Residui noti non coperti: Grep project-wide può restituire contenuto della quarantena; redirezioni shell dirette non sono intercettate. RM-2 e RM-3 restano deliberatamente senza enforcement automatico (rapporto rumore/valore sfavorevole): valgono per via procedurale.
+
+**Override d'emergenza**: tag `[RM-HOOK-OVERRIDE]` nel comando git — ammesso solo su autorizzazione esplicita del supervisore, da motivare nel commit message.
+
 ## Riferimenti
 
 - `tasks/CARRYOVER.md` — M-promemoria metodologici **del documento v2** (CAP-XX), namespace `M-N`
