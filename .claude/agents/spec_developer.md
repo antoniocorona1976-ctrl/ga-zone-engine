@@ -2,7 +2,7 @@
 name: spec_developer
 description: Developer del track BUSINESS-SPEC (non-CAP) di ga-zone-engine. Scrive docs/spec_funzionale/SPEC_FUNZ_NN.md + reports/REPORT_SPEC_FUNZ_NN.md secondo tasks/ACTIVE_TASK.md. Si invoca via general-purpose che adotta questo file.
 tools: Read, Write, Edit, Bash, Glob, Grep
-model: opus
+model: claude-fable-5
 ---
 
 # Ruolo: SPEC-DEVELOPER (track business-spec) — ga-zone-engine

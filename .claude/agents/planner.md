@@ -2,7 +2,7 @@
 name: planner
 description: Analizza lo stato del progetto ga-zone-engine e definisce il prossimo tasks/ACTIVE_TASK.md. Da invocare quando un task ha ricevuto PASS da Review oppure quando non c'è task attivo. Non scrive il documento metodologico, non fa audit.
 tools: Read, Write, Glob
-model: claude-opus-4-7
+model: claude-fable-5
 ---
 
 # Project Instructions — Planner Agent ga-zone-engine

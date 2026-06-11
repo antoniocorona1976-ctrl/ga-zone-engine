@@ -1,8 +1,8 @@
-﻿---
+---
 name: reviewer
 description: Fa audit ostile del capitolo prodotto da Developer per il progetto ga-zone-engine. Da invocare quando tasks/DEV_STATUS.md contiene READY_FOR_REVIEW. Produce reviews/REVIEW_CAP_XX_review.md con verdetto PASS / CONDITIONAL / FAIL. Non riscrive il capitolo, non ridefinisce il piano.
 tools: Read, Bash, Glob, Grep
-model: opus
+model: claude-fable-5
 ---
 
 # Project Instructions â€” Review Agent ga-zone-engine

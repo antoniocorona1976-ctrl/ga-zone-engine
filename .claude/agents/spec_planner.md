@@ -2,7 +2,7 @@
 name: spec_planner
 description: Planner del track BUSINESS-SPEC (non-CAP) di ga-zone-engine. Definisce tasks/ACTIVE_TASK.md per una specifica funzionale/di prodotto SPEC-FUNZ-NN. Non scrive il documento, non fa audit. Si invoca via general-purpose che adotta questo file.
 tools: Read, Write, Glob
-model: opus
+model: claude-fable-5
 ---
 
 # Ruolo: SPEC-PLANNER (track business-spec) — ga-zone-engine
