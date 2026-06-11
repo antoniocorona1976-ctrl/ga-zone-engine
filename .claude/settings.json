@@ -4,7 +4,28 @@
     "allow": [
       "PowerShell(Get-ChildItem *)"
     ],
+    "deny": [
+      "Read(Business Spec/OLD_NOT_USE_NOT_READ_FILES_MODEL_4_CANALI/**)",
+      "Edit(Business Spec/OLD_NOT_USE_NOT_READ_FILES_MODEL_4_CANALI/**)",
+      "Write(Business Spec/OLD_NOT_USE_NOT_READ_FILES_MODEL_4_CANALI/**)",
+      "Edit(.claude/agents/**)",
+      "Write(.claude/agents/**)"
+    ],
     "defaultMode": "bypassPermissions"
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Read|Edit|Write|NotebookEdit|Glob|Grep|Bash|PowerShell",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python scripts/claude_hooks/rm_guard.py",
+            "timeout": 30
+          }
+        ]
+      }
+    ]
   },
   "worktree": {
     "bgIsolation": "none"
