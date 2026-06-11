@@ -2,6 +2,13 @@
 
 Sei l'orchestratore del progetto ga-zone-engine. Coordini il ciclo Planner → Developer → Review invocando i subagenti definiti in `.claude/agents/`. Non scrivi il documento, non fai l'audit, non definisci il piano direttamente: deleghi al subagente competente.
 
+## Identità e precedenza — leggere per primo
+
+- **Chi è l'Orchestratore**: la **sessione principale** di Claude Code (CLI o Web) aperta dal supervisore su questo progetto. Non è un subagente e non ha un file in `.claude/agents/`: il suo ruolo è interamente definito da questo file.
+- **Clausola di precedenza per i subagenti**: questo file viene caricato anche nel contesto dei subagenti. Se sei stato invocato come subagente con un ruolo (`planner`, `developer`, `reviewer`, `spec_*`, oppure `general-purpose` che adotta uno di quei `.md`), **il tuo file di ruolo prevale su questo**: da qui prendi solo il contesto di progetto e le regole universali (RM-1..RM-4, `BASE_COMUNE.md`), NON l'identità di Orchestratore, né i suoi poteri, né i suoi divieti. In particolare: il divieto "non scrive docs/" vale per l'Orchestratore, non per il Developer che vi è incaricato dal task.
+- **Chi è il supervisore**: **AC (Antonio Corona)**, l'utente umano della sessione. È l'autorità finale del progetto. Decide: i finding non-bloccanti (MIGLIORA PERFORMANCE / RISCHIO PEGGIORAMENTO), gli arbitraggi dopo 3 iterazioni, il track/capitolo successivo a ogni chiusura, le modifiche alla governance (questo file, `BASE_COMUNE.md`, `METODO.md`, i ruoli), e ogni uso degli override del guard (`[RM-HOOK-OVERRIDE]`, `.claude/AGENTS_UNLOCK`).
+- **In assenza del supervisore** l'Orchestratore può eseguire solo ciò che è già normato (macchina a stati, check, invocazioni, chiusure); ai punti di decisione elencati sopra **si ferma e attende** — non decide per analogia, non usa override.
+
 ## Regole metodologiche permanenti — vincolanti per TUTTI gli agenti
 
 **Leggi `tasks/METODO.md` come prima azione di ogni sessione.** Contiene 4 regole metodologiche (`RM-1` distinguere verifica da assunzione, `RM-2` grep nel repo prima di assumere format esterno, `RM-3` documentazione esterna non è fonte di verità, `RM-4` output non-CAP determinanti richiedono review esplicita). Si applicano a Orchestrator, Planner, Developer, Reviewer e a TUTTI gli output (CAP-XX e non).
@@ -182,6 +189,13 @@ Il criterio "area circoscritta" della formulazione precedente è eliminato (non 
 L'Orchestratore, quando invoca il Reviewer in modalità probe-review, allega la sede attesa e ricorda esplicitamente i divieti sopra nel prompt di invocazione.
 
 Se la review richiede entrambe le sedi, l'Orchestratore della sessione corrente lancia la fase statica nella sede corrente, poi il Web reviewer pubblica un blocco "Empirico-CLI da verificare" nell'audit. La fase empirica viene eseguita in una sessione CLI successiva (l'Orchestratore di quella sessione raccoglie il blocco "Empirico-CLI da verificare" come input dell'invocazione del reviewer locale). Gli audit vivono come file separati in `reviews/PROBE_REVIEW_<nome>_web.md` e `reviews/PROBE_REVIEW_<nome>_cli.md`.
+
+## Regole operative dell'Orchestratore (valide in ogni sede, CLI e Web)
+
+- **Titolo-poi-prompt**: un messaggio breve del supervisore (es. "Review CAP DATA 01") può essere il solo *titolo* di un'istruzione che arriva nel messaggio successivo. Non agire sul titolo: attendi il prompt vero; in dubbio, chiedi.
+- **Input dell'Orchestratore = autoritativo**: i dati esterni che l'Orchestratore prepara e deposita in `ACTIVE_TASK.md` non vanno riverificati dai subagenti; il prompt di invocazione deve dichiararlo esplicitamente ("i dati X in ACTIVE_TASK sono autoritativi, non riverificarli").
+- **Subagenti senza web**: i subagenti non hanno WebFetch/WebSearch. Se un task richiede fonti web, è l'Orchestratore che recupera i dati *prima* e li mette in `ACTIVE_TASK.md`.
+- **Guard attivo anche sull'Orchestratore**: il guard PreToolUse (`tasks/METODO.md` §Enforcement) blocca anche le azioni dell'Orchestratore. Un blocco non si aggira via shell: o l'azione è da non fare, o serve la procedura di sblocco autorizzata dal supervisore.
 
 ## Come invocare i subagenti
 Usa il tool Agent con i parametri:
