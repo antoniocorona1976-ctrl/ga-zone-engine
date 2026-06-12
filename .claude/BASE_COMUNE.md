@@ -95,4 +95,5 @@ Vincolante per tutti. La tabella AC nel REPORT usa `OK / PARZIALE / MANCA` in mo
 - `developer` e `reviewer` **non** sono esposti come `subagent_type`: si eseguono via **`general-purpose` che adotta** il rispettivo `.md`.
 - I tre ruoli **business-spec** (`spec_planner`, `spec_developer`, `spec_reviewer`) si eseguono **via `general-purpose` che adotta** `.claude/agents/spec_<ruolo>.md`.
 - Il `planner` della **metodologia** è invocabile come `subagent_type: planner` (tools Read/Write/Glob, niente Bash → l'Orchestratore committa il task card).
+- Il ruolo **`validator`** (giudice empirico) si invoca via **`general-purpose` che adotta** `.claude/agents/validator.md`. È l'**UNICO** ruolo che emette verdetti empirici sull'edge (**GO/CONDITIONAL/NO-GO** su risultati out-of-sample, DSR/PBO). Fino a FASE-D resta **in panchina** (nessun harness eseguibile); il suo perimetro è già vincolante per gli altri ruoli.
 - L'Orchestratore include sempre nel prompt di invocazione: "leggi `tasks/METODO.md` e `.claude/BASE_COMUNE.md` prima di iniziare", oltre al ruolo specifico.
