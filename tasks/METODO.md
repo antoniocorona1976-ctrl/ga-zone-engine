@@ -228,6 +228,24 @@ Da 2026-06-12 un guard meccanico (`scripts/claude_hooks/rm_guard.py`, registrato
 
 **Override d'emergenza**: tag `[RM-HOOK-OVERRIDE]` nel comando git — ammesso solo su autorizzazione esplicita del supervisore, da motivare nel commit message.
 
+## Superfici di esecuzione (GOV-SURFACES-01) — vincolante, 2026-06-13
+
+- **Claude Code CLI** è la **sede unica di esecuzione** del ciclo spec (track Business-spec: invocazione di spec_planner / spec_developer / spec_reviewer, check post-Developer, chiusura) e in generale dell'orchestrazione del progetto.
+- **Claude Code Web** è limitato al ruolo di **sede Web della probe-review RM-4** (matrice §RM-4): audit statico di output non-CAP, quando l'Orchestratore lo instrada esplicitamente. Non esegue il ciclo spec.
+- **Claude.ai (chat)** è la superficie di **supervisione e pianificazione di AC**: non è un agente formale del ciclo e non esegue review formali. Le review formali vivono in Claude Code, sul repo.
+
+## Precedenza fra documenti normativi — vincolante, 2026-06-13
+
+In caso di conflitto fra documenti normativi, l'ordine di precedenza è:
+`tasks/METODO.md` → `.claude/BASE_COMUNE.md` → `.claude/CLAUDE.md` → file di ruolo (`.claude/agents/*.md`).
+Eccezione (già normata in `.claude/CLAUDE.md` §Identità): il file di ruolo prevale sull'**identità** dell'agente invocato (chi è, cosa non fa), mai sulle regole RM-1..RM-4, sulle superfici di esecuzione, sul ciclo comune.
+
+## Freeze dei CAP chiusi PASS — vincolante, 2026-06-13 (G-09)
+
+- I capitoli `docs/methodology_v2/CAP_*` chiusi con PASS sono **congelati**: nessuna modifica nel corso di altri task.
+- L'unica via di modifica è un **task dedicato** con propria task card; quel task include obbligatoriamente nel done-when la **ri-validazione delle citazioni** delle spec (`docs/spec_funzionale/`) che puntano ai capitoli toccati.
+- Il retro-audit RM dei capitoli pre-RM ricade in questa clausola.
+
 ## Riferimenti
 
 - `tasks/CARRYOVER.md` — M-promemoria metodologici **del documento v2** (CAP-XX), namespace `M-N`
