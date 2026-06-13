@@ -149,3 +149,69 @@ Vecchio: `docs/spec_funzionale/SPEC_FUNZ_01_v1_storico.md` — **36 requisiti** 
 ---
 
 *Review SPEC-FUNZ-01 v2 — spec_reviewer, sede CLI. Verdetto: PASS. Non ho corretto né riscritto il documento; non ho toccato il vecchio né i CAP. Commit a cura dell'Orchestratore.*
+
+---
+
+## Re-review v2 (micro-pass KPI)
+
+**Ruolo**: spec_reviewer (track Business-spec). **Sede**: **CLI** — audit documentale no-DAPI, divieto CLI attivo.
+**Iterazione**: v2 (re-review MIRATA del solo delta del commit `1c59be9`, NON re-audit dell'intero documento).
+**Perimetro del delta**: 3 NFR nuovi (NFR-8.9 invalidation rate, NFR-8.10 missed_target rate, NFR-8.11 $\pi_{t_2\mid t_1}$) + matrice §11 riconciliata a 75 + REPORT aggiornato. Conteggio dichiarato 72→75 (41 R + 13 NFR + 21 CN).
+**Contesto**: il micro-pass risolve il punto 4 della tabella di classificazione v1 (KPI di lifecycle non enumerati come criteri di accettazione — era INTUIZIONE-DA-DECIDERE, AC ha deciso di aggiungerli). Il punto 3 (CN-3 "non è consulenza") AC ha deciso di lasciarlo cadere.
+
+### VERDETTO: **PASS**
+
+0 problemi bloccanti. 0 BUG REALE. Le citazioni dei 3 NFR nuovi risolvono tutte alla fonte (floor 100% sul delta rispettato). Matrice §11 riconciliata a 75 righe (0 orfani, 0 mancanti, 0 duplicati). Nessuna regressione sui 72 requisiti pre-esistenti. CN-3 correttamente assente.
+
+### Esito dei 6 punti
+
+**1. Citazioni dei 3 NFR (floor 100% sul delta) — RESOLVE (tutte).**
+Aperti con Read i due punti-fonte:
+- `CAP_01_parte_I.md:77` — paragrafo "**Metriche di lifecycle del segnale**". La riga enumera esplicitamente, in un unico capoverso: "*…invalidation rate, frazione dei segnali invalidati prima del touch della zona, per superamento di una condizione di invalidazione strutturale o per scadenza del timer di attesa; missed target rate, frazione dei segnali in cui il target 1 è stato raggiunto dal prezzo prima che la zona di ingresso fosse toccata…*" e, per π: "*target 2 hit rate, calcolata sulla submacchina del position lifecycle (Parte II, Cap.11) come frazione condizionale di raggiungimento del target 2 dato il raggiungimento del target 1 ($\pi_{t_2\mid t_1}$)…*". → **NFR-8.9** (invalidation rate) RESOLVE; **NFR-8.10** (missed_target rate) RESOLVE; la prima citazione di **NFR-8.11** (π su :77) RESOLVE.
+- `CAP_02_parte_II.md:372` — bullet "**hit-rate condizionale di target_2 dato target_1** ($\pi_{t_2\mid t_1}$): frequenza con cui il prezzo raggiunge target_2 nelle sessioni di backtest che si sono chiuse in `target_1_hit`". Contesto §11.x "IN-SCOPE per reporting e validazione" (:370). → la seconda citazione di **NFR-8.11** RESOLVE token-per-token (il testo del requisito riusa la dicitura della fonte).
+Nessuna citazione del delta misresolve o not-found.
+
+**2. Atomicità N1 + valore operativo + non-duplicazione — OK.**
+- NFR-8.9 e NFR-8.10: una sola proposizione verificabile ciascuno ("il prodotto calcola e riporta <rate X>"); la parentetica di NFR-8.10 ("riferita al target 1, non al target 2") è una qualificazione del medesimo osservabile, non un secondo concern. Atomici.
+- NFR-8.11: una proposizione ("calcola e riporta $\pi_{t_2\mid t_1}$"); la clausola "non stato terminale del segnale (Q-05)" è un disclaimer di perimetro coerente con la fonte (CAP_02:372 + CAP_01:77 esplicitano che target_2 è informativo, decisione Q-05), non una seconda proposizione verificabile distinta. Accettabile come atomico (stesso criterio applicato in v1 a R-4.4 / R-6.1).
+- Valore operativo: presente e non boilerplate per tutti e 3 (NFR-8.9 rumore di segnali mai in zona; NFR-8.10 costo-opportunità del vincolo di esecuzione in zona; NFR-8.11 qualità strutturale di target_2 per la gestione manuale post-target_1).
+- Non-duplicazione: il nuovo cappello introduttivo (riga :401) distingue esplicitamente da NFR-8.4 (stabilità *cross-regime* di hit/executable rate). NFR-8.9/8.10/8.11 sono osservabili di lifecycle a sé (invalidazione, missed, condizionale t2|t1), distinti dai gate di accettazione NFR-8.1..8.5. Nessuna sovrapposizione con NFR-8.4 né con NFR-8.5 (CVaR/MDD). Atomicità e perimetro corretti.
+
+**3. Coerenza con CAP chiusi / stati terminali / RM-1 / grafia — OK.**
+- I 3 NFR non contraddicono i CAP frozen: ricalcano la fonte. Coerenti con gli stati terminali di R-4.1 (`invalidated`, `missed_target` esistono come terminali; i nuovi NFR ne misurano la *frequenza*, non li ridefiniscono) e con target_2 informativo (R-3.5, Q-05).
+- Nessun "verificato X" di prima istanza introdotto: ogni asserzione è richiamo etichettato `[DOC-INTERNO …]` a CAP chiuso. Nessun blocco VERIFICA/PROVE/ALTERNATIVE nuovo dovuto né presente.
+- Grafia: `[DOC-INTERNO …]` canonica; nessuna occorrenza di `[CODICE-EXISTENTE]` introdotta dal delta (il delta non cita codice). Conforme.
+
+**4. Matrice §11 + conteggi REPORT — riconciliati.**
+- Matrice §11 (righe 522-604): conta meccanica degli ID `(R|NFR|CN)-N.N` = **41 R + 13 NFR + 21 CN = 75 righe**, 0 duplicati di ID. Le 3 righe nuove (`NFR-8.9`, `NFR-8.10`, `NFR-8.11`) presenti nel blocco NFR-8.x e coerenti con la mini-tabella di Sez.8 (:426-427) e col corpo (:403-413). 0 orfani / 0 mancanti.
+- Riga "Conteggio" (:604) aggiornata a "41 R + 13 NFR + 21 CN = 75", con nota di micro-pass.
+- REPORT (`REPORT_SPEC_FUNZ_01_v2.md`): conteggi aggiornati coerentemente a 75 / 13 NFR (§1 Cosa prodotto, §3 nuova voce micro-pass, §4 misura prima/dopo, tabella AC-G1/G2/G11). Nessuna incoerenza residua col valore 72.
+
+**5. Non-regressione (diff `git show 1c59be9`) — OK.**
+Il commit tocca solo 2 file (`SPEC_FUNZ_01_v2.md` +21/-1, `REPORT_SPEC_FUNZ_01_v2.md` +7/-6). Nel documento le sole modifiche sono: (a) inserimento del cappello + 3 NFR nell'area KPI (Sez.8, dopo NFR-8.8); (b) 2 righe nuove nella mini-tabella di Sez.8; (c) 3 righe nuove nella matrice §11; (d) riga "Conteggio" 72→75. Nessuna riga dei 72 requisiti pre-esistenti né delle loro citazioni è stata alterata (nessuna `-` su righe di requisiti diversi dalla riga Conteggio). CAP frozen e `00_indice.md` non toccati. Nel REPORT le modifiche sono solo conteggi + voce decisione. Nessuna regressione.
+
+**6. CN-3 "non è consulenza in materia di investimenti" — correttamente ASSENTE.**
+Grep su `consulenz|investiment|advice` nel documento: **0 occorrenze**. La sotto-proposizione "non è consulenza in materia di investimenti" (old CN-3, punto 3 INTUIZIONE-DA-DECIDERE della v1) **non è stata (re)introdotta** dal micro-pass — coerente con la decisione AC di lasciarla cadere (tema disclaimer/MiFID rinviato a consulente legale esterno in out-of-scope §2). Assenza = corretta.
+
+### Tabella — Classificazione per il supervisore (delta v2)
+
+| # | Problema | file:riga | Classificazione | Mandare a Development? |
+|---|----------|-----------|-----------------|------------------------|
+| — | Nessun finding sul delta | — | — | No |
+
+Nessun BUG REALE, nessun finding non-bloccante, nessuna osservazione minore sul delta. (Le osservazioni minori OSS-1..OSS-4 della v1 restano NEUTRO, non riaperte: il micro-pass non le tocca.)
+
+### Applicazione RM-1 a me stesso (re-review v2)
+
+- **"Le 2 righe-fonte risolvono ai 3 NFR"**: VERIFICA piena. PROVE: Read di persona di `CAP_01_parte_I.md:77` (paragrafo lifecycle, contiene letteralmente invalidation rate / missed target rate / $\pi_{t_2\mid t_1}$) e `CAP_02_parte_II.md:372` (bullet hit-rate condizionale t2|t1). ALTERNATIVE ESCLUSE: misresolve (il testo dei 3 NFR riusa la terminologia delle righe-fonte). ALTERNATIVE NON ESCLUSE: nessuna — le ho lette di persona, sono 2 righe puntuali.
+- **"Matrice = 75, 0 duplicati"**: VERIFICA piena. PROVE: conta meccanica degli ID nel range 522-604 (41 R + 13 NFR + 21 CN = 75) e `uniq -d` sugli ID = vuoto. ALTERNATIVE ESCLUSE: orfani/mancanti (la conta combacia col dichiarato e i 3 ID nuovi sono presenti). La prima conta con regex a spaziatura fissa dava 73: artefatto della regex (spazi variabili in tabella), risolto con regex `[[:space:]]*` → 75.
+- **"Nessuna regressione"**: VERIFICA piena. PROVE: `git show 1c59be9` ispezionato riga-per-riga; le sole `-` su righe di contenuto sono la riga Conteggio e le righe-conteggio del REPORT; nessun requisito pre-esistente alterato. ALTERNATIVE NON ESCLUSE: nessuna — il diff è di 27 righe nette, interamente ispezionato.
+- **"CN-3 assente"**: VERIFICA piena. PROVE: grep `consulenz|investiment|advice` = 0 occorrenze nel documento.
+
+### Empirico-CLI da verificare (re-review v2)
+
+**(vuota)** — come atteso. Il delta consolida metriche già definite nei CAP frozen (CAP_01:77, CAP_02:372); nessuna asserzione richiede esecuzione contro DAPI o filesystem locale. Nessuna verifica empirica dovuta.
+
+---
+
+*Re-review v2 (micro-pass KPI) SPEC-FUNZ-01 v2 — spec_reviewer, sede CLI. Verdetto: PASS. Audit del solo delta del commit `1c59be9` + non-regressione. Non ho corretto né riscritto nulla, non ho toccato il blocco v1, il vecchio né i CAP. Commit a cura dell'Orchestratore.*
