@@ -41,7 +41,8 @@ Vincolo permanente del progetto, valido per **entrambi i track**: il Reviewer pu
 
 | Tipo di output da auditare | Sede primaria |
 |---|---|
-| Documento (CAP-XX, SPEC-FUNZ, handoff, indagine, `probe_*.md`) | Web (audit statico) |
+| Documento CAP-XX, handoff, indagine, `probe_*.md` | Web (audit statico) |
+| Documento SPEC-FUNZ | CLI (GOV-SURFACES-01, METODO §Superfici) |
 | Script di parsing/decoder di sistema esterno | Web (statico RM-1/2/3) **+** CLI (esecuzione su payload reale se Web segnala dubbio) |
 | Risultato empirico (V-1, V-2, ...) / dump locali (`exports/`, `probe_out/`) | CLI |
 | Asserzione "verificato X" che richiede prova diretta | Web identifica → CLI ri-testa |
@@ -52,7 +53,7 @@ Vincolo permanente del progetto, valido per **entrambi i track**: il Reviewer pu
 
 **Handoff cross-ambiente**: quando un audit richiede ENTRAMBE le sedi, il Web pubblica `reviews/PROBE_REVIEW_<nome>_web.md` + lista "Empirico-CLI da verificare"; l'Orchestratore (anche in sessione successiva) invoca il CLI con quella lista; il CLI pubblica `reviews/PROBE_REVIEW_<nome>_cli.md`; l'Orchestratore raccoglie i due audit e produce il verdetto finale.
 
-> Per il track **Business-spec** la sede tipica è **Web-statico** (consolida fatti già chiusi, nessun fatto empirico nuovo → lista Empirico-CLI attesa **vuota**). La sede **CLI resta disponibile** se una sezione della spec dovesse richiedere una verifica empirica/locale. Una review documentale no-DAPI è eseguibile **anche in sessione CLI** (capability-equivalente): in tal caso il CLI applica comunque il proprio divieto (niente probe di zelo).
+> Per il track **Business-spec** la sede di esecuzione dell'intero ciclo, review inclusa, è la **CLI** (GOV-SURFACES-01, METODO §Superfici). La review della spec è un audit documentale no-DAPI eseguito in CLI col divieto CLI (niente probe di zelo); lista "Empirico-CLI da verificare" attesa **vuota**. Il **Web** resta limitato alla probe-review RM-4 instradata esplicitamente dall'Orchestratore.
 
 ## 4. Classificazione dei finding + punto di controllo supervisore
 
@@ -60,9 +61,10 @@ Ogni Reviewer classifica i finding in **4 categorie**: `BUG REALE` / `MIGLIORA P
 
 Regole:
 - I **BUG REALI** vanno sempre a Developer.
+- **Mapping verdetto↔classificazione (vincolante)**: un finding classificato **BUG REALE** è almeno un **problema non bloccante** ⇒ una review con ≥1 BUG REALE in tabella **non può emettere PASS** (al più CONDITIONAL). Le classi MIGLIORA PERFORMANCE / NEUTRO / RISCHIO PEGGIORAMENTO possono stare in "osservazioni minori".
 - **NEUTRO** e **RISCHIO PEGGIORAMENTO** **non** vanno a Developer senza **esplicita approvazione del supervisore**.
 - Su **CONDITIONAL/FAIL** l'Orchestratore **non** chiama Developer in automatico: presenta la tabella al supervisore, attende la decisione, aggiunge i soli finding approvati in `ACTIVE_TASK.md` (sezione "Finding di Review da risolvere"), azzera `DEV_STATUS.md`, poi chiama Developer.
-- Su **PASS** con osservazioni NEUTRO: l'Orchestratore può applicarle solo se il supervisore le approva (micro-pass + re-review).
+- Su **PASS** con osservazioni NEUTRO: l'Orchestratore **non le applica mai direttamente**; se il supervisore le approva, **instrada un micro-pass al Developer** + re-review.
 
 ## 5. Check post-Developer (6 controlli — generici)
 

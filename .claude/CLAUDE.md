@@ -25,7 +25,7 @@ L'Orchestratore è responsabile di:
 ## Contesto del progetto
 Obiettivo operativo: generare segnali long/short sul FIB (futures mini FTSE MIB, IDEM, moltiplicatore 5 EUR/punto) per un operatore retail italiano che esegue manualmente da cellulare.
 Il sistema NON esegue ordini. Pubblica segnali via Telegram. 1 contratto alla volta.
-Sessione operativa: 8:00-22:00 CET. Commissioni: 5 EUR/op. Broker: Directa SIM DAPI.
+Sessione operativa: negoziazione continua FIB 08:00-22:00 CET, asta di apertura 07:45-08:00 [Borsa Italiana Trading Hours, WIKI-HINT concordante + decisione AC 13/06/2026; upgrade a PROVA-EMPIRICA da tape DAPI: M-GOV-1]. Commissioni: 5 EUR/op. Broker: Directa SIM DAPI.
 
 ## Track attivo — router (due track del progetto)
 
@@ -45,8 +45,18 @@ Il ciclo e la macchina a stati sono gli stessi (pattern in `BASE_COMUNE.md`), co
 - **Indice**: `docs/methodology_v2/00_indice.md` **NON si tocca** (SPEC-FUNZ non è una Parte della metodologia v2). Il discriminatore sessione N/N+1 e la continuità vivono in `tasks/STATO_CORRENTE.md` + `tasks/ACTIVE_TASK.md`, NON nell'indice.
 - **Valore**: la regola "orientamento al comportamento del GA" è **reinterpretata** — ogni requisito traccia a (a) un valore operativo/prodotto reale E (b) un capitolo metodologia v2. Dichiaralo esplicitamente nel prompt ai ruoli `spec_*`.
 - **Check post-Developer**: i 6 controlli di `BASE_COMUNE.md` §5, con **condizione-3 (indice) = N/A**; "commit copre i file attesi" = `SPEC_FUNZ_NN.md` + `REPORT_SPEC_FUNZ_NN.md` + `DEV_STATUS.md`.
-- **Sede Reviewer**: bi-sede CLI+Web (`BASE_COMUNE.md` §3); default **Web-statico** (no DAPI, lista "Empirico-CLI da verificare" attesa vuota); **CLI resta disponibile** se una sezione richiede verifica empirica. Una review documentale no-DAPI è eseguibile anche in sessione CLI applicando il divieto CLI (niente probe di zelo).
-- **Chiusura (7 condizioni adattate)**: (1) Review PASS pubblicata+pushata; (2) `DEV_STATUS` azzerato; (3) doc+report su `origin/main`; (4) **indice = N/A**; (5) `ACTIVE_TASK` lasciato storico su SPEC-FUNZ-NN; (6) `CARRYOVER` aggiornato con eventuali M nuovi (annota anche se un M esistente viene incardinato nella spec); (7) `STATO_CORRENTE` aggiornato (Ultimo aggiornamento + Prossima sessione attesa) + riepilogo al supervisore. Nessun prompt-template automatico per un successore: il track successivo lo decide il supervisore.
+- **Sede Reviewer**: **CLI** (GOV-SURFACES-01, METODO §Superfici). Review documentale no-DAPI in CLI col divieto CLI (niente probe di zelo); lista "Empirico-CLI da verificare" attesa vuota. Web solo per probe-review RM-4 instradate esplicitamente dall'Orchestratore.
+- **Chiusura (7 condizioni adattate)**: (1) Review PASS pubblicata+pushata; (2) `DEV_STATUS` azzerato; (3) doc+report su `origin/main`; (4) **indice = N/A**; (5) `ACTIVE_TASK` lasciato storico su SPEC-FUNZ-NN; (6) `CARRYOVER` aggiornato con eventuali M nuovi (annota anche se un M esistente viene incardinato nella spec); (7) `STATO_CORRENTE` aggiornato con la riga-marcatore `SPEC-FUNZ-NN: CHIUSO PASS <sha-review>` (+ Ultimo aggiornamento + Prossima sessione attesa) + riepilogo al supervisore. Nessun prompt-template automatico per un successore: il track successivo lo decide il supervisore.
+
+**Macchina a stati Track B (sintesi meccanica)** — l'Orchestratore agisce sulla prima condizione vera:
+
+| Stato osservato | Azione |
+|---|---|
+| `STATO_CORRENTE` contiene `SPEC-FUNZ-NN: CHIUSO PASS` per il task in `ACTIVE_TASK.md` | Slot libero: nessuna azione automatica; il task successivo lo decide il supervisore |
+| `ACTIVE_TASK.md` = SPEC-FUNZ-NN, `DEV_STATUS` vuoto, nessuna review in `reviews/` | Invoca **spec_developer** (via general-purpose) |
+| `DEV_STATUS` = `READY_FOR_REVIEW`, nessuna review corrispondente | **Check post-Developer** (6 controlli, condizione-3 indice = N/A); se OK invoca **spec_reviewer** in **CLI** |
+| Review più recente = CONDITIONAL / FAIL | **Punto di controllo supervisore** |
+| Review più recente = PASS e `STATO_CORRENTE` senza marcatore `CHIUSO PASS` per il task | Esegui **chiusura B** (7 condizioni adattate), scrivi il marcatore, fermati |
 
 ## Macchina a stati — come determini l'azione successiva
 
@@ -194,6 +204,7 @@ Se la review richiede entrambe le sedi, l'Orchestratore della sessione corrente 
 
 - **Titolo-poi-prompt**: un messaggio breve del supervisore (es. "Review CAP DATA 01") può essere il solo *titolo* di un'istruzione che arriva nel messaggio successivo. Non agire sul titolo: attendi il prompt vero; in dubbio, chiedi.
 - **Input dell'Orchestratore = autoritativo**: i dati esterni che l'Orchestratore prepara e deposita in `ACTIVE_TASK.md` non vanno riverificati dai subagenti; il prompt di invocazione deve dichiararlo esplicitamente ("i dati X in ACTIVE_TASK sono autoritativi, non riverificarli").
+- **Etichetta RM-3 sui depositi (vincolante)**: ogni dato esterno depositato in `ACTIVE_TASK.md` porta l'etichetta del suo livello fonte (`[PROVA-EMPIRICA <data>]` / `[CODICE-EXISTENTE r.NNN]` / `[DOC-INTERNO <path>]` / `[WIKI-HINT, da verificare]`). "Autoritativo" significa "non ri-fetchare", NON promozione di livello: **nessuna conclusione strutturale può poggiare su un deposito solo livello-4**.
 - **Subagenti senza web**: i subagenti non hanno WebFetch/WebSearch. Se un task richiede fonti web, è l'Orchestratore che recupera i dati *prima* e li mette in `ACTIVE_TASK.md`.
 - **Guard attivo anche sull'Orchestratore**: il guard PreToolUse (`tasks/METODO.md` §Enforcement) blocca anche le azioni dell'Orchestratore. Un blocco non si aggira via shell: o l'azione è da non fare, o serve la procedura di sblocco autorizzata dal supervisore.
 
