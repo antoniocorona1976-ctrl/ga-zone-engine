@@ -398,6 +398,20 @@
   - *Tracciabilità*: `[DOC-INTERNO CAP_07_parte_VII.md:588]` (AC-GO-10), `[DOC-INTERNO CAP_07_parte_VII.md:594]` (AC-GO-11), `[DOC-INTERNO CAP_07_parte_VII.md:599]` (AC-GO-12).
   - *Valore operativo*: garantisce che, oltre alla statistica, l'infrastruttura del prodotto sia funzionante e integra prima del go-live.
 
+> **Batteria KPI di lifecycle (enumerazione atomica)**. La metrica primaria $E[R_{net}\mid executed]$ (NFR-8.3) e la coppia (target hit rate, executable rate) cross-regime (NFR-8.4) sono già criteri di accettazione. I tre KPI seguenti **completano** la batteria di lifecycle definita alla fonte: sono enumerati come criteri di accettazione atomici e distinti, riferiti al medesimo replay OOS della state machine. Non duplicano NFR-8.4 (che misura *stabilità cross-regime* di hit/executable rate): qui ciascun KPI è un osservabile di lifecycle a sé, riportato e soggetto a soglia di prodotto in FASE-D.
+
+- **NFR-8.9** — Il prodotto calcola e riporta, sul replay OOS della state machine, l'**invalidation rate**: frazione dei segnali invalidati prima del touch della zona, per superamento di una condizione di invalidazione strutturale o per scadenza del timer di attesa.
+  - *Tracciabilità*: `[DOC-INTERNO CAP_01_parte_I.md:77]` (metriche di lifecycle del segnale, invalidation rate).
+  - *Valore operativo*: misura quanti segnali decadono prima di diventare eseguibili — qualità del filtro di emissione percepita dall'operatore (rumore di segnali che non arrivano mai in zona).
+
+- **NFR-8.10** — Il prodotto calcola e riporta, sul replay OOS della state machine, il **missed_target rate**: frazione dei segnali in cui il target 1 è stato raggiunto dal prezzo prima che la zona di ingresso fosse toccata (metrica riferita al target 1, non al target 2, in quanto è il primo target a definire la conversione minima del segnale).
+  - *Tracciabilità*: `[DOC-INTERNO CAP_01_parte_I.md:77]` (metriche di lifecycle del segnale, missed target rate).
+  - *Valore operativo*: misura quante opportunità l'operatore perde perché il mercato raggiunge il target senza dare l'ingresso in zona — costo-opportunità del vincolo di esecuzione manuale in zona.
+
+- **NFR-8.11** — Il prodotto calcola e riporta la **probabilità condizionata $\pi_{t_2\mid t_1}$** (hit-rate condizionale di target_2 dato target_1): frequenza con cui il prezzo raggiunge target_2 nelle sessioni di backtest chiuse in `target_1_hit`. È metrica di reporting/validazione del position lifecycle (submacchina di tracking), non stato terminale del segnale (decisione Q-05).
+  - *Tracciabilità*: `[DOC-INTERNO CAP_01_parte_I.md:77]` (target 2 hit rate $\pi_{t_2\mid t_1}$ sul position lifecycle), `[DOC-INTERNO CAP_02_parte_II.md:372]` (hit-rate condizionale $\pi_{t_2\mid t_1}$, submacchina di tracking IN-SCOPE per reporting/validazione).
+  - *Valore operativo*: informa la qualità strutturale del livello `target_2` pubblicato nel payload (R-3.4/R-3.5); un $\pi_{t_2\mid t_1}$ elevato segnala un target_2 robusto, uno basso un livello nominalmente strutturale ma poco realizzato — rilevante per l'operatore che gestisce manualmente la posizione oltre target_1.
+
 **Out-of-scope della Sezione 8**:
 | Voce | Destinazione |
 |---|---|
@@ -409,6 +423,8 @@
 | ID | Capitolo-fonte | Tipo |
 |---|---|---|
 | NFR-8.1..NFR-8.8 | CAP_01 (Cap.5) / CAP_07 (Cap.31,32,33,36) | NFR |
+| NFR-8.9, NFR-8.10 | CAP_01 (Cap.5) | NFR |
+| NFR-8.11 | CAP_01 (Cap.5) / CAP_02 (Cap.11) | NFR |
 
 ---
 
@@ -569,6 +585,9 @@ Una riga per requisito. Tutte le citazioni puntuali `file:riga` sono nei requisi
 | NFR-8.6 | NFR | CAP_07 Cap.36 (PVII) |
 | NFR-8.7 | NFR | CAP_07 Cap.36 (PVII) |
 | NFR-8.8 | NFR | CAP_07 Cap.36 (PVII) / CAP_07 Cap.35 (PVII) |
+| NFR-8.9 | NFR | CAP_01 Cap.5 (PI) |
+| NFR-8.10 | NFR | CAP_01 Cap.5 (PI) |
+| NFR-8.11 | NFR | CAP_01 Cap.5 (PI) / CAP_02 Cap.11 (PII) |
 | CN-9.1 | CN | CAP_09 Cap.49 (P9) / codice |
 | R-9.1 | R | CAP_09 Cap.45,49 (P9) |
 | R-9.2 | R | CAP_09 Cap.51 (P9) / codice / CAP_10 Cap.59 (P10) |
@@ -582,7 +601,7 @@ Una riga per requisito. Tutte le citazioni puntuali `file:riga` sono nei requisi
 | R-10.2 | R | CAP_09 Cap.55 (P9) / CAP_10 Cap.64 (P10) / CAP_07 Cap.36 (PVII) |
 | CN-10.1 | CN | CAP_08 Cap.42 (P8) / CAP_09 Cap.53 (P9) / CAP_10 Cap.64 (P10) |
 
-**Conteggio**: 41 R + 10 NFR + 21 CN = **72 requisiti**. Tutti tracciati ad almeno un capitolo (matrice 72 righe, riconciliata 1:1 con i requisiti definiti nelle Sez.1-10: 0 mancanti, 0 orfani). Requisiti `[B-N PROVVISORIO]`: NFR-6.2 (B-1), R-7.1 (B-2).
+**Conteggio**: 41 R + 13 NFR + 21 CN = **75 requisiti**. Tutti tracciati ad almeno un capitolo (matrice 75 righe, riconciliata 1:1 con i requisiti definiti nelle Sez.1-10: 0 mancanti, 0 orfani). Requisiti `[B-N PROVVISORIO]`: NFR-6.2 (B-1), R-7.1 (B-2). *Micro-pass AC (2026-06-14): aggiunti NFR-8.9 (invalidation rate), NFR-8.10 (missed_target rate), NFR-8.11 ($\pi_{t_2\mid t_1}$) — enumerazione atomica della batteria KPI di lifecycle.*
 
 ---
 

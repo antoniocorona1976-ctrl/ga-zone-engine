@@ -10,9 +10,9 @@
 `docs/spec_funzionale/SPEC_FUNZ_01_v2.md` — specifica funzionale di prodotto PHASE-1 FIB-only, ricostruita ex-novo dai 10 capitoli-fonte. Struttura:
 
 - **13 sezioni**: nota di testa (provenienza/cautele RM-1/RM-3) + 10 sezioni di requisiti (obiettivo/solo-emissione; destinatario; payload; esecuzione/6 terminali; condizioni emissione; consegna Telegram; vincoli operativi/compliance; criteri go-live; dipendenze dato/infrastruttura; fasizzazione) + matrice di tracciabilità + capitoli non tracciati + blocchi/domande aperte.
-- **72 requisiti atomici** (N1): **41 R** (funzionali) + **10 NFR** (qualità/non-funzionali) + **21 CN** (compliance/normativi).
+- **75 requisiti atomici** (N1): **41 R** (funzionali) + **13 NFR** (qualità/non-funzionali) + **21 CN** (compliance/normativi). *(72 nella stesura v2 originale; +3 NFR dal micro-pass AC 2026-06-14 — vedi §3.)*
 - Ogni requisito: una sola proposizione verificabile, tracciabilità `[DOC-INTERNO CAP_XX_parte_*.md:<riga>]` puntuale, valore operativo dichiarato.
-- **Matrice di tracciabilità** finale (72 righe, riconciliata 1:1 con i requisiti definiti: 0 mancanti, 0 orfani) + **sezione capitoli non tracciati** che motiva Parti III/IV/V intere e i singoli capitoli interni (Cap.4, 10, 27, 30, 34, 35, 37-44 salvo 42, 45/48/50/55, 57/58/63/64/65).
+- **Matrice di tracciabilità** finale (75 righe, riconciliata 1:1 con i requisiti definiti: 0 mancanti, 0 orfani) + **sezione capitoli non tracciati** che motiva Parti III/IV/V intere e i singoli capitoli interni (Cap.4, 10, 27, 30, 34, 35, 37-44 salvo 42, 45/48/50/55, 57/58/63/64/65).
 - **2 blocchi aperti** incardinati con tag `[B-N PROVVISORIO]` sui requisiti dipendenti.
 
 Le domande operative del done-when del task card (1-10) trovano risposta univoca nelle Sezioni 1-10 e nella matrice (Sez.11).
@@ -34,13 +34,14 @@ Le domande operative del done-when del task card (1-10) trovano risposta univoca
 - **M-2 incardinato come NFR** (NFR-6.2 [B-1]); **M-GOV-1 recepito come R** (R-7.1 [B-2]) citando il pendente upgrade empirico — come richiesto da AC-G12.
 - **Cash europei**: classificati CN-7.9 (perimetro vincolante Q-A-3, gating qualitativo post-emissione mai soppressione) e CN-9.2 (riconciliazione low/high via CANDLE ufficiale).
 - **Claim empiriche sull'edge**: NFR-8.1..8.8 recepite come criteri **dichiarati**, marcate PENDING-empirico (validator FASE-D) in Sez.8 out-of-scope; nessun verdetto GO/CONDITIONAL/NO-GO emesso (esclusiva del validator).
+- **Micro-pass AC (2026-06-14) — enumerazione batteria KPI lifecycle**: la batteria di KPI di lifecycle del segnale era coperta solo parzialmente (NFR-8.3 metrica primaria $E[R_{net}]$; NFR-8.4 stabilità cross-regime di target hit rate + executable rate). I tre KPI di lifecycle restanti, definiti alla fonte ma non enumerati come criteri di accettazione atomici nella v2, sono stati aggiunti come NFR distinti: **NFR-8.9** (invalidation rate) e **NFR-8.10** (missed_target rate) tracciati a `[DOC-INTERNO CAP_01_parte_I.md:77]` (paragrafo "Metriche di lifecycle del segnale"); **NFR-8.11** ($\pi_{t_2\mid t_1}$, probabilità condizionata target_2 dato target_1) tracciato a `[DOC-INTERNO CAP_01_parte_I.md:77]` + `[DOC-INTERNO CAP_02_parte_II.md:372]` (hit-rate condizionale, submacchina position lifecycle IN-SCOPE per reporting/validazione). Entrambe le righe-fonte (CAP_01:77, CAP_02:372) verificate token-per-token con Read prima della stesura. Coerenti con gli stati terminali di R-4.1 (`invalidated`, `missed_target`) e con `target_2` informativo di R-3.5; **non** duplicano NFR-8.4 (che misura stabilità cross-regime di hit/executable rate, non i KPI di invalidazione/missed/condizionale). Nessun altro requisito toccato; CAP frozen non toccati; `00_indice.md` non toccato. Conteggio: 72 → **75** (10 → 13 NFR).
 
 ## 4. Misura prima/dopo (greenfield di consolidamento, onesto)
 
 Questo è un greenfield di consolidamento, non una modifica al motore: nessuna metrica GA inventata, nessuna analisi "impatto sul ranking dei cromosomi".
 
 - **PRIMA**: i requisiti di prodotto erano **dispersi** in 10 Parti / 65 capitoli metodologici (matematica, decisioni D-*, AC di review intrecciati), non leggibili da un esterno in vista prodotto; un consumatore del segnale non poteva enumerare cosa pubblica il sistema, quali esiti, quali vincoli, senza leggere l'intera metodologia.
-- **DOPO**: **72 requisiti** R/NFR/CN atomici, ciascuno tracciato a `capitolo:riga`, con valore operativo dichiarato, raccolti in 10 sezioni leggibili in vista operatore/prodotto + matrice di tracciabilità + capitoli non tracciati motivati. Le 10 domande operative del done-when hanno risposta univoca.
+- **DOPO**: **75 requisiti** R/NFR/CN atomici (72 nella stesura v2 originale + 3 NFR dal micro-pass AC del 2026-06-14), ciascuno tracciato a `capitolo:riga`, con valore operativo dichiarato, raccolti in 10 sezioni leggibili in vista operatore/prodotto + matrice di tracciabilità + capitoli non tracciati motivati. Le 10 domande operative del done-when hanno risposta univoca.
 
 ## 5. Domande aperte (Blocchi / Domande aperte — batch F6)
 
@@ -65,8 +66,8 @@ Nessun altro blocco. Gli altri M citati (M-4, M-9, M-10, M-16, ecc.) sono CLOSED
 
 | AC | Esito | Evidenza |
 |---|---|---|
-| **AC-G1** (atomicità N1) | OK | 72 requisiti mono-concern; concern eterogenei spezzati (es. payload Cap.6 → R-3.1..R-3.11 + CN-3.1). SPEC_FUNZ_01_v2.md Sez.3. |
-| **AC-G2** (tracciabilità obbligatoria) | OK | Ogni requisito ha ≥1 `[DOC-INTERNO CAP_XX_parte_*.md:<riga>]`; matrice completa 72 righe in Sez.11, riconciliata 1:1 coi requisiti definiti. |
+| **AC-G1** (atomicità N1) | OK | 75 requisiti mono-concern; concern eterogenei spezzati (es. payload Cap.6 → R-3.1..R-3.11 + CN-3.1; KPI lifecycle → NFR-8.9/8.10/8.11 distinti). SPEC_FUNZ_01_v2.md Sez.3. |
+| **AC-G2** (tracciabilità obbligatoria) | OK | Ogni requisito ha ≥1 `[DOC-INTERNO CAP_XX_parte_*.md:<riga>]`; matrice completa 75 righe in Sez.11, riconciliata 1:1 coi requisiti definiti. |
 | **AC-G3** (valore operativo obbligatorio) | OK | Ogni requisito chiude con riga *Valore operativo*. Sez.1-10. |
 | **AC-G4** (floor citazioni 100% verificabili) | OK | Tutte le citazioni `[DOC-INTERNO]`/`[CODICE-ESISTENTE]` verificate token-per-token con Read/sed contro la fonte (CAP_01/02/06/07/08/09/10 + codice :61, :477-481). Correzione applicata: CN-9.3 `CAP_08:218`→`:217`. |
 | **AC-G5** (divieto "verificato X" prima istanza, RM-1) | OK | Nessuna nuova dichiarazione "verificato X"; ogni asserzione è richiamo etichettato a CAP chiuso/codice/prova. Nessun blocco VERIFICA/PROVE/ALTERNATIVE nuovo. Nota di testa. |
@@ -75,7 +76,7 @@ Nessun altro blocco. Gli altri M citati (M-4, M-9, M-10, M-16, ecc.) sono CLOSED
 | **AC-G8** (marcatura `[B-N PROVVISORIO]`) | OK | NFR-6.2 `[B-1 PROVVISORIO]`, R-7.1 `[B-2 PROVVISORIO]` con riga di spiegazione; blocchi enumerati in Sez.13. |
 | **AC-G9** (cecità rispetto al vecchio) | OK | File vietati NON aperti (confermato sopra). Nessun riferimento/parafrasi del vecchio testo; ID requisito derivati ex-novo dai capitoli-fonte. |
 | **AC-G10** (scope invariato, no ampliamento) | OK | Solo PHASE-1 FIB-only; PHASE-2 dichiarata fuori scope (R-10.1/CN-10.1); implementazione FASE-D fuori scope (out-of-scope di ogni sezione). |
-| **AC-G11** (matrice + capitoli non tracciati) | OK | Sez.11 (matrice 72 righe) + Sez.12 (capitoli non tracciati: Parti III/IV/V intere + Cap.4/10/27/30/34/35/37-44 salvo 42/45/48/50/55/57/58/63/64/65, ciascuno motivato). |
+| **AC-G11** (matrice + capitoli non tracciati) | OK | Sez.11 (matrice 75 righe) + Sez.12 (capitoli non tracciati: Parti III/IV/V intere + Cap.4/10/27/30/34/35/37-44 salvo 42/45/48/50/55/57/58/63/64/65, ciascuno motivato). |
 | **AC-G12** (M-2 incardinato; M-GOV-1 recepito) | OK | M-2 → NFR-6.2 `[B-1]` con verifica OPEN (Appendice E/FASE-D); M-GOV-1 → R-7.1 `[B-2]` con pendente upgrade empirico citato. |
 | **AC-S1** (out-of-scope + mini-tabella per sezione) | OK | Ogni Sez.1-10 chiude con lista out-of-scope (destinazione per voce) + mini-tabella requisito→capitolo→tipo. |
 | **AC-S2** (schemi-dato con diff col decoder canonico) | OK | CN-9.1 cita schema CANDLE `C;L;H;O;V` via `[CODICE-ESISTENTE export_directa_history_parametric.py:477-481]` + `[PROVA-EMPIRICA M-1 2026-05-29]`, non via wiki (RACC-METODO-2/RM-2). |
