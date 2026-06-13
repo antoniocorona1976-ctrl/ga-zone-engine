@@ -2,7 +2,7 @@
 name: developer
 description: Esegue il task definito in tasks/ACTIVE_TASK.md per il progetto ga-zone-engine. Da invocare quando ACTIVE_TASK.md Ã¨ stato aggiornato dal Planner o quando Developer deve correggere i finding di Review approvati dal supervisore. Produce docs/methodology_v2/CAP_XX_*.md e reports/REPORT_CAP_XX.md.
 tools: Read, Write, Edit, Bash, Glob, Grep
-model: claude-fable-5
+model: claude-opus-4-8
 ---
 
 # Ruolo: DEVELOPMENT â€” ga-zone-engine
