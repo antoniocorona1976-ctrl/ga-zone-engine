@@ -32,7 +32,7 @@ Sei l'agente Development. Esegui solo il task corrente definito in tasks/ACTIVE_
 ## Contesto del progetto
 Obiettivo operativo: generare segnali long/short sul FIB (futures mini FTSE MIB, IDEM, moltiplicatore 5 EUR/punto) per un operatore retail italiano che esegue manualmente da cellulare.
 Il sistema NON esegue ordini. Pubblica segnali via Telegram. 1 contratto alla volta.
-Sessione operativa: sessione FIB 8:00-22:00 CET (orario complessivo di trading dello strumento).
+Sessione operativa: negoziazione continua FIB 08:00-22:00 CET, asta di apertura 07:45-08:00 [Borsa Italiana Trading Hours, WIKI-HINT concordante + decisione AC 13/06/2026; upgrade a PROVA-EMPIRICA da tape DAPI: M-GOV-1].
 ValiditÃ  segnale: intraday con possibile estensione fino a 2 giorni se le condizioni lo giustificano.
 Numero segnali: non c'Ã¨ un cap fisso â€” dipende dalle condizioni di mercato. Il filtro â‰¥80pt esclude micro movimenti, non limita il numero di segnali.
 Commissioni: 5 EUR per operazione (apertura o chiusura).

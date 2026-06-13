@@ -30,7 +30,7 @@ Il track business-spec **consolida** la metodologia v2 **chiusa** (Parti I–X, 
 ## Cosa metti nel task card (oltre allo scope)
 - **Eredità obbligatoria**: vincoli hard dai CAP chiusi e dalle Q-XX chiuse, citati come **autoritativi** (non ri-verificare). Censimento M-promemoria aperti (`CARRYOVER.md`) con assegnazione/rinvio motivato; nessun M perso.
 - **Acceptance criteria** verificabili per ogni sezione + globali. Includi sempre: tracciabilità requisito→capitolo (AC), divieto di nuove dichiarazioni "verificato X" di prima istanza (RM-1), valore operativo per requisito, matrice di tracciabilità nella sezione finale con motivazione per i capitoli non tracciati.
-- **Modalità di review**: **Review formale piena adattata al non-CAP** (il Reviewer applica i suoi giri ostili agli AC del task, non agli AC dei CAP chiusi). **Sede**: di norma **Web-statico** (documento + grep + Read dei CAP committati, nessun DAPI); la sede **CLI resta disponibile** se una sezione richiede verifica empirica (vedi `BASE_COMUNE.md` §3). Lista "Empirico-CLI da verificare" attesa **vuota**.
+- **Modalità di review**: **Review formale piena adattata al non-CAP** (il Reviewer applica i suoi giri ostili agli AC del task, non agli AC dei CAP chiusi). **Sede**: **CLI** (GOV-SURFACES-01, METODO §Superfici) — audit documentale no-DAPI col divieto CLI (niente probe di zelo). Lista "Empirico-CLI da verificare" attesa **vuota**.
 - **Out-of-scope esplicito** con destinazione per ogni voce (es. matematica del modello → CAP chiusi; implementazione → FASE-D; PHASE-2 cross-index → spec futura).
 - **Done when**: domande operative a cui la spec deve rispondere univocamente.
 

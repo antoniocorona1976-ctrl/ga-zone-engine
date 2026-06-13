@@ -40,6 +40,8 @@ Il track è documento puro: **non** produrre script/probe/decoder. Quindi RM-4 o
 ## Gestione blocchi (F6 — in batch, non a goccia)
 Se durante il task incontri un blocco (fonte/CAP mancante, ambiguità che richiede decisione di Planner/AC, requisito non risolvibile dai documenti): **NON fermarti al primo blocco**. Mappa l'**intero task** producendo tutto ciò che puoi, poi nel REPORT, sezione **"Blocchi / Domande aperte"**, elenca **tutti** i blocchi insieme — per ciascuno: ID requisito, motivo, cosa serve per sbloccarlo. Solo a task interamente mappato scrivi lo stato di blocco. Fermarsi a goccia genera cicli Developer→Orchestratore→supervisore in serie invece di un solo batch. (Non scrivi su `tasks/QUESTIONS.md`, planner-owned: il blocco vive nel tuo REPORT; l'Orchestratore/Planner lo gestisce.)
 
+**Marcatura della contaminazione (vincolante)**: ogni requisito o passaggio scritto **a valle di un blocco aperto** porta il marcatore inline **[B-N PROVVISORIO]** accanto al proprio ID (B-N = ID del blocco nella sezione "Blocchi / Domande aperte" del REPORT). Quando il blocco viene risolto, il rework rimuove il marcatore o adegua il requisito. Una dipendenza da blocco non marcata è **BUG REALE** in review.
+
 ## Chiusura (pre-consegna adattata)
 Esegui la pre-consegna checklist di `.claude/BASE_COMUNE.md` §5/§8, con questi adattamenti non-CAP:
 - Punto "indice IN REVIEW" = **N/A** (non si tocca `00_indice.md`): saltalo consapevolmente.
