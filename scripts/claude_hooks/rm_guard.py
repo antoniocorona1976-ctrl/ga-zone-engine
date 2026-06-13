@@ -46,7 +46,7 @@ RM1_EXEMPT_FILES = {
     "tasks/STATO_CORRENTE.md", "tasks/CARRYOVER.md", "tasks/ACTIVE_TASK.md",
     "tasks/DEV_STATUS.md", "tasks/QUESTIONS.md",
 }
-RM1_EXEMPT_PREFIXES = ("reviews/", "reports/", "docs/methodology_v2/")
+RM1_EXEMPT_PREFIXES = ("reviews/", "reports/", "docs/methodology_v2/", "docs/spec_funzionale/")
 
 RM4_NAME_PATTERNS = ("tasks/HANDOFF_*", "tasks/PROBE_*", "tasks/INDAGINE_*", "tasks/RIPRESA_*")
 RM4_EXEMPT_PREFIXES = ("scripts/claude_hooks/",)
