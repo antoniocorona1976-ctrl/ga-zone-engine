@@ -1,531 +1,654 @@
-# SPEC-FUNZ-01 — Specifica funzionale del prodotto-segnale FIB (PHASE-1)
+# SPEC-FUNZ-01 v2 — Specifica funzionale di prodotto (PHASE-1 FIB-only)
 
-**Natura del documento**: specifica funzionale / di prodotto / requisiti di business. NON è un capitolo metodologico né una Parte della metodologia v2.
-**Vista**: operatore / prodotto / committente. Consolida la metodologia v2 (10 Parti, Cap.1-65, tutte PASS) in requisiti funzionali (`R-N`), non-funzionali / qualità (`NFR-N`) e vincoli normativi (`CN-N`), tracciati capitolo per capitolo.
-**Perimetro temporale**: PHASE-1 = FIB-only. PHASE-2 (cross-index DAX / EuroStoxx50 / ES / MES) è fuori scope (Cap.42 Parte 8).
-**Provenienza delle asserzioni**: ogni asserzione fattuale è un richiamo a un capitolo metodologico chiuso PASS, etichettato `[DOC-INTERNO <file>:<rif>]` o, per il codice, `[CODICE-ESISTENTE <path>:<linea>]`. Questo documento NON introduce nuove dichiarazioni "verificato X" di prima istanza (RM-1).
-
-> **Nota di lettura sulle fonti esterne (RM-3).** Ogni riferimento a documentazione di sistemi esterni (wiki Directa, docs Telegram, docs Portara/CQG, docs CME/Eurex, testo MiFID II) è etichettato `[WIKI-HINT, da verificare]` e non costituisce mai fonte unica di un'asserzione strutturale. In particolare la **wiki Directa è dimostrata inesatta** sullo schema CANDLE (ordine reale `C;L;H;O`, non `O;H;L;C` del wiki — eredità AUDIT-RM-RETRO CAP-DATA-02, `[CODICE-ESISTENTE scripts/export_directa_history_parametric.py:477-481]`): qualunque schema-dato citato in questo documento proviene dal decoder di produzione, non dal wiki.
+**Track**: Business-spec (non-CAP). **Versione**: v2 (ricostruzione ex-novo, modalità B — Developer cieco rispetto al vecchio `SPEC_FUNZ_01.md`).
+**Scopo**: consolidare le 10 Parti chiuse PASS della metodologia v2 (`docs/methodology_v2/`, Cap.1-65) in **requisiti funzionali (`R-N`)**, **non-funzionali/qualità (`NFR-N`)** e **vincoli normativi/compliance (`CN-N`)** verificabili e tracciati, come ponte fra il documento metodologico chiuso e la successiva FASE-D di implementazione.
+**Vista**: operatore/prodotto. Questo NON è un capitolo metodologico: non ridefinisce metodologia, non introduce parametri del GA, non riapre decisioni `D-*-N` né AC delle Review dei capitoli.
 
 ---
 
-## Sezione 1 — Scopo, visione e perimetro del prodotto
+## Nota di testa — provenienza e cautele di fonte (RM-1/RM-3)
 
-### 1.1 Proposta di valore
-
-Il prodotto-segnale FIB è un **servizio di segnalazione operativa** che pubblica, su un canale Telegram personale, segnali long/short strutturati sul FIB (future mini su FTSE MIB, mercato IDEM, moltiplicatore 5 EUR/punto), con banda di ingresso, due target strutturali e stop strutturale, eseguibili manualmente da cellulare durante la sessione lavorativa dell'operatore. Il sistema **non esegue ordini**: emette informazione decisionale, l'operatore decide ed esegue.
-
-Proposta di valore in tre righe (leggibile da non-tecnico):
-
-> Ricevi sul telefono segnali long/short sul future FTSE MIB con zona d'ingresso, target e stop già calcolati su base strutturale e con probabilità di successo modellata. Li esegui a mano sul tuo broker quando vuoi, un contratto alla volta. Il sistema ti avvisa, non opera al tuo posto.
-
-### 1.2 Confine architetturale "solo emissione"
-
-Il confine "**solo emissione, nessuna esecuzione**" è un **vincolo strutturale non negoziabile**, non una scelta implementativa rivedibile: discende dal punto 1 della dichiarazione di intenti dell'operatore ("genera solo segnali e non effettuerà mai trading direttamente") `[DOC-INTERNO CAP_01_parte_I.md:15]`. Il motore pubblica segnali; l'apertura, l'invio dell'ordine, la gestione e la chiusura della posizione competono esclusivamente all'operatore umano.
-
-### 1.3 Out-of-scope di prodotto (lista chiusa)
-
-Il prodotto **non** comprende, per costruzione: gestione attiva della posizione dopo il fill; sizing dinamico (size fissa 1 contratto); trailing stop / scaling-out / take profit anticipato; esecuzione automatica di ordini; cross-index PHASE-2 (DAX/EuroStoxx50/ES/MES). La separazione gestione-posizione / segnale è ereditata dai punti 7-8 della dichiarazione di intenti `[DOC-INTERNO CAP_01_parte_I.md:27]` `[DOC-INTERNO CAP_02_parte_II.md:368]`.
-
-### 1.4 PHASE-1 vs PHASE-2
-
-SPEC-FUNZ-01 specifica **PHASE-1 = FIB-only**. La PHASE-2 cross-index è dichiarazione normativa già fasizzata in `[DOC-INTERNO CAP_08_parte_8.md:167]` e fuori scope di questo documento (vedi Sezione 10).
-
-### 1.5 Requisiti introdotti
-
-- **R-1 (R-PERIM-1) — Emissione di segnali strutturati FIB.** Il prodotto pubblica segnali long/short sul FIB con payload strutturato (banda, target_1, target_2, stop). *Valore operativo*: fornisce all'operatore ipotesi operative pronte all'esecuzione manuale. *Origine*: `[DOC-INTERNO CAP_01_parte_I.md:15]`, `[DOC-INTERNO CAP_02_parte_II.md:24]`.
-- **R-2 (R-PERIM-2) — Esecuzione delegata all'operatore.** Il prodotto non invia ordini; l'esecuzione è manuale. *Valore operativo*: compliance retail e controllo umano totale sulla posizione. *Origine*: `[DOC-INTERNO CAP_01_parte_I.md:15]`.
-- **R-3 (R-PERIM-3) — Confine FIB-only PHASE-1.** Il prodotto opera esclusivamente sul FIB in PHASE-1. *Valore operativo*: cantierabilità immediata senza dipendenza da vendor cross-index. *Origine*: `[DOC-INTERNO CAP_08_parte_8.md:167]`.
-- **CN-1 — Vincolo "solo emissione" non negoziabile.** Il sistema non esegue ordini in alcuna fase del ciclo di vita. *Valore di prodotto*: posizionamento di compliance e protezione legale del committente. *Origine*: `[DOC-INTERNO CAP_01_parte_I.md:15]`.
-
-**Out-of-scope Sezione 1**: nessuna gestione posizione, nessun sizing dinamico, nessun trailing/scaling, nessuna esecuzione automatica, nessun cross-index PHASE-2.
-
-| Requisito ID | Capitolo metodologia v2 | Tipo |
-|---|---|---|
-| R-1 | Cap.1 Parte I, Cap.6 Parte II | R |
-| R-2 | Cap.1 Parte I | R |
-| R-3 | Cap.42 Parte 8 | R |
-| CN-1 | Cap.1 Parte I | CN |
+- **Fonte unica e autoritativa**: i capitoli metodologia v2 **chiusi PASS** (`docs/methodology_v2/CAP_*.md`), congelati G-09. Ogni asserzione fattuale di questa spec è un **richiamo etichettato** a un capitolo chiuso (`[DOC-INTERNO CAP_XX_parte_*.md:<riga>]`), a codice di produzione (`[CODICE-ESISTENTE path:linea]`, grafia canonica), o a una prova già chiusa (`[PROVA-EMPIRICA <data>]`). La spec **non introduce** nuove dichiarazioni "verificato X": nessun blocco `VERIFICA/PROVE/ALTERNATIVE` nuovo è dovuto (non si eseguono verifiche nuove).
+- **Citazioni verso CAP-01/02/03**: valide (i capitoli sono chiusi e congelati) ma **SHA-review non ancora pinnabile** (freeze G-09, `<sha-da-confermare>` in `tasks/STATO_CORRENTE.md`). Questa dipendenza è dichiarata **una volta qui** e non ripetuta su ogni requisito. La sola dipendenza dal capitolo a SHA-non-confermato non genera `[B-N PROVVISORIO]`: il tag provvisorio è riservato ai requisiti la cui fonte primaria è un **blocco aperto** (vedi §Blocchi e §matrice).
+- **Documentazione esterna** (MiFID II, wiki Directa, Telegram Bot API, Borsa Italiana, Portara/CQG, CME/Eurex): sempre `[WIKI-HINT, da verificare]`, mai fonte unica di un'asserzione strutturale. La **wiki Directa è dimostrata inesatta** sullo schema CANDLE (`O;H;L;C` dichiarato, `C;L;H;O` reale): citata solo con avvertenza esplicita.
+- **Grafia etichette**: `[CODICE-ESISTENTE …]` (canonica). La grafia storica `[CODICE-EXISTENTE …]` è vietata in questo documento.
+- **Blocchi aperti incardinati**: B-1 (latenza Telegram $L_{max}=30$s, M-2 OPEN) e B-2 (orario sessione FIB, M-GOV-1 in attesa di upgrade a PROVA-EMPIRICA). Vedi §"Blocchi / Domande aperte". I requisiti dipendenti portano il tag `[B-N PROVVISORIO]`.
 
 ---
 
-## Sezione 2 — Attori, contesto, personas
+## Sezione 1 — Obiettivo di prodotto e vincolo "solo emissione"
 
-### 2.1 Persona primaria — l'operatore retail
+**Valore di prodotto della sezione**: definisce *cosa fa* il prodotto e il confine non negoziabile fra segnale (motore) ed esecuzione (operatore), da cui discende l'intera compliance del sistema.
 
-L'operatore destinatario è un **risk manager bancario italiano**, funzionario di una banca commerciale, classificato **retail non professionale ai sensi MiFID II** `[WIKI-HINT, da verificare]` con ancoraggio interno `[DOC-INTERNO CAP_01_parte_I.md:23]`. Attributi della persona:
+- **R-1.1** — Il prodotto genera segnali long e short sul FIB (future mini FTSE MIB sull'indice FTSE MIB, mercato IDEM, moltiplicatore 5 EUR/punto indice).
+  - *Tracciabilità*: `[DOC-INTERNO CAP_01_parte_I.md:9]`.
+  - *Valore operativo*: definisce lo strumento e il prodotto-segnale che l'operatore retail riceverà.
 
-1. **Profilo MiFID II**: retail non professionale; vincoli di accesso a strumenti/leve e regimi di tutela come dati immutabili.
-2. **Operatività mobile**: interazione con il broker da **cellulare** durante la giornata lavorativa, in modo discontinuo; non garantisce presenza continuativa allo schermo `[DOC-INTERNO CAP_01_parte_I.md:23]`.
-3. **Vincoli temporali**: attività principale come dipendente bancario; tempo limitato per il monitoraggio attivo del terminale.
-4. **Strumenti**: app Telegram (ricezione segnali) + app/terminale Directa SIM (invio ordini). Sizing 1 contratto FIB alla volta `[DOC-INTERNO CAP_01_parte_I.md:25]`.
-5. **Esecuzione su miniFIB**: l'operatore esegue manualmente su miniFIB (moltiplicatore 1 EUR/pt), mentre il motore calibra/inferisce su FIB pieno `[DOC-INTERNO CAP_09_parte_9.md:75]`.
+- **R-1.2** — Il prodotto **non esegue ordini** in nessuna fase del proprio ciclo di vita: pubblica segnali strutturati su un canale di notifica; apertura, invio ordine, gestione e chiusura competono esclusivamente all'operatore umano che agisce manualmente.
+  - *Tracciabilità*: `[DOC-INTERNO CAP_01_parte_I.md:15]`, `[DOC-INTERNO CAP_06_parte_VI.md:15]` (modalità emissione-only della pipeline).
+  - *Valore operativo*: separazione strutturale segnale/esecuzione — il pilastro della compliance retail (vedi CN-7.1).
 
-### 2.2 Stakeholder secondari
+- **CN-1.1** — Il vincolo "solo emissione, nessuna esecuzione" è **strutturale e non rivedibile**: discende dal punto 1 della dichiarazione di intenti dell'operatore ("genera solo segnali e non effettuerà mai trading direttamente").
+  - *Tracciabilità*: `[DOC-INTERNO CAP_01_parte_I.md:15]`.
+  - *Valore operativo*: rende esplicito che nessuna evoluzione del prodotto può introdurre order routing senza violare il contratto fondante.
 
-- **Supervisore / committente**: definisce gli obiettivi metodologici, riceve i report di lifecycle e le notifiche operative del prodotto.
-- **Reviewer di compliance esterno** (potenziale, futuro): consulente legale MiFID II che valuta il posizionamento del prodotto (Sezione 8).
-- **Fornitori esterni** (potenziali): valutatori cloud AWS (Cap.4 Parte I), fornitore storico Portara/CQG (Cap.37 Parte 8), fornitore bot Telegram (Cap.3 Parte I / Appendice E).
+- **R-1.3** — I segnali sono di natura intraday; la validità del segnale **eseguito** può estendersi a multiday entro un tetto massimo di **2 giorni di trading** decorrenti dal raw touch (esecuzione), non dall'emissione.
+  - *Tracciabilità*: `[DOC-INTERNO CAP_01_parte_I.md:13]`, `[DOC-INTERNO CAP_02_parte_II.md:63]` (dominio $\Delta t_{cromosoma} \in \{1,\ldots,1680\}$ = $2\times840$ minuti).
+  - *Valore operativo*: l'operatore sa che una posizione aperta su un segnale non resta valida indefinitamente; il tetto è 2 sessioni di trading dall'ingresso.
 
-### 2.3 Ambiente di esecuzione utente
+- **R-1.4** — Il target operativo del prodotto è dichiarato in forma **asimmetrica alternativa**: 500 punti FIB di profitto netto giornaliero **OPPURE** il 70% del movimento strutturale intraday (somma dei moduli degli swing fra pivot strutturali, ancorata al primo min/max post-apertura).
+  - *Tracciabilità*: `[DOC-INTERNO CAP_01_parte_I.md:11]`.
+  - *Valore operativo*: definisce cosa significa "giornata di successo" in modo robusto al regime di volatilità del giorno.
 
-Smartphone Android/iOS con app Telegram (ricezione segnale) e app Directa per l'ordering. Il **PC fisso** (i5-7200U, Anaconda — `[DOC-INTERNO CAP_01_parte_I.md:39]`) è ambiente di sviluppo, training (via cloud) e inference live, **mai** ambiente di esecuzione ordini.
+**Out-of-scope della Sezione 1**:
+| Voce | Destinazione |
+|---|---|
+| Matematica del movimento strutturale e pivot detection | Parti III/IV (CAP chiusi) — citate dove esce il risultato, non ri-derivate |
+| Gestione attiva posizione (take/stop profit dopo il fill) | Operatore (CN-7.4); FASE-D per eventuale supporto |
 
-### 2.4 Requisiti introdotti
-
-- **R-4 — Esecuzione manuale come vincolo.** Il prodotto assume esecuzione manuale dell'operatore da mobile; il messaggio è progettato per la decisione mobile. *Valore operativo*: il segnale è azionabile in mobilità, senza presenza al PC. *Origine*: `[DOC-INTERNO CAP_01_parte_I.md:23]`, `[DOC-INTERNO CAP_06_parte_VI.md:146]`.
-- **R-5 — Canale Telegram come output obbligatorio.** Il bot Telegram personale dell'operatore è l'unica via di output verso l'operatore. *Valore operativo*: consegna su un canale già attivo e familiare, ricevuto sul cellulare. *Origine*: `[DOC-INTERNO CAP_01_parte_I.md:47]`, `[DOC-INTERNO CAP_06_parte_VI.md:146]`.
-
-**Out-of-scope Sezione 2**: tutorial / manuale d'uso del bot (materia FASE-D); profilazione di marketing della persona.
-
-| Requisito ID | Capitolo metodologia v2 | Tipo |
+**Mini-tabella requisiti della sezione**:
+| ID | Capitolo-fonte | Tipo |
 |---|---|---|
-| R-4 | Cap.2 Parte I, Cap.29 Parte VI | R |
-| R-5 | Cap.3 Parte I, Cap.29 Parte VI | R |
+| R-1.1 | CAP_01 (Cap.1) | R |
+| R-1.2 | CAP_01 (Cap.1) / CAP_06 (Cap.27) | R |
+| CN-1.1 | CAP_01 (Cap.1) | CN |
+| R-1.3 | CAP_01 (Cap.1) / CAP_02 (Cap.6) | R |
+| R-1.4 | CAP_01 (Cap.1) | R |
 
 ---
 
-## Sezione 3 — Requisiti funzionali del segnale (prodotto)
+## Sezione 2 — Destinatario e modalità di consumo
 
-### 3.1 Il segnale come feature di prodotto
+**Valore di prodotto della sezione**: definisce *a chi* è destinato il prodotto e *come* lo consuma — vincoli di profilo che governano formato, sizing e canale.
 
-Il segnale è una **tupla immutabile** pubblicata all'operatore. Dal punto di vista del consumatore, i campi del payload sono i seguenti (contratto formale `[DOC-INTERNO CAP_02_parte_II.md:19]`; voci pubblicate sul messaggio `[DOC-INTERNO CAP_02_parte_II.md:241]`):
+- **R-2.1** — Il destinatario è un operatore retail italiano (risk manager bancario), classificato **retail non professionale ai sensi MiFID II**, che opera da cellulare in modo discontinuo durante la giornata lavorativa.
+  - *Tracciabilità*: `[DOC-INTERNO CAP_01_parte_I.md:23]`. Riferimento normativo esterno `[WIKI-HINT MiFID II, da verificare]` (la classificazione retail è dato del profilo operatore, non asserzione strutturale della spec).
+  - *Valore operativo*: il prodotto deve produrre segnali interpretabili e azionabili senza presenza continuativa allo schermo.
 
-| # | Campo | Tipo / dominio | Vincoli | Origine v2 |
-|---|---|---|---|---|
-| 1 | `signal_id` | identificatore opaco | univoco sull'intero orizzonte operativo, non riusabile | `[DOC-INTERNO CAP_02_parte_II.md:23]` |
-| 2 | `timestamp_emission` | datetime al minuto, CET | minuto chiuso | `[DOC-INTERNO CAP_02_parte_II.md:25]` |
-| 3 | `direction` | `{long, short}` | — | `[DOC-INTERNO CAP_02_parte_II.md:27]` |
-| 4 | `entry_zone` | banda discreta di prezzo | estremi multipli di 5 pt; semi-ampiezza $b\in\{5,..,40\}$ | `[DOC-INTERNO CAP_02_parte_II.md:29]` |
-| 5 | `target_1` | prezzo, multiplo di 5 | $>p_{ref}$ (long) / $<p_{ref}$ (short); obbligatorio | `[DOC-INTERNO CAP_02_parte_II.md:35]` |
-| 6 | `target_2` | prezzo, multiplo di 5 | informazione strutturale pubblicata, **non** variabile di lifecycle (Q-05 Clausola 2) | `[DOC-INTERNO CAP_02_parte_II.md:37]` |
-| 7 | `target_2_type` | `{structural, synthetic}` | qualificatore natura del livello | `[DOC-INTERNO CAP_02_parte_II.md:39]` |
-| 8 | `stop_loss` | prezzo, multiplo di 5 | $d_{stop}=|p_{ref}-\texttt{stop\_loss}|>b$ | `[DOC-INTERNO CAP_02_parte_II.md:41]` |
-| 9 | `stop_type` | `{structural, synthetic}` | qualificatore natura del livello | `[DOC-INTERNO CAP_02_parte_II.md:51]` |
-| 10 | `setup_class` | `{directional, trade_range}` | determina il filtro 80pt applicato | `[DOC-INTERNO CAP_02_parte_II.md:53]` |
+- **R-2.2** — Il dimensionamento della posizione è fissato a **1 contratto FIB alla volta**: il prodotto non calcola né propone gestione della size (incrementi/riduzioni).
+  - *Tracciabilità*: `[DOC-INTERNO CAP_01_parte_I.md:25]` (punto 7 dichiarazione intenti).
+  - *Valore operativo*: l'operatore esegue sempre un solo contratto; nessuna decisione di sizing è delegata al sistema.
 
-I campi tecnici $\Delta t_{cromosoma}$ (timer post-trigger) e $T_{touch}^{max}$ (timer pre-trigger) sono parte della tupla formale `[DOC-INTERNO CAP_02_parte_II.md:63]` ma **non** sono pubblicati nel messaggio all'operatore `[DOC-INTERNO CAP_02_parte_II.md:253]`. Il messaggio pubblica 9 voci (i due timer esclusi); la tabella sopra elenca i 10 campi del payload consumer-facing del segnale.
+- **CN-2.1** — L'operatore esegue manualmente su **miniFIB** (1 EUR/punto) mentre il motore calibra e fa inference sul **FIB pieno** (5 EUR/punto): la separazione fra strumento di calibrazione/inference e strumento di esecuzione è fattuale e voluta.
+  - *Tracciabilità*: `[DOC-INTERNO CAP_01_parte_I.md:25]`, `[DOC-INTERNO CAP_09_parte_9.md:75]` (FIB pieno front-month sottoscritto in runtime; operatore su miniFIB).
+  - *Valore operativo*: l'operatore sa di leggere segnali calibrati su FIB pieno ed eseguirli su miniFIB.
 
-### 3.2 Invarianti e regole del prodotto
+- **R-2.3** — Il canale di pubblicazione dei segnali è un **bot Telegram personale** dell'operatore, già attivo, dichiarato come unica via di output verso l'operatore.
+  - *Tracciabilità*: `[DOC-INTERNO CAP_01_parte_I.md:47]`, `[DOC-INTERNO CAP_06_parte_VI.md:146]` (bot Telegram come unica via di output).
+  - *Valore operativo*: l'operatore riceve i segnali sul proprio cellulare via Telegram, senza terminale dedicato.
 
-- **R-6 — Payload immutabile dopo emissione.** Una volta emesso, il payload identificato da `signal_id` non muta: l'operatore opera su valori che non cambiano a sua insaputa. *Valore operativo*: il segnale è un oggetto contrattuale affidabile fra lettura e invio ordine. *Origine*: `[DOC-INTERNO CAP_02_parte_II.md:73]`.
-- **R-7 — Segnale unico attivo.** A ogni istante è attivo al massimo un segnale: $|\mathcal{A}(t)|\le 1$. Una revisione si manifesta come **sostituzione** (nuovo `signal_id`, revoca del precedente), non come modifica. *Valore operativo*: nessuna ambiguità su quale segnale è operativo; coerente con 1 contratto alla volta. *Origine*: `[DOC-INTERNO CAP_02_parte_II.md:81]`.
-- **R-8 — Filtro minimo 80pt.** Il prodotto non pubblica segnali con `target_1` directional a meno di 80 pt da $p_{ref}$, né `trade_range` con ampiezza $A_{range}<80$ pt. *Valore operativo*: esclude micro-movimenti non remunerativi al netto delle commissioni; non limita il numero di segnali. *Origine*: `[DOC-INTERNO CAP_01_parte_I.md:83]`, `[DOC-INTERNO CAP_02_parte_II.md:55]`.
-- **R-9 — Tick discreto 5 pt.** Tutti i prezzi pubblicati (entry, target, stop) sono multipli di 5 punti FIB; $b_{min}=5$ è 1 tick. *Valore operativo*: i livelli sono inseribili tali e quali sul broker. *Origine*: `[DOC-INTERNO CAP_02_parte_II.md:9]`.
+**Out-of-scope della Sezione 2**:
+| Voce | Destinazione |
+|---|---|
+| Testo dei disclaimer MiFID II / parere legale | Consulente legale esterno (FASE-D/business) |
+| Setup bot, `chat_id`, stringhe esatte del messaggio | Appendice E / FASE-D |
 
-### 3.3 Esempio numerico (payload concreto)
-
-Segnale long, setup directional (tutti i prezzi multipli di 5):
-
-```
-signal_id      = a3f7d9
-direction      = long
-setup_class    = directional
-entry_zone     = [13.250, 13.260]   (p_ref = 13.255, b = 5)
-target_1       = 13.350             (+95 pt da p_ref)   -> filtro 80pt rispettato
-target_2       = 13.450  (structural)
-stop_loss      = 13.200  (structural)   (d_stop = 55 pt > b = 5)
-timestamp_emission = 2026-06-15 10:42 CET
-```
-
-Coerenza: `target_1` dista 95 pt ($\ge 80$, R-8 OK); $d_{stop}=55>b=5$ (R-7/CAP-01 vincolo geometrico OK); tutti i livelli multipli di 5 (R-9 OK). Esempio coerente con il layout mobile di `[DOC-INTERNO CAP_06_parte_VI.md:176]`.
-
-**Out-of-scope Sezione 3**: matematica della derivazione strutturale di target/stop (Cap.17-18 Parte IV); algoritmo pivot detection (Cap.15 Parte III); soglie/parametri congelati di filtro (Cap.20 Parte IV, Cap.26 Parte V).
-
-| Requisito ID | Capitolo metodologia v2 | Tipo |
+**Mini-tabella requisiti della sezione**:
+| ID | Capitolo-fonte | Tipo |
 |---|---|---|
-| R-6 | Cap.6 Parte II | R |
-| R-7 | Cap.6 Parte II, Cap.28 Parte VI | R |
-| R-8 | Cap.5 Parte I, Cap.8 Parte II | R |
-| R-9 | Cap.6 Parte II | R |
+| R-2.1 | CAP_01 (Cap.2) | R |
+| R-2.2 | CAP_01 (Cap.2) | R |
+| CN-2.1 | CAP_01 (Cap.2) / CAP_09 (Cap.47) | CN |
+| R-2.3 | CAP_01 (Cap.3) / CAP_06 (Cap.29) | R |
 
 ---
 
-## Sezione 4 — Ciclo di vita del segnale visto dall'operatore
+## Sezione 3 — Payload del segnale e invarianti
 
-### 4.1 La state machine in vista operatore
+**Valore di prodotto della sezione**: definisce *cosa pubblica* il prodotto (campi, domini, vincoli, invarianti) — il contratto su cui l'operatore agisce.
 
-Il ciclo di vita del segnale è **1 stato non-terminale + 6 stati terminali** (Q-05 Clausola 1) `[DOC-INTERNO CAP_02_parte_II.md:95]`. In vista operatore:
+- **R-3.1** — Il segnale è una tupla strutturata a **12 campi**: `signal_id`, `timestamp_emission`, `direction`, `entry_zone`, `target_1`, `target_2`, `target_2_type`, `stop_loss`, `stop_type`, `setup_class`, $\Delta t_{cromosoma}$, $T_{touch}^{max}$.
+  - *Tracciabilità*: `[DOC-INTERNO CAP_02_parte_II.md:19]`.
+  - *Valore operativo*: definisce esattamente il contenuto informativo che il prodotto consegna.
 
-```
-                 emissione (notifica Telegram, payload completo)
-                          │
-                       ┌──▼──┐
-                       │active│  "in attesa di raw touch"
-                       └──┬──┘
-        ┌────────┬────────┼────────┬────────────┬───────────┐
-        ▼        ▼        ▼        ▼            ▼           ▼
-  target_1_hit stopped invalidated missed_target expired   revoked
-   (successo)  (stop)  (ipotesi   (target preso  (timer    (sostituito
-                        rotta pre- prima del touch scaduto)  da nuovo
-                        touch)     -> non eseguibile)        signal_id)
-```
+- **R-3.2** — `direction` ha dominio $\{\text{long}, \text{short}\}$.
+  - *Tracciabilità*: `[DOC-INTERNO CAP_02_parte_II.md:27]`.
+  - *Valore operativo*: l'operatore sa se comprare o vendere.
 
-Dopo l'emissione, l'operatore riceve una **notifica di `trigger_event`** separata al raw touch della entry zone ("esecuzione attiva") `[DOC-INTERNO CAP_02_parte_II.md:271]`. Il `trigger_event` è un **evento notificato**, non uno stato `[DOC-INTERNO CAP_02_parte_II.md:139]`.
+- **R-3.3** — `entry_zone` è una banda di prezzo discreta attorno al prezzo strutturale di riferimento $p_{ref}$, con semi-ampiezza $b$ multipla di 5 nel dominio $\{5,10,15,20,25,30,35,40\}$ punti FIB.
+  - *Tracciabilità*: `[DOC-INTERNO CAP_02_parte_II.md:33]`, `[DOC-INTERNO CAP_01_parte_I.md:27]` (dominio $b\in[b_{min},40]$, $b_{min}=5$).
+  - *Valore operativo*: l'operatore conosce la banda entro cui entrare.
 
-### 4.2 Significato dei 6 terminali (vista operatore)
+- **R-3.4** — `target_1` e `target_2` sono due prezzi strutturali obiettivo, **entrambi obbligatori e distinti**, multipli di 5, ancorati a livelli strutturali del prezzo (long: $\text{target\_1}>p_{ref}$, $\text{target\_2}>\text{target\_1}$; short simmetrico).
+  - *Tracciabilità*: `[DOC-INTERNO CAP_02_parte_II.md:35]`.
+  - *Valore operativo*: l'operatore ha due livelli obiettivo ordinati.
 
-- **`target_1_hit`** — successo: dopo il touch, il prezzo ha raggiunto `target_1` prima di stop/scadenza. Il contratto del segnale si chiude qui; la posizione oltre target_1 è gestita dall'operatore `[DOC-INTERNO CAP_02_parte_II.md:101]`.
-- **`stopped`** — dopo il touch, il prezzo ha raggiunto `stop_loss` prima di `target_1` `[DOC-INTERNO CAP_02_parte_II.md:103]`.
-- **`invalidated`** — prima del touch, una condizione strutturale (incluso superamento dello stop pre-touch) rompe l'ipotesi: il segnale non è più valido `[DOC-INTERNO CAP_02_parte_II.md:105]`.
-- **`missed_target`** — prima del touch, il prezzo raggiunge `target_1`: il target è stato realizzato dal mercato ma **il segnale non è eseguibile** (la zona non è mai stata toccata) `[DOC-INTERNO CAP_02_parte_II.md:107]`.
-- **`expired`** — timer scaduto: pre-trigger ($T_{touch}^{max}$ senza touch) o post-trigger ($\Delta t_{cromosoma}$ dopo il touch). La causa è nel log `[DOC-INTERNO CAP_02_parte_II.md:109]`.
-- **`revoked`** — il segnale è stato **sostituito** da uno nuovo con `signal_id` differente: l'operatore deve riferirsi al nuovo segnale `[DOC-INTERNO CAP_02_parte_II.md:111]`.
+- **R-3.5** — `target_2` è **informazione strutturale pubblicata**, non variabile di lifecycle del segnale: il contratto del segnale si chiude al raggiungimento di `target_1` (decisione Q-05, Clausola 2).
+  - *Tracciabilità*: `[DOC-INTERNO CAP_02_parte_II.md:37]`.
+  - *Valore operativo*: chiarisce all'operatore che target_2 è un'informazione decisionale, non un secondo terminale del segnale.
 
-### 4.3 Segnale vs position lifecycle
+- **R-3.6** — `target_2_type` e `stop_type` qualificano la natura del livello con dominio $\{\text{structural}, \text{synthetic}\}$: `structural` = derivato da pivot strutturale confermato; `synthetic` = calcolato come livello sintetico in fallback.
+  - *Tracciabilità*: `[DOC-INTERNO CAP_02_parte_II.md:39]` (target_2_type), `[DOC-INTERNO CAP_02_parte_II.md:51]` (stop_type).
+  - *Valore operativo*: l'operatore distingue un livello confermato dalla struttura da uno derivato da una regola del modello.
 
-Il **ciclo di vita del segnale** si chiude definitivamente a `target_1_hit`. Il **position lifecycle post-target_1** (raggiungimento di target_2, stop post-target_1, MFE/MAE) è una **submacchina distinta** `[DOC-INTERNO CAP_02_parte_II.md:349]`: IN-SCOPE solo per il **reporting** di calibrazione, OUT-OF-SCOPE da execution policy. L'operatore lo vede come dato nei report periodici, **mai** come comando di esecuzione `[DOC-INTERNO CAP_02_parte_II.md:368]`.
+- **R-3.7** — `stop_loss` è un prezzo strutturale di stop, multiplo di 5, soggetto al vincolo geometrico obbligatorio $d_{stop} > b$ (distanza stop dal $p_{ref}$ strettamente maggiore della semi-ampiezza della banda).
+  - *Tracciabilità*: `[DOC-INTERNO CAP_02_parte_II.md:47]`, `[DOC-INTERNO CAP_01_parte_I.md:29]`.
+  - *Valore operativo*: garantisce che un fill al bordo opposto della banda non coincida con lo stop nello stesso tick.
 
-### 4.4 Requisiti introdotti
+- **R-3.8** — `setup_class` ha dominio $\{\text{directional}, \text{trade\_range}\}$ e determina la regola di filtro di emissione applicata.
+  - *Tracciabilità*: `[DOC-INTERNO CAP_02_parte_II.md:53]`.
+  - *Valore operativo*: l'operatore distingue un setup direzionale da uno su rettangolo di prezzo.
 
-- **R-10 — Notifica `trigger_event` separata.** Al raw touch della entry zone il prodotto pubblica una notifica distinta dal messaggio di emissione, riferita al `signal_id`, con istante del touch ed expiry. *Valore operativo*: l'operatore sa quando il segnale è entrato in zona ed è eseguibile. *Origine*: `[DOC-INTERNO CAP_02_parte_II.md:271]`, `[DOC-INTERNO CAP_06_parte_VI.md:190]`.
-- **R-11 — Distinzione segnale / position lifecycle.** Il prodotto chiude il segnale a `target_1_hit`; il tracking post-target_1 è solo reporting, non comando. *Valore operativo*: nessuna istruzione di gestione attiva imposta all'operatore (compliance punto 8 dichiarazione). *Origine*: `[DOC-INTERNO CAP_02_parte_II.md:349]`.
-- **CN-2 — Marker normativi dei 6 esiti terminali.** Ogni esito terminale è loggato come marker normativo distinto (`SIGNAL_TARGET_1_HIT` / `STOPPED` / `INVALIDATED` / `MISSED_TARGET` / `EXPIRED` / `REVOKED`), coerente con la state machine. *Valore di prodotto*: tracciabilità per audit / compliance. *Origine*: `[DOC-INTERNO CAP_09_parte_9.md:353]` (D-9-NB3).
+- **CN-3.1** — Tutti i prezzi del FIB si muovono per step discreti di **5 punti** (tick size): $p_{ref}$, `target_1`, `target_2`, `stop_loss`, i bordi della banda e $b$ sono multipli di 5; $b_{min}=5$ è esattamente 1 tick.
+  - *Tracciabilità*: `[DOC-INTERNO CAP_02_parte_II.md:9]`.
+  - *Valore operativo*: nessun livello pubblicato sarà mai un valore non multiplo di 5; l'operatore può fidarsi della discretizzazione.
 
-**Out-of-scope Sezione 4**: regola di simulazione del fill virtuale in backtest (Parte III); execution policy post-target_1.
+- **R-3.9** — Una volta emesso, il segnale identificato da `signal_id` è **immutabile**: nessuna operazione di refresh/edit lascia invariato il `signal_id` modificando un campo del payload.
+  - *Tracciabilità*: `[DOC-INTERNO CAP_02_parte_II.md:73]`.
+  - *Valore operativo*: l'operatore opera su valori che non mutano a sua insaputa fra lettura e invio dell'ordine.
 
-| Requisito ID | Capitolo metodologia v2 | Tipo |
+- **R-3.10** — Vale il vincolo di **segnale unico attivo**: $|\mathcal{A}(t)| \leq 1$ per ogni $t$ (a ogni istante è attivo al massimo un segnale).
+  - *Tracciabilità*: `[DOC-INTERNO CAP_02_parte_II.md:81]`, `[DOC-INTERNO CAP_06_parte_VI.md:85]` (estensione operativa anti-doppio-segnale).
+  - *Valore operativo*: l'operatore non riceve mai due segnali concorrenti da eseguire contemporaneamente (coerente con 1 contratto/volta).
+
+- **R-3.11** — La revisione del segnale corrente si manifesta come **sostituzione**: emissione di un nuovo `signal_id` con tupla completa indipendente e revoca del precedente (transizione a `revoked`), mai modifica in-place.
+  - *Tracciabilità*: `[DOC-INTERNO CAP_02_parte_II.md:77]`.
+  - *Valore operativo*: quando il contesto cambia, l'operatore riceve un nuovo segnale distinto, non un segnale mutato.
+
+**Out-of-scope della Sezione 3**:
+| Voce | Destinazione |
+|---|---|
+| Derivazione geometrica di $p_{ref}$, target, stop | Parte IV (CAP chiuso) — non ri-derivata |
+| Formato esatto del log di emissione | Appendice B / FASE-D |
+
+**Mini-tabella requisiti della sezione**:
+| ID | Capitolo-fonte | Tipo |
 |---|---|---|
-| R-10 | Cap.7 Parte II, Cap.29 Parte VI | R |
-| R-11 | Cap.11 Parte II | R |
-| CN-2 | Cap.7 Parte II, Cap.54 Parte 9 | CN |
+| R-3.1..R-3.11 | CAP_02 (Cap.6-7) | R |
+| CN-3.1 | CAP_02 (Cap.6) | CN |
 
 ---
 
-## Sezione 5 — Canale di pubblicazione e requisiti di consegna
+## Sezione 4 — Esecuzione del segnale e 6 esiti terminali
 
-### 5.1 Telegram come canale di consegna
+**Valore di prodotto della sezione**: definisce *quando* un segnale è eseguibile e *quali sono gli esiti terminali* dal punto di vista dell'operatore.
 
-Il canale è il **bot Telegram personale** dell'operatore. Il messaggio è progettato **mobile-readable**: leggibile su schermo cellulare (larghezza tipica 375-414 px), font monospaziato, senza scroll orizzontale, contenuto critico nella prima schermata, interamente testuale e self-contained `[DOC-INTERNO CAP_06_parte_VI.md:152]`.
+- **R-4.1** — Il segnale ha **un solo stato non-terminale** (`active`) e **6 stati terminali**: `target_1_hit`, `stopped`, `invalidated`, `missed_target`, `expired`, `revoked` (decisione Q-05, Clausola 1).
+  - *Tracciabilità*: `[DOC-INTERNO CAP_02_parte_II.md:95]`, `[DOC-INTERNO CAP_02_parte_II.md:99]`.
+  - *Valore operativo*: l'operatore conosce l'insieme chiuso degli esiti possibili di ogni segnale.
 
-### 5.2 Contenuti minimi (9 voci)
+- **CN-4.1** — La distinzione causale del terminale `expired` (`pretrigger_timeout` vs `posttrigger_timeout`) è registrata come **campo strutturato del log**, non come stato dedicato: i terminali restano esattamente 6.
+  - *Tracciabilità*: `[DOC-INTERNO CAP_02_parte_II.md:109]`.
+  - *Valore operativo*: garantisce che il numero di esiti pubblicabili resti fisso a 6, con la causa di scadenza tracciata internamente.
 
-Il messaggio di emissione pubblica **9 voci ordinate** `[DOC-INTERNO CAP_02_parte_II.md:241]`: `signal_id`, `direction`, `setup_class`, `entry_zone`, `target_1`, `target_2`, `stop_loss`, `timestamp_emission`, più i qualificatori `target_2_type` e `stop_type`. I timer $\Delta t_{cromosoma}$ / $T_{touch}^{max}$ non figurano `[DOC-INTERNO CAP_02_parte_II.md:253]`.
+- **R-4.2** — Il **raw touch** della entry zone è l'evento di esecuzione, sempre eseguibile: la prima barra 1-min il cui high-low contiene un livello discreto della zona produce il `trigger_event`, senza filtri post-emissione.
+  - *Tracciabilità*: `[DOC-INTERNO CAP_02_parte_II.md:135]`, `[DOC-INTERNO CAP_02_parte_II.md:137]`.
+  - *Valore operativo*: una volta emesso il segnale, l'ingresso in zona è sempre azionabile dall'operatore.
 
-**Esempio testuale di messaggio di emissione** (layout mobile-first `[DOC-INTERNO CAP_06_parte_VI.md:176]`, prezzi multipli di 5):
+- **R-4.3** — Il `trigger_event` è un **evento notificato, non uno stato**: il segnale resta `active` fino a un evento terminale; il motore non osserva il fill manuale dell'operatore sul broker.
+  - *Tracciabilità*: `[DOC-INTERNO CAP_02_parte_II.md:139]`.
+  - *Valore operativo*: coerente con "solo emissione" — il sistema notifica l'eseguibilità, non traccia l'ordine reale.
 
-```
-ID: a3f7d9
-LONG
-ZONE: 13.250 - 13.260
-TGT1: 13.350 (+95 pt)
-SL: 13.200 (-55 pt)
-TGT2: 13.450 (S)
-SL-type: structural
-CLASS: dir
-EMIT: 10:42 CET
-```
+- **R-4.4** — Il segnale dispone di **due timer distinti**: pre-trigger $T_{touch}^{max}\in\{5,\ldots,480\}$ minuti di trading (attesa al raw touch) e post-trigger $\Delta t_{cromosoma}\in\{1,\ldots,1680\}$ minuti di trading (validità dopo l'esecuzione); entrambi avanzano solo nei minuti di sessione, scavalcando notti/weekend/festivi.
+  - *Tracciabilità*: `[DOC-INTERNO CAP_02_parte_II.md:69]` ($T_{touch}^{max}$), `[DOC-INTERNO CAP_02_parte_II.md:163]` (avanzamento pre-trigger), `[DOC-INTERNO CAP_02_parte_II.md:157]` (avanzamento post-trigger).
+  - *Valore operativo*: il segnale non resta in attesa indefinita né valido oltre il tetto; i timer rispettano il calendario di trading.
 
-**Esempio testuale di messaggio di `trigger_event`** (messaggio separato `[DOC-INTERNO CAP_06_parte_VI.md:190]`):
+- **CN-4.2** — La chiusura di sessione alle 22:00 CET **non chiude automaticamente** un segnale `active`: la transizione è governata esclusivamente dai counter della state machine; lo stato è persistito e ripreso al boot del giorno successivo.
+  - *Tracciabilità*: `[DOC-INTERNO CAP_09_parte_9.md:292]`, `[DOC-INTERNO CAP_09_parte_9.md:302]`.
+  - *Valore operativo*: un segnale aperto a fine sessione non viene perso né forzatamente chiuso; riprende coerentemente l'indomani.
 
-```
-TRIGGER a3f7d9
-RAW TOUCH @ 13.255  EMIT-ref 10:42 CET
-EXEC: 11:07 CET   EXPIRY: 2026-06-16 17:22 CET
-```
+**Out-of-scope della Sezione 4**:
+| Voce | Destinazione |
+|---|---|
+| Condizioni di invalidazione strutturale (definizione completa) | Parte IV (CAP chiuso) |
+| Regola deterministica di fill intrabar in backtest | Parte III (CAP chiuso) |
 
-### 5.3 Latenza di consegna (NFR) e M-2
-
-- **NFR-1 (NFR-L_max) — Latenza end-to-end $\le 30$ s.** La latenza fra `timestamp_emission` e ricezione sul cellulare deve rispettare $L\le L_{max}$, con $L_{max}=30$ s (valore di lavoro provvisorio). *Valore operativo*: oltre 30 s il prezzo strutturale può spostarsi e il segnale perde valore informativo per l'operatore in mobilità. *Origine*: `[DOC-INTERNO CAP_02_parte_II.md:261]` (Cap.9.3), `[DOC-INTERNO CAP_07_parte_VII.md:23]` (AC-GO-10).
-
-> **M-2 OPEN — dipendenza aperta dichiarata esplicitamente.** La **verifica empirica** del valore $L_{max}=30$ s contro bot Telegram reale è **dipendenza aperta verso Appendice E / FASE-D**, NON risolta in SPEC-FUNZ-01. La spec FIB-only fissa il **requisito** (NFR-1) ma non lo verifica: la misura empirica resta carryover (M-2 OPEN, Review v1 CAP-02 — `[DOC-INTERNO tasks/CARRYOVER.md:21]`; rinvio empirico confermato in `[DOC-INTERNO CAP_07_parte_VII.md:23]`).
-
-### 5.4 Requisiti di consegna
-
-- **R-12 — Anti-duplicato.** Ogni `signal_id` è pubblicato una sola volta; un set persistito impedisce la ripubblicazione dopo restart. *Valore operativo*: l'operatore non riceve doppioni dello stesso segnale. *Origine*: `[DOC-INTERNO CAP_02_parte_II.md:265]`.
-- **R-13 — Nuovo messaggio per nuovo `signal_id` (no edit).** Una sostituzione produce un messaggio separato, mai un edit del messaggio precedente (coerente con l'immutabilità del payload). *Valore operativo*: la cronologia Telegram resta traccia storica fedele; nessun valore muta dopo l'invio. *Origine*: `[DOC-INTERNO CAP_02_parte_II.md:269]`.
-- **R-14 — Notifica trigger separata dall'emissione.** La notifica del raw touch è un messaggio distinto. *Valore operativo*: distingue "segnale esistente" da "segnale ora eseguibile". *Origine*: `[DOC-INTERNO CAP_02_parte_II.md:271]`, `[DOC-INTERNO CAP_06_parte_VI.md:190]`.
-
-**Out-of-scope Sezione 5**: stringhe esatte del bot e gestione `chat_id` (Appendice E); verifica empirica di $L_{max}$ (M-2 → FASE-D).
-
-| Requisito ID | Capitolo metodologia v2 | Tipo |
+**Mini-tabella requisiti della sezione**:
+| ID | Capitolo-fonte | Tipo |
 |---|---|---|
-| NFR-1 | Cap.9 Parte II, Cap.31 Parte VII | NFR |
-| R-12 | Cap.9 Parte II | R |
-| R-13 | Cap.9 Parte II, Cap.6 Parte II | R |
-| R-14 | Cap.9 Parte II, Cap.29 Parte VI | R |
+| R-4.1..R-4.4 | CAP_02 (Cap.7) | R |
+| CN-4.1 | CAP_02 (Cap.7) | CN |
+| CN-4.2 | CAP_09 (Cap.52) | CN |
 
 ---
 
-## Sezione 6 — Requisiti operativi e di sessione
+## Sezione 5 — Condizioni di emissione
 
-### 6.1 Vincoli operativi del prodotto
+**Valore di prodotto della sezione**: definisce *quando* il motore decide di emettere un segnale — la qualità a monte che protegge l'operatore da segnali in condizioni di mercato avverse.
 
-- **R-15 — Sessione operativa 8:00-22:00 CET.** Il prodotto emette e processa segnali nella finestra unica e continua 8:00-22:00 CET (epoca E5). *Valore operativo*: copre l'intera negoziazione FIB su IDEM; coerente con la disponibilità mobile dell'operatore. *Origine*: `[DOC-INTERNO CAP_01_parte_I.md:9]`, `[DOC-INTERNO CAP_09_parte_9.md:273]`.
-- **R-16 — Sizing fisso 1 contratto FIB.** Size non parametrabile dall'utente: 1 contratto alla volta. *Valore operativo*: nessuna gestione di size richiesta all'operatore (punto 7 dichiarazione). *Origine*: `[DOC-INTERNO CAP_01_parte_I.md:25]`.
-- **R-17 — Singolo segnale attivo.** Vincolo $|\mathcal{A}(t)|\le 1$: nessuna politica multi-segnale concorrente. *Valore operativo*: chiarezza operativa, coerenza con 1 contratto. *Origine*: `[DOC-INTERNO CAP_02_parte_II.md:81]`, `[DOC-INTERNO CAP_06_parte_VI.md:81]`.
-- **R-18 — Commissioni 5 EUR/operazione.** Il prodotto assume 5 EUR/op (2 punti FIB equivalenti per ciclo apertura-chiusura) nel calcolo del rendimento netto. *Valore operativo*: il filtro 80pt e le metriche di successo sono al netto del costo reale. *Origine*: `[DOC-INTERNO CAP_01_parte_I.md:25]`, `[DOC-INTERNO CAP_01_parte_I.md:73]`.
-- **R-19 — Policy rollover / contract switch.** Al boot della sessione del giorno di scadenza (terza venerdì del mese) la pipeline sottoscrive direttamente il next-month, con marker `CONTRACT_SWITCH`, saltando la finestra 08:00-09:00 del front in scadenza. *Valore operativo*: il segnale resta coerente sul contratto liquido; evita la patologia di settlement. *Origine*: `[DOC-INTERNO CAP_09_parte_9.md:98]` (D-9-NB2).
+- **R-5.1** — Il motore decide se emettere un segnale **prima** dell'emissione, sulla base di condizioni di mercato osservate; non esistono filtri post-emissione che blocchino il trigger.
+  - *Tracciabilità*: `[DOC-INTERNO CAP_02_parte_II.md:183]`.
+  - *Valore operativo*: la selettività è a monte; dopo l'emissione l'operatore non subisce blocchi inattesi.
 
-### 6.2 Esempio rollover
+- **R-5.2** — L'emissione avviene **se e solo se** valgono simultaneamente tre condizioni (volatilità $E_{vol}$, liquidità $E_{liq}$, distanza strutturale in sigma-units $E_{dist}^{\sigma}$) **e** il filtro 80pt del `setup_class`.
+  - *Tracciabilità*: `[DOC-INTERNO CAP_02_parte_II.md:217]`.
+  - *Valore operativo*: condizione AND esplicita che governa ogni emissione.
 
-Ciclo giugno→settembre 2026: front-month `FIB6F` (scadenza 2026-06-19, terza venerdì di giugno). Al boot della sessione del **2026-06-19** la pipeline sottoscrive direttamente `FIB6I` (next-month, settembre 2026), emettendo `CONTRACT_SWITCH {from: FIB6F, to: FIB6I, scadenza_from: 2026-06-19}` `[DOC-INTERNO CAP_09_parte_9.md:103]`. (Codici mese Directa-IDEM verificati: `F`=giugno, `I`=settembre `[DOC-INTERNO CAP_09_parte_9.md:61]`.)
+- **CN-5.1** — Il **filtro minimo di 80 punti FIB** è un vincolo di emissione assoluto (non parametro libero del GA): per setup `directional`, $|\text{target\_1}-p_{ref}|\geq 80$ pt; per setup `trade_range`, l'ampiezza del rettangolo $A_{range}\geq 80$ pt.
+  - *Tracciabilità*: `[DOC-INTERNO CAP_01_parte_I.md:83]` (Cap.5), `[DOC-INTERNO CAP_02_parte_II.md:61]` (Cap.8/setup_class).
+  - *Valore operativo*: l'operatore non riceve mai segnali con target/range sotto la soglia minima di valore.
 
-### 6.3 Separazione segnale / gestione posizione
+- **R-5.3** — Le condizioni di emissione sono calcolabili esclusivamente da grandezze derivabili dalle **barre 1-min** del feed (range, volume, volatilità condizionata): nessuna condizione richiede spread bid-ask o profondità del book, non disponibili nello storico di training.
+  - *Tracciabilità*: `[DOC-INTERNO CAP_02_parte_II.md:185]`, `[DOC-INTERNO CAP_02_parte_II.md:187]`.
+  - *Valore operativo*: garantisce che la logica di emissione live sia omogenea a quella addestrabile sullo storico.
 
-Il motore (segnale) e la gestione della posizione (operatore) sono separati strutturalmente: la gestione attiva post-fill è fuori scope del prodotto (R-11, CN-1).
+- **CN-5.2** — Le condizioni di emissione si applicano **uniformemente** nell'intera finestra 08:00-22:00 CET: nessuna fase speciale (apertura, asta, after-hours) né soglie differenziate per fascia oraria.
+  - *Tracciabilità*: `[DOC-INTERNO CAP_02_parte_II.md:227]`.
+  - *Valore operativo*: comportamento uniforme di emissione lungo tutta la sessione.
 
-**Out-of-scope Sezione 6**: filtro pre-expiry di **training** $N=3$ giorni (Cap.39 Parte 8 — è regola di training, distinta dallo switch runtime); lookup completa codici mese oltre `F`/`I` (FASE-D).
+**Out-of-scope della Sezione 5**:
+| Voce | Destinazione |
+|---|---|
+| Forma esplicita di $\tau_{vol}$, $\tau_{liq}$, $\tau_{dist}^{\sigma}$ e modello EGARCH | Parte III (CAP chiuso) |
+| Definizione operativa di $A_{range}$ | Parte IV Cap.21 (CAP chiuso) |
 
-| Requisito ID | Capitolo metodologia v2 | Tipo |
+**Mini-tabella requisiti della sezione**:
+| ID | Capitolo-fonte | Tipo |
 |---|---|---|
-| R-15 | Cap.1 Parte I, Cap.52 Parte 9 | R |
-| R-16 | Cap.2 Parte I | R |
-| R-17 | Cap.6 Parte II, Cap.28 Parte VI | R |
-| R-18 | Cap.2 Parte I, Cap.5 Parte I | R |
-| R-19 | Cap.56 Parte 9 (D-9-NB2) | R |
+| R-5.1, R-5.2, R-5.3 | CAP_02 (Cap.8) | R |
+| CN-5.1 | CAP_01 (Cap.5) / CAP_02 (Cap.6,8) | CN |
+| CN-5.2 | CAP_02 (Cap.8) | CN |
 
 ---
 
-## Sezione 7 — Requisiti di qualità e criteri di accettazione del prodotto
+## Sezione 6 — Consegna su Telegram
 
-### 7.1 Metrica primaria e KPI di prodotto
+**Valore di prodotto della sezione**: definisce *dove e come* il segnale è consegnato (contenuti minimi, anti-duplicato, latenza-requisito) e i requisiti di consegna.
 
-La **metrica primaria di successo** è $E[R_{net}\mid executed]$ **positivo dopo commissioni** ($E[R_{net}\mid executed]=E[R_{gross}\mid executed]-2c$, $c=1$ pt) `[DOC-INTERNO CAP_01_parte_I.md:73]`. KPI di prodotto (calcolati sul replay OOS deterministico):
+- **R-6.1** — Il messaggio Telegram di emissione pubblica **9 voci** del payload in ordine: `signal_id`, `direction`, `setup_class`, `entry_zone`, `target_1`, `target_2`, `stop_loss`, `timestamp_emission`, più i qualificatori `target_2_type` e `stop_type`.
+  - *Tracciabilità*: `[DOC-INTERNO CAP_02_parte_II.md:241]` (contratto informativo), `[DOC-INTERNO CAP_06_parte_VI.md:148]` (9 voci, layout mobile).
+  - *Valore operativo*: l'operatore riceve esattamente i campi decisionali, senza rumore.
 
-| KPI | Definizione (vista prodotto) | Origine v2 |
+- **R-6.2** — I campi $\Delta t_{cromosoma}$ e $T_{touch}^{max}$ **non figurano** nel messaggio: sono parametri tecnici del log interno, non rilevanti per la decisione operativa.
+  - *Tracciabilità*: `[DOC-INTERNO CAP_02_parte_II.md:253]`.
+  - *Valore operativo*: il messaggio resta essenziale e leggibile su mobile.
+
+- **R-6.3** — Il messaggio non contiene istruzioni di gestione attiva della posizione (incrementi, scaling out, take/stop profit anticipato).
+  - *Tracciabilità*: `[DOC-INTERNO CAP_02_parte_II.md:253]`, `[DOC-INTERNO CAP_01_parte_I.md:25]` (punto 8 dichiarazione intenti).
+  - *Valore operativo*: coerente con la delega della gestione posizione all'operatore (CN-7.4).
+
+- **NFR-6.1** — Il messaggio è progettato **mobile-first**: testo self-contained (nessuna immagine/media/link), leggibile senza scroll orizzontale, con il contenuto critico (direzione, entry_zone, target_1, stop_loss) entro la prima schermata.
+  - *Tracciabilità*: `[DOC-INTERNO CAP_06_parte_VI.md:152]`.
+  - *Valore operativo*: l'operatore legge il segnale in pochi secondi sul cellulare in condizioni di attenzione limitata.
+
+- **R-6.4** — Il prodotto pubblica **3 notifiche standard per segnale**: (i) emissione; (ii) `trigger_event` al raw touch; (iii) transizione a stato terminale. Tra una notifica e la successiva non sono inviati aggiornamenti di stato.
+  - *Tracciabilità*: `[DOC-INTERNO CAP_06_parte_VI.md:220]`, `[DOC-INTERNO CAP_02_parte_II.md:271]` (notifica trigger separata).
+  - *Valore operativo*: l'operatore riceve un flusso di notifiche prevedibile e non rumoroso.
+
+- **R-6.5** — Ogni `signal_id` è pubblicato **una sola volta** (politica anti-duplicato): l'insieme dei `signal_id` pubblicati è persistito, così che un restart del motore non comporti ripubblicazione.
+  - *Tracciabilità*: `[DOC-INTERNO CAP_02_parte_II.md:265]`, `[DOC-INTERNO CAP_06_parte_VI.md:221]`.
+  - *Valore operativo*: l'operatore non riceve segnali duplicati.
+
+- **R-6.6** — Un nuovo segnale (sostituzione) è pubblicato come **messaggio Telegram separato** con `signal_id` distinto; nessun edit del messaggio precedente (coerente con l'invariante di payload immutabile).
+  - *Tracciabilità*: `[DOC-INTERNO CAP_02_parte_II.md:269]`, `[DOC-INTERNO CAP_06_parte_VI.md:192]`.
+  - *Valore operativo*: la cronologia Telegram resta una traccia storica immutabile; l'operatore distingue i segnali per `signal_id`.
+
+- **NFR-6.2 [B-1 PROVVISORIO]** — La latenza di consegna $L$ (da `timestamp_emission` alla ricezione sul cellulare) deve rispettare $L \leq L_{max}$, con valore di lavoro provvisorio $L_{max}=30$ s. **La verifica empirica della latenza effettiva è OPEN (blocco B-1, M-2)**: il requisito è dichiarato ma non verificato qui.
+  - *Tracciabilità*: `[DOC-INTERNO CAP_02_parte_II.md:259]` (vincolo $L\leq L_{max}$), `[DOC-INTERNO CAP_07_parte_VII.md:23]` (AC-GO-10, vincolo qualitativo + M-2 OPEN).
+  - *Valore operativo*: oltre la soglia il prezzo strutturale di riferimento può essersi spostato e il segnale perde valore informativo.
+  - *Provvisorietà*: dipende da B-1 (M-2 latenza Telegram non verificata empiricamente — Appendice E / FASE-D).
+
+- **R-6.7** — In caso di errore di pubblicazione (timeout, rete, indisponibilità) il motore applica una politica di **retry con backoff esponenziale** e, in caso di fallimento finale, registra l'errore e non aggiunge il `signal_id` all'insieme dei pubblicati (segnale registrato come non pubblicato).
+  - *Tracciabilità*: `[DOC-INTERNO CAP_02_parte_II.md:275]`.
+  - *Valore operativo*: i fallimenti di consegna sono tracciati e non rimangono impliciti.
+
+**Out-of-scope della Sezione 6**:
+| Voce | Destinazione |
+|---|---|
+| Stringhe esatte del bot, `chat_id`, API Telegram | Appendice E / FASE-D |
+| Valore numerico congelato di $L_{max}$ | Appendice E (M-2 OPEN) |
+
+**Mini-tabella requisiti della sezione**:
+| ID | Capitolo-fonte | Tipo |
 |---|---|---|
-| Expected net return | profitto netto medio per segnale eseguito, in pt FIB | `[DOC-INTERNO CAP_01_parte_I.md:71]` |
-| Executable rate | frazione di segnali emessi che raggiungono il raw touch entro $T_{touch}^{max}$ | `[DOC-INTERNO CAP_01_parte_I.md:77]` |
-| Target hit rate | frazione di segnali eseguiti che raggiungono target_1 prima di stop/scadenza | `[DOC-INTERNO CAP_01_parte_I.md:77]` |
-| Invalidation rate | frazione di segnali invalidati prima del touch | `[DOC-INTERNO CAP_01_parte_I.md:77]` |
-| Missed target rate | frazione di segnali con target_1 raggiunto prima del touch | `[DOC-INTERNO CAP_01_parte_I.md:77]` |
-| CVaR 95% | rischio di coda del rendimento per segnale eseguito | `[DOC-INTERNO CAP_01_parte_I.md:79]` |
-| Max drawdown intraday | drawdown massimo dell'equity sintetica di sessione | `[DOC-INTERNO CAP_01_parte_I.md:79]` |
-| $\pi_{t_2\mid t_1}$ | hit-rate condizionale target_2 dato target_1 (qualità informativa del payload) | `[DOC-INTERNO CAP_02_parte_II.md:372]` |
-
-### 7.2 Gate anti-overfitting (go-live)
-
-- **NFR-2 (NFR-DSR) — DSR positivo significativo come gate primario.** Il bundle candidato deve avere $DSR>\theta_{DSR}$ ($\theta_{DSR}=0{,}95$ valore di lavoro provvisorio, non congelato). *Valore di prodotto*: prova che la performance non è frutto del numero di prove condotte. *Origine*: `[DOC-INTERNO CAP_07_parte_VII.md:570]` (AC-GO-1).
-- **NFR-3 (NFR-PBO) — PBO sotto soglia come gate di fragilità.** $PBO<\theta_{PBO}$ ($\theta_{PBO}=0{,}50$ provvisorio). *Valore di prodotto*: prova che la scelta del bundle non dipende fragilmente dalla partizione dei dati. *Origine*: `[DOC-INTERNO CAP_07_parte_VII.md:572]` (AC-GO-2).
-- **NFR-4 — Lifecycle stabile cross-regime.** Target hit / executable rate stabili e comparabili fra regime calmo e turbolento; bootstrap stazionario ($B=2000$) per gli intervalli di confidenza. *Valore di prodotto*: il prodotto è robusto al regime di mercato. *Origine*: `[DOC-INTERNO CAP_01_parte_I.md:85]`, `[DOC-INTERNO CAP_07_parte_VII.md:576]` (AC-GO-4).
-- **NFR-5 — Filtro 80pt come pre-condizione di emissione.** L'80pt è gate di emissione, non parametro libero del GA. *Valore di prodotto*: nessun micro-segnale antieconomico pubblicato. *Origine*: `[DOC-INTERNO CAP_01_parte_I.md:83]`.
-
-### 7.3 Checklist go-live come criteri di accettazione del prodotto
-
-La checklist deterministica `AC-GO-1..AC-GO-12` di Cap.36 Parte VII `[DOC-INTERNO CAP_07_parte_VII.md:566]` è recepita come **criteri di accettazione del prodotto** (≤12 punti, tracciabili a Cap.36):
-
-| # | Criterio di accettazione (vista prodotto) | Cap.36 |
-|---|---|---|
-| 1 | DSR primario superato ($>\theta_{DSR}$) | AC-GO-1 |
-| 2 | PBO sotto soglia ($<\theta_{PBO}$) | AC-GO-2 |
-| 3 | Expected net return positivo con IC bootstrap 95% > 0 | AC-GO-3 |
-| 4 | Lifecycle stabile cross-regime ($|f_5^{global}|<\theta_{f_5}$) | AC-GO-4 |
-| 5 | Stabilità cross-fold ($\text{IQR}_{norm}(f_1)<\theta_{IQR}$) | AC-GO-5 |
-| 6 | Qualità informativa target_2 ($\pi_{t_2\mid t_1}$ sopra soglia) | AC-GO-6 |
-| 7 | Max drawdown intraday entro limite ($<\theta_{MDD}=200$ pt) | AC-GO-7 |
-| 8 | Frequenza emissione entro range operativo | AC-GO-8 |
-| 9 | Target operativo asimmetrico raggiunto (500 pt/g OR 70% strutturale) sopra soglia sessioni | AC-GO-9 |
-| 10 | Pipeline di inference operativa (incl. latenza Telegram qualitativa, M-2) | AC-GO-10 |
-| 11 | Dashboard di monitoraggio live attiva | AC-GO-11 |
-| 12 | Hash bundle frozen valido al caricamento | AC-GO-12 |
-
-> **M-16 condizionale — metadato del bundle frozen, NON riaperto.** L'eventuale attivazione dei Cox time-varying coefficients è registrata come metadato `cox_time_varying_active` $\in\{$True, False$\}$ del bundle frozen (Cap.35.1 elemento 6), con regola di decisione in Cap.31.3 dipendente dall'esito del walk-forward del ciclo di re-training successivo `[DOC-INTERNO tasks/CARRYOVER.md:36]`. SPEC-FUNZ-01 lo recepisce come requisito metodologico già normativo, **non lo riapre**.
-
-**Out-of-scope Sezione 7**: formule di DSR / PBO / CSCV / bootstrap (Cap.32-34 Parte VII); valori congelati delle soglie $\theta_*$ (rimasti non congelati, ricalibrati post-go-live).
-
-| Requisito ID | Capitolo metodologia v2 | Tipo |
-|---|---|---|
-| NFR-2 | Cap.32 Parte VII, Cap.36 Parte VII | NFR |
-| NFR-3 | Cap.33 Parte VII, Cap.36 Parte VII | NFR |
-| NFR-4 | Cap.34 Parte VII, Cap.5 Parte I | NFR |
-| NFR-5 | Cap.5 Parte I | NFR |
+| R-6.1..R-6.7 | CAP_02 (Cap.9) / CAP_06 (Cap.29) | R |
+| NFR-6.1 | CAP_06 (Cap.29) | NFR |
+| NFR-6.2 [B-1] | CAP_02 (Cap.9) / CAP_07 (Cap.31) | NFR |
 
 ---
 
-## Sezione 8 — Vincoli normativi e compliance
+## Sezione 7 — Vincoli operativi, di sessione e compliance
 
-### 8.1 Posizionamento di compliance
+**Valore di prodotto della sezione**: definisce i *vincoli operativi e normativi* che governano il prodotto (sessione, sizing, commissioni, rollover, compliance, audit, PII).
 
-- **CN-3 — Segnale informativo, non consulenza, non esecuzione automatica.** Il prodotto è un servizio di **segnalazione informativa**; non è consulenza in materia di investimenti e non esegue ordini automaticamente. Coerente con il profilo retail MiFID II e con il vincolo strutturale "solo emissione". *Valore di prodotto*: posizionamento mostrabile a un consulente legale MiFID II `[WIKI-HINT, da verificare]`; ancoraggio interno `[DOC-INTERNO CAP_01_parte_I.md:23]`, `[DOC-INTERNO CAP_01_parte_I.md:15]`.
-- **CN-4 — Separazione segnale / esecuzione ordini.** La pipeline non apre mai la porta di trading del broker (porta 10002 DAPI mai aperta); solo emissione via Telegram. *Valore di prodotto*: separazione netta fra il servizio e l'ordering, riducibile a clausola contrattuale. *Origine*: `[DOC-INTERNO CAP_09_parte_9.md:39]` (D-9-2).
+- **R-7.1 [B-2 PROVVISORIO]** — La sessione operativa del prodotto è la finestra continua **08:00-22:00 CET** (epoca E5): segnali emessi e processati in questa finestra; fuori sessione la pipeline è in stand-by.
+  - *Tracciabilità*: `[DOC-INTERNO CAP_01_parte_I.md:9]`, `[DOC-INTERNO CAP_09_parte_9.md:273]` (Cap.52, epoca E5). Origine governance dell'orario: **M-GOV-1** (decisione AC 13/06/2026 + `[WIKI-HINT Borsa Italiana, da verificare]`).
+  - *Valore operativo*: l'operatore sa in quale finestra ricevere segnali.
+  - *Provvisorietà*: dipende da B-2 (M-GOV-1 orario in attesa di upgrade a PROVA-EMPIRICA dal primo probe V-1).
 
-### 8.2 Audit log e retention
+- **CN-7.1** — Il prodotto pubblica segnali via Telegram e **non instrada ordini**: separazione segnale/esecuzione; l'esecuzione è manuale e dell'operatore.
+  - *Tracciabilità*: `[DOC-INTERNO CAP_01_parte_I.md:15]`, `[DOC-INTERNO CAP_09_parte_9.md:39]` (porta 10002 trading mai aperta).
+  - *Valore operativo*: è la garanzia di compliance retail — il sistema è un segnalatore, non un esecutore.
 
-- **CN-5 — Audit log e retention.** Audit log JSON Lines append-only; retention minima **90 giorni rolling** + **retention permanente sui giorni di emissione segnale** (log che contengono `SIGNAL_EMITTED` / `SIGNAL_TRIGGERED` o uno dei 6 terminali). *Valore di prodotto*: tracciabilità per compliance interna e replay deterministico di qualunque segnale emesso. *Origine*: `[DOC-INTERNO CAP_09_parte_9.md:362]` (Gap-4 / D-9-15).
+- **CN-7.2** — Il canale dati runtime è **Directa DAPI** in uso esclusivo: porte 10001 (realtime) e 10003 (storico) in scope; **porta 10002 (trading) mai aperta** dalla pipeline.
+  - *Tracciabilità*: `[DOC-INTERNO CAP_09_parte_9.md:39]`, `[DOC-INTERNO CAP_09_parte_9.md:35]` (tabella porte).
+  - *Valore operativo*: rinforza tecnicamente il vincolo "solo emissione" — l'esecuzione è architetturalmente esclusa.
 
-Catalogo eventi loggati, elencato per riferimento (non ridichiarato): `HANDSHAKE`, `SUB`/`UNSUB`, `SESSION_OPEN`/`SESSION_CLOSE`, `WARMUP_COMPLETE`, `RUNTIME_GAP_*`, `RUNTIME_DEGRADED`, `RUNTIME_STALE_RESTART`, `CONTRACT_SWITCH`, gli 8 marker `SIGNAL_*` (emesso, triggered, 6 terminali), `GATING_RULE_APPLIED`/`REJECTED` `[DOC-INTERNO CAP_09_parte_9.md:353]`.
+- **CN-7.3** — Il calcolo del rendimento netto incorpora **commissioni di 5 EUR/operazione** (≈1 punto FIB equivalente per operazione, 2 punti per ciclo apertura-chiusura).
+  - *Tracciabilità*: `[DOC-INTERNO CAP_01_parte_I.md:25]`, `[DOC-INTERNO CAP_01_parte_I.md:73]` (formula $E[R_{net}]=E[R_{gross}]-2c$).
+  - *Valore operativo*: i target e le metriche del prodotto sono al netto del costo reale di transazione.
 
-### 8.3 Privacy / GDPR (dichiarazione minima)
+- **CN-7.4** — La gestione attiva della posizione dopo il fill (incrementi, scaling out, take/stop profit) è **interamente delegata all'operatore** e fuori dal contratto del segnale.
+  - *Tracciabilità*: `[DOC-INTERNO CAP_01_parte_I.md:25]` (punto 8), `[DOC-INTERNO CAP_02_parte_II.md:368]` (out-of-scope position lifecycle).
+  - *Valore operativo*: il prodotto non interferisce con la gestione discrezionale post-ingresso dell'operatore.
 
-- **CN-6 — Minimizzazione PII.** Il prodotto non raccoglie PII dell'operatore oltre il `chat_id` Telegram e l'account code Directa locale; l'account code è trattato come dato sensibile (mascherabile negli export pubblici dell'audit, in chiaro solo nel log locale per il replay). *Valore di prodotto*: superficie privacy minima, dettagli a FASE-D. *Origine*: `[DOC-INTERNO CAP_09_parte_9.md:43]` (Gap-1), `[DOC-INTERNO CAP_09_parte_9.md:358]`.
+- **R-7.2** — Al boot del giorno di scadenza (terza venerdì del mese) la pipeline sottoscrive direttamente il contratto **next-month**, saltando la finestra 08:00-09:00 del front in scadenza, con marker `CONTRACT_SWITCH` in audit.
+  - *Tracciabilità*: `[DOC-INTERNO CAP_09_parte_9.md:98]` (policy switch front-month, D-9-NB2), `[DOC-INTERNO CAP_09_parte_9.md:433]` (D-9-NB2 tabella).
+  - *Valore operativo*: la continuità operativa del prodotto attraverso il rollover non genera segnali sul contratto morente.
 
-### 8.4 Gating qualitativo cash europei (compliance / risk)
+- **CN-7.5** — I codici mese Directa-IDEM sono proprietari e **non inferibili per analogia** con lo standard CME: confermati empiricamente `F`=giugno e `I`=settembre (richiamo alle prove citate sotto); gli altri restano da derivare via ANAG.
+  - *Tracciabilità*: `[DOC-INTERNO CAP_09_parte_9.md:61]`, M-4 (`[PROVA-EMPIRICA M-4 2026-05-29]`) e probe ANAG `[PROVA-EMPIRICA 2026-05-27 Appendice B.2]`.
+  - *Valore operativo*: protegge da errori di selezione del contratto front-month dovuti ad assunzioni sui codici mese.
 
-- **CN-7 — Gating qualitativo cash europei configurabile, fuori dal GA.** Gli indici cash europei (DGER/DSTX50/DITAS/DFRA) sono usati come **gating qualitativo configurabile post-emissione** (annotazione del messaggio Telegram), mai come feature del GA: il gating può aggiungere una nota di avvertimento, **non** sopprime l'emissione né altera il ranking dei cromosomi. *Valore di prodotto*: layer di risk informativo modificabile senza re-training. *Origine*: `[DOC-INTERNO CAP_09_parte_9.md:308]` (Q-A-3, D-9-14).
+- **CN-7.6** — Il prodotto mantiene un **audit log** JSON Lines append-only con **retention minima 90 giorni rolling** e **retention permanente sui giorni di emissione segnale** (giorni con `SIGNAL_EMITTED`/`SIGNAL_TRIGGERED` o un evento terminale).
+  - *Tracciabilità*: `[DOC-INTERNO CAP_09_parte_9.md:364]`, `[DOC-INTERNO CAP_09_parte_9.md:365]` (D-9-15/Gap-4).
+  - *Valore operativo*: garantisce ricostruibilità e tracciabilità compliance dei segnali emessi.
 
-**Out-of-scope Sezione 8**: parere legale formale e testo dei disclaimer (materia di consulente legale esterno); formato esatto del log (Cap.54 Parte 9 lo definisce, qui solo riferito).
+- **CN-7.7** — Gli eventi del lifecycle del segnale sono loggati con **granularità per stato**: `SIGNAL_EMITTED`, `SIGNAL_TRIGGERED` e i 6 terminali distinti (`SIGNAL_TARGET_1_HIT`, `SIGNAL_STOPPED`, `SIGNAL_INVALIDATED`, `SIGNAL_MISSED_TARGET`, `SIGNAL_EXPIRED`, `SIGNAL_REVOKED`).
+  - *Tracciabilità*: `[DOC-INTERNO CAP_09_parte_9.md:353]`, `[DOC-INTERNO CAP_09_parte_9.md:434]` (D-9-NB3).
+  - *Valore operativo*: marker normativi coerenti con i 6 terminali, sufficienti per metriche di lifecycle e audit.
 
-| Requisito ID | Capitolo metodologia v2 | Tipo |
+- **CN-7.8** — L'account code Directa (`APIPortSettings.txt`) è **dato PII / sensibile** (non credenziale di autenticazione): escluso dal repo via `.gitignore`, mascherabile negli export pubblici dell'audit; minimizzazione PII per costruzione.
+  - *Tracciabilità*: `[DOC-INTERNO CAP_09_parte_9.md:43]` (Gap-1), `[DOC-INTERNO CAP_09_parte_9.md:358]` (account code PII in audit).
+  - *Valore operativo*: protezione del dato personale che lega un'azione di mercato a una persona fisica.
+
+- **CN-7.9** — Gli indici cash europei (DGER/DSTX50/DITAS/DFRA) entrano nella pipeline **esclusivamente** come logging operativo e **gating qualitativo POST-EMISSIONE** (annotazione del messaggio Telegram, mai soppressione del segnale): non entrano nel feature tensor del GA, nella state machine, nel cromosoma, nel walk-forward.
+  - *Tracciabilità*: `[DOC-INTERNO CAP_09_parte_9.md:308]` (Q-A-3), `[DOC-INTERNO CAP_09_parte_9.md:313]` (perimetro vincolante).
+  - *Valore operativo*: l'operatore può ricevere una nota di contesto cash sul segnale, senza che il contesto cash alteri il segnale strutturale.
+
+**Out-of-scope della Sezione 7**:
+| Voce | Destinazione |
+|---|---|
+| Lookup completa codici mese IDEM oltre F/I | FASE-D (runtime-discovery via ANAG) |
+| Calibrazione fine $\theta_{reconcile}$ | FASE-D / monitoring post-go-live |
+| Gestione `chat_id`, file `gating_rules.yaml` | FASE-D |
+
+**Mini-tabella requisiti della sezione**:
+| ID | Capitolo-fonte | Tipo |
 |---|---|---|
-| CN-3 | Cap.2 Parte I, Cap.1 Parte I | CN |
-| CN-4 | Cap.46 Parte 9 (D-9-2) | CN |
-| CN-5 | Cap.54 Parte 9 (D-9-15) | CN |
-| CN-6 | Cap.46 Parte 9 (Gap-1) | CN |
-| CN-7 | Cap.53 Parte 9 (Q-A-3) | CN |
+| R-7.1 [B-2] | CAP_01 (Cap.1) / CAP_09 (Cap.52) | R |
+| R-7.2 | CAP_09 (Cap.47) | R |
+| CN-7.1..CN-7.9 | CAP_01 (Cap.1,2,5) / CAP_02 (Cap.11) / CAP_09 (Cap.46,47,52,53,54) | CN |
 
 ---
 
-## Sezione 9 — Requisiti di dato e dipendenze infrastrutturali
+## Sezione 8 — Criteri di accettazione di prodotto (go-live)
 
-### 9.1 Tabella dipendenze infrastrutturali
+**Valore di prodotto della sezione**: definisce *con quali criteri* il prodotto è dichiarato pronto (KPI lifecycle, gate anti-overfitting, checklist go-live). Tutte le claim empiriche sull'edge restano **PENDING-empirico** fino al run del validator (FASE-D); questa spec le recepisce come criteri dichiarati, non come risultati.
 
-| Dipendenza | Ruolo nel prodotto | Vincolo / nota | Origine v2 |
-|---|---|---|---|
-| **Directa DAPI** | canale runtime esclusivo del FIB; porte 10001 (realtime) / 10003 (storico) | porta 10002 (trading) mai aperta; uso esclusivo del canale (D-6) | `[DOC-INTERNO CAP_09_parte_9.md:35]`, `[DOC-INTERNO CAP_09_parte_9.md:45]` |
-| **Portara/CQG** | storico training: FIB pieno back-adjusted (ratio-adjusted) | unica fonte ufficiale di training; no MIB cash; 5+ anni 1-min | `[DOC-INTERNO CAP_08_parte_8.md:13]` |
-| **AWS spot c5.4xlarge** | training GA (cloud) | budget ~45-75 EUR/ciclo; retraining trimestrale/semestrale | `[DOC-INTERNO CAP_01_parte_I.md:63]` |
-| **PC i5-7200U** | sviluppo + inference live | inference leggera (secondi/segnale); training non in locale | `[DOC-INTERNO CAP_01_parte_I.md:61]` |
-| **Bot Telegram** | canale di consegna segnali | bot personale già attivo; setup Appendice E | `[DOC-INTERNO CAP_01_parte_I.md:47]` |
-| **Cash europei (gating)** | DGER/DSTX50/DITAS/DFRA come gating qualitativo | market data DAPI gratuito; NON feature GA (Q-A-3) | `[DOC-INTERNO CAP_09_parte_9.md:77]`, `[DOC-INTERNO CAP_09_parte_9.md:308]` |
+- **NFR-8.1** — Il bundle è accettato per il go-live solo se sui dati OOS presenta **DSR (Deflated Sharpe Ratio) positivo e significativo** come gate primario (soglia di lavoro $\theta_{DSR}=0{,}95$, non congelata).
+  - *Tracciabilità*: `[DOC-INTERNO CAP_01_parte_I.md:81]`, `[DOC-INTERNO CAP_07_parte_VII.md:202]` (Cap.32.4), `[DOC-INTERNO CAP_07_parte_VII.md:570]` (AC-GO-1).
+  - *Valore operativo*: garantisce che la performance del prodotto non sia un artefatto del numero di prove condotte.
 
-### 9.2 Invariante research = runtime e feed runtime
+- **NFR-8.2** — Il bundle è accettato solo se **PBO (Probability of Backtest Overfitting) sotto soglia** come gate di fragilità (soglia di lavoro $\theta_{PBO}=0{,}50$, non congelata).
+  - *Tracciabilità*: `[DOC-INTERNO CAP_01_parte_I.md:81]`, `[DOC-INTERNO CAP_07_parte_VII.md:572]` (AC-GO-2).
+  - *Valore operativo*: garantisce che la scelta del bundle non dipenda fragilmente dalla partizione dei dati.
 
-L'invariante **research = runtime** è esteso dall'adapter DAPI → bundle frozen Portara `[DOC-INTERNO CAP_09_parte_9.md:153]` fino all'intero ciclo di vita del tape `[DOC-INTERNO CAP_10_parte_10.md:5]`. Il feed runtime FIB è ricostruito dal `BOOK_5` (i futures IDEM non espongono `PRICE`) `[DOC-INTERNO CAP_09_parte_9.md:73]`; il feed cash usa `PRICE` (schema realtime `f4=last`/`f6=volume_cum`/`f8=day_low`/`f9=day_high`, M-9 `[DOC-INTERNO tasks/STATO_CORRENTE.md:76]`, descritto anche in `[DOC-INTERNO CAP_09_parte_9.md:94]`).
+- **NFR-8.3** — Il bundle è accettato solo se **$E[R_{net}\mid executed]$ è positivo** dopo commissioni, con intervallo di confidenza bootstrap al 95% che esclude lo zero.
+  - *Tracciabilità*: `[DOC-INTERNO CAP_01_parte_I.md:83]` (Cap.5), `[DOC-INTERNO CAP_07_parte_VII.md:574]` (AC-GO-3).
+  - *Valore operativo*: il prodotto deve avere un rendimento netto atteso positivo, non solo lordo.
 
-### 9.3 Tape archiviato e backfill
+- **NFR-8.4** — Il bundle è accettato solo se i KPI di lifecycle (target hit rate, executable rate) sono **stabili e comparabili fra regime calmo e turbolento** (lifecycle stabile cross-regime, $|f_5^{global}|<\theta_{f_5}=0{,}30$ di lavoro).
+  - *Tracciabilità*: `[DOC-INTERNO CAP_01_parte_I.md:85]`, `[DOC-INTERNO CAP_07_parte_VII.md:576]` (AC-GO-4).
+  - *Valore operativo*: il prodotto si comporta in modo coerente a prescindere dal regime di volatilità del periodo.
 
-- **R-20 — Tape archiviato in formato runtime esteso (13 campi) + manifest JSON.** L'archivio del tape DAPI usa l'header CSV runtime esteso a **13 campi** (`symbol, timeframe, timestamp, date, time, open, high, low, close, volume, tick_count, bar_synthetic, source`), **distinto** dal legacy CSV a **11 campi** (`[CODICE-ESISTENTE scripts/export_directa_history_parametric.py:605-617]`, senza `tick_count`/`bar_synthetic`); manifest JSON esteso con `reconcile_status`, `bar_counts_by_source`, `gap_log`. *Valore di prodotto*: il tape archiviato è simmetrico al bundle di training e auditabile. *Origine*: `[DOC-INTERNO CAP_10_parte_10.md:185]`, `[DOC-INTERNO CAP_09_parte_9.md:117]`.
-- **R-21 — Immutabilità delle barre storicizzate.** Le barre archiviate sono immutabili (perimetro empirico T+3 morning) con versioning append-only per i recuperi retroattivi; il tape archiviato **non è fonte di training**. *Valore di prodotto*: replay deterministico bit-exact e integrità storica. *Origine*: `[DOC-INTERNO CAP_10_parte_10.md:255]` (D-10-8), `[DOC-INTERNO CAP_10_parte_10.md:256]` (D-10-9).
-- **R-22 — Backfill gap entro 100gg + fallback Portara oltre.** Recupero gap via `CANDLERANGE` entro ~100 giorni (limite DAPI `[CODICE-ESISTENTE scripts/export_directa_history_parametric.py:61]` `DEFAULT_INTRADAY_MAX_DAYS=100`), fallback Portara oltre, con re-warm-up obbligatorio. *Valore di prodotto*: continuità del tape senza buchi che contaminerebbero le feature. *Origine*: `[DOC-INTERNO CAP_10_parte_10.md:76]` (Cap.59), `[DOC-INTERNO CAP_10_parte_10.md:161]` (Cap.61).
+- **NFR-8.5** — Il bundle è accettato solo se **CVaR al 95% e maximum drawdown intraday** sono entro limiti dichiarati ($\theta_{CVaR}=-100$ pt, $\theta_{MDD}=200$ pt di lavoro).
+  - *Tracciabilità*: `[DOC-INTERNO CAP_01_parte_I.md:85]`, `[DOC-INTERNO CAP_07_parte_VII.md:580]` (AC-GO-6), `[DOC-INTERNO CAP_07_parte_VII.md:582]` (AC-GO-7).
+  - *Valore operativo*: limita la perdita di coda e il drawdown intraday, compatibili col profilo retail a 1 contratto.
 
-### 9.4 Riconciliazione canonica giornaliera (gate bloccante)
+- **NFR-8.6** — La decisione di go-live è governata da una **checklist deterministica di 12 AC binari (AC-GO-1..AC-GO-12)**: GO solo se tutti e 12 sono OK; NO-GO con motivazione esplicita se anche uno solo è NOT OK.
+  - *Tracciabilità*: `[DOC-INTERNO CAP_07_parte_VII.md:568]`, `[DOC-INTERNO CAP_07_parte_VII.md:601]`.
+  - *Valore operativo*: criterio oggettivo e replicabile per dichiarare il prodotto pronto.
 
-- **R-23 — Riconciliazione canonica giornaliera come gate bloccante.** Gate operativo end-of-day che, su esito `RECONCILE_DIVERGENT_*`, **blocca l'emissione della sessione $d+1$** fino a intervento supervisore; procedura non-mutativa (solo marker, non modifica i prezzi). È distinto dal **monitoraggio non-bloccante** di Parte VI Cap.30. Il low/high cash giornaliero è preso dalla CANDLE ufficiale (`f8`/`f9`), mai dal tick realtime rado. *Valore di prodotto*: protezione contro la deriva silenziosa del feed prima che inquini i segnali. *Origine*: `[DOC-INTERNO CAP_10_parte_10.md:250]` (D-10-3), `[DOC-INTERNO CAP_10_parte_10.md:251]` (D-10-4).
+- **NFR-8.7** — Tra i 12 AC di go-live, il prodotto deve verificare che la **frequenza di emissione** sia nel range $[0{,}2; 5]$ segnali/sessione (AC-GO-8) e che il **target operativo asimmetrico** di Sez.1 sia raggiunto in oltre il 60% delle sessioni OOS (AC-GO-9, soglia di lavoro).
+  - *Tracciabilità*: `[DOC-INTERNO CAP_07_parte_VII.md:584]` (AC-GO-8), `[DOC-INTERNO CAP_07_parte_VII.md:586]` (AC-GO-9).
+  - *Valore operativo*: garantisce un volume di segnali utile e il raggiungimento del target di prodotto nella maggioranza delle sessioni.
 
-### 9.5 Restart e warm-up
+- **NFR-8.8** — Tra i 12 AC di go-live rientrano verifiche infrastrutturali: pipeline di inference operativa con payload bit-exact e latenza qualitativa (AC-GO-10), dashboard di monitoraggio attiva (AC-GO-11), e **hash SHA-256 del bundle frozen valido** al caricamento (AC-GO-12).
+  - *Tracciabilità*: `[DOC-INTERNO CAP_07_parte_VII.md:588]` (AC-GO-10), `[DOC-INTERNO CAP_07_parte_VII.md:594]` (AC-GO-11), `[DOC-INTERNO CAP_07_parte_VII.md:599]` (AC-GO-12).
+  - *Valore operativo*: garantisce che, oltre alla statistica, l'infrastruttura del prodotto sia funzionante e integra prima del go-live.
 
-- **R-24 — Warm-up stati condizionali $L_{warmup}=30$ giorni.** Al boot / post-restart, warm-up di 30 giorni di trading IDEM congelato per gli stati condizionali (EGARCH cross-session, normalizzazioni). *Valore di prodotto*: il primo segnale dopo un restart non è prodotto su stati non stabilizzati. *Origine*: `[DOC-INTERNO CAP_09_parte_9.md:435]` (D-9-NB4), `[DOC-INTERNO CAP_10_parte_10.md:252]` (D-10-5).
+> **Batteria KPI di lifecycle (enumerazione atomica)**. La metrica primaria $E[R_{net}\mid executed]$ (NFR-8.3) e la coppia (target hit rate, executable rate) cross-regime (NFR-8.4) sono già criteri di accettazione. I tre KPI seguenti **completano** la batteria di lifecycle definita alla fonte: sono enumerati come criteri di accettazione atomici e distinti, riferiti al medesimo replay OOS della state machine. Non duplicano NFR-8.4 (che misura *stabilità cross-regime* di hit/executable rate): qui ciascun KPI è un osservabile di lifecycle a sé, riportato e soggetto a soglia di prodotto in FASE-D.
 
-**Out-of-scope Sezione 9**: dettagli di implementazione FASE-D (codice, microservizi, framework); scelta esatta dell'instance type AWS (Cap.4 ha fissato c5.4xlarge come riferimento); contratto commerciale con i vendor; calibrazione fine di $\theta_{reconcile}$ (FASE-D).
+- **NFR-8.9** — Il prodotto calcola e riporta, sul replay OOS della state machine, l'**invalidation rate**: frazione dei segnali invalidati prima del touch della zona, per superamento di una condizione di invalidazione strutturale o per scadenza del timer di attesa.
+  - *Tracciabilità*: `[DOC-INTERNO CAP_01_parte_I.md:77]` (metriche di lifecycle del segnale, invalidation rate).
+  - *Valore operativo*: misura quanti segnali decadono prima di diventare eseguibili — qualità del filtro di emissione percepita dall'operatore (rumore di segnali che non arrivano mai in zona).
 
-| Requisito ID | Capitolo metodologia v2 | Tipo |
+- **NFR-8.10** — Il prodotto calcola e riporta, sul replay OOS della state machine, il **missed_target rate**: frazione dei segnali in cui il target 1 è stato raggiunto dal prezzo prima che la zona di ingresso fosse toccata (metrica riferita al target 1, non al target 2, in quanto è il primo target a definire la conversione minima del segnale).
+  - *Tracciabilità*: `[DOC-INTERNO CAP_01_parte_I.md:77]` (metriche di lifecycle del segnale, missed target rate).
+  - *Valore operativo*: misura quante opportunità l'operatore perde perché il mercato raggiunge il target senza dare l'ingresso in zona — costo-opportunità del vincolo di esecuzione manuale in zona.
+
+- **NFR-8.11** — Il prodotto calcola e riporta la **probabilità condizionata $\pi_{t_2\mid t_1}$** (hit-rate condizionale di target_2 dato target_1): frequenza con cui il prezzo raggiunge target_2 nelle sessioni di backtest chiuse in `target_1_hit`. È metrica di reporting/validazione del position lifecycle (submacchina di tracking), non stato terminale del segnale (decisione Q-05).
+  - *Tracciabilità*: `[DOC-INTERNO CAP_01_parte_I.md:77]` (target 2 hit rate $\pi_{t_2\mid t_1}$ sul position lifecycle), `[DOC-INTERNO CAP_02_parte_II.md:372]` (hit-rate condizionale $\pi_{t_2\mid t_1}$, submacchina di tracking IN-SCOPE per reporting/validazione).
+  - *Valore operativo*: informa la qualità strutturale del livello `target_2` pubblicato nel payload (R-3.4/R-3.5); un $\pi_{t_2\mid t_1}$ elevato segnala un target_2 robusto, uno basso un livello nominalmente strutturale ma poco realizzato — rilevante per l'operatore che gestisce manualmente la posizione oltre target_1.
+
+**Out-of-scope della Sezione 8**:
+| Voce | Destinazione |
+|---|---|
+| Calcolo empirico effettivo di DSR/PBO/$E[R_{net}]$ sull'edge | **PENDING-empirico** — validator (FASE-D) |
+| Motore GA, NSGA-II, fitness, walk-forward (derivazione) | Parte V (CAP chiuso) — non ri-derivata |
+| Valori congelati definitivi delle soglie $\theta_*$ | Parte V / post-go-live |
+
+**Mini-tabella requisiti della sezione**:
+| ID | Capitolo-fonte | Tipo |
 |---|---|---|
-| R-20 | Cap.62 Parte 10, Cap.48 Parte 9 | R |
-| R-21 | Cap.62 Parte 10 (D-10-8/9), Cap.65 Parte 10 | R |
-| R-22 | Cap.59 Parte 10, Cap.61 Parte 10 | R |
-| R-23 | Cap.60 Parte 10 (D-10-3/4) | R |
-| R-24 | Cap.51 Parte 9 (D-9-NB4), Cap.61 Parte 10 | R |
+| NFR-8.1..NFR-8.8 | CAP_01 (Cap.5) / CAP_07 (Cap.31,32,33,36) | NFR |
+| NFR-8.9, NFR-8.10 | CAP_01 (Cap.5) | NFR |
+| NFR-8.11 | CAP_01 (Cap.5) / CAP_02 (Cap.11) | NFR |
 
 ---
 
-## Sezione 10 — Fasizzazione, roadmap, tracciabilità
+## Sezione 9 — Dipendenze di dato e infrastruttura; requisiti di dato
 
-### 10.1 Fasizzazione
+**Valore di prodotto della sezione**: definisce *quali dipendenze* di dato/infrastruttura il prodotto richiede e *quali requisiti di dato* garantiscono la qualità del feed che alimenta i segnali.
 
-- **PHASE-1 FIB-only** = oggetto di SPEC-FUNZ-01 corrente.
-- **PHASE-2 cross-index** (DAX/EuroStoxx50/ES/MES) = **fuori scope**, rinviata a SPEC-FUNZ-02 o equivalente futuro (non definito qui) `[DOC-INTERNO CAP_08_parte_8.md:167]`, `[DOC-INTERNO CAP_09_parte_9.md:391]`, `[DOC-INTERNO CAP_10_parte_10.md:236]`.
+- **CN-9.1** — Lo schema CANDLE reale del payload Directa è **`C;L;H;O;V`** (`UFF;MIN;MAX;APE;V` = close;low;high;open;volume), **non** l'ordine `O;H;L;C` dichiarato dal wiki (dimostrato inesatto).
+  - *Tracciabilità*: `[CODICE-ESISTENTE scripts/export_directa_history_parametric.py:477-481]`, `[PROVA-EMPIRICA M-1 2026-05-29]`; il wiki resta `[WIKI-HINT, da verificare]` e dimostrato inesatto.
+  - *Valore operativo*: garantisce che le barre che alimentano i segnali siano decodificate correttamente (RACC-METODO-2: diff col decoder canonico, non col wiki).
 
-### 10.2 Ponte verso FASE-D
+- **R-9.1** — L'adapter DAPI produce, per ogni minuto della sessione, una barra 1-min normativa con schema **simmetrico al tape di training Portara** (OHLCV, `tick_count`, flag `bar_synthetic`), forward-fill su Close per i minuti senza trade: il bundle frozen non legge mai dati DAPI grezzi (invariante research = runtime).
+  - *Tracciabilità*: `[DOC-INTERNO CAP_09_parte_9.md:17]`, `[DOC-INTERNO CAP_09_parte_9.md:191]` (Cap.49, adapter = normalizzazione di schema).
+  - *Valore operativo*: i segnali live sono prodotti sulla stessa struttura dati del training, senza re-calibrazione.
 
-SPEC-FUNZ-01 fornisce la **base requisiti** per la successiva FASE-D di implementazione (codice runtime; pipeline ingest-feature-inference-publish; pipeline training cloud; pipeline backfill / riconciliazione / archiviazione; bot Telegram; audit log). **FASE-D è fuori scope** di SPEC-FUNZ-01.
+- **R-9.2** — Il warm-up degli stati condizionali al boot di sessione usa un pull storico via `CANDLERANGE` (porta 10003) con lookback congelato **$L_{warmup}=30$ giorni di trading IDEM**, ampiamente entro il limite DAPI intraday di ~100 giorni.
+  - *Tracciabilità*: `[DOC-INTERNO CAP_09_parte_9.md:254]` (D-9-NB4), `[CODICE-ESISTENTE scripts/export_directa_history_parametric.py:61]` (`DEFAULT_INTRADAY_MAX_DAYS=100`), `[DOC-INTERNO CAP_10_parte_10.md:80]` (limite ~100gg verificato).
+  - *Valore operativo*: garantisce che il motore disponga di stato condizionato inizializzato prima di emettere segnali validi.
 
-### 10.3 Dipendenze aperte FASE-D (≥5 voci)
+- **R-9.3** — Il recupero gap entro la finestra ~100 giorni avviene via `CANDLERANGE` con marker di provenienza `BACKFILL_FROM_CANDLERANGE`; oltre i 100 giorni (restart >100gg) la pipeline entra in stato `RUNTIME_STALE_RESTART` e richiede re-bootstrap a 3 step (archivio locale, CANDLERANGE daily, fallback Portara) con re-warm-up obbligatorio.
+  - *Tracciabilità*: `[DOC-INTERNO CAP_10_parte_10.md:91]` (Cap.59 backfill), `[DOC-INTERNO CAP_10_parte_10.md:158]` (Cap.61 re-bootstrap 3 step), `[DOC-INTERNO CAP_09_parte_9.md:261]` (B-6 restart >100gg).
+  - *Valore operativo*: il prodotto si riallinea automaticamente dopo gap brevi e in modo assistito dopo downtime prolungati, senza contaminare i segnali.
 
-1. **M-2 — verifica empirica latenza Telegram** ($L_{max}=30$ s contro bot reale) → Appendice E / FASE-D `[DOC-INTERNO tasks/CARRYOVER.md:21]`.
-2. **Calibrazione fine $\theta_{reconcile}$** (Cap.60) → FASE-D `[DOC-INTERNO CAP_10_parte_10.md:232]` (D-10-10).
-3. **Migrazione legacy→esteso del tape** (11→13 campi, ~391 dump) → operazione una-tantum FASE-D `[DOC-INTERNO CAP_10_parte_10.md:230]`.
-4. **Codici 1030 e riavvio Darwin mezzanotte** (Empirico-CLI residuo) → sessione CLI / FASE-D `[DOC-INTERNO CAP_10_parte_10.md:233]`.
-5. **Lookup completa codici mese Directa-IDEM** oltre `F`/`I` → runtime-discovery via ANAG, FASE-D `[DOC-INTERNO CAP_09_parte_9.md:389]`.
-6. **Implementazione codice operativo della pipeline runtime** (parser DAPI, adapter, recovery, audit, gating) → FASE-D `[DOC-INTERNO CAP_09_parte_9.md:406]`.
+- **R-9.4** — A ogni end-of-day il prodotto esegue una **riconciliazione canonica giornaliera** come **gate operativo bloccante**: se la riconciliazione del giorno $d$ fallisce (`RECONCILE_DIVERGENT_*`/`RECONCILE_DEGRADED`), l'emissione di segnali del giorno $d+1$ è bloccata fino a intervento del supervisore.
+  - *Tracciabilità*: `[DOC-INTERNO CAP_10_parte_10.md:126]` (Cap.60 stato finale + gate), `[DOC-INTERNO CAP_10_parte_10.md:42]` (gate bloccante distinto dal monitoraggio non-bloccante di Cap.30).
+  - *Valore operativo*: protezione contro la deriva silenziosa del feed che altrimenti contaminerebbe i segnali emessi.
 
-### 10.4 Matrice di tracciabilità requisito → capitolo metodologia v2
+- **CN-9.2** — Per i ticker cash europei la riconciliazione del low/high giornaliero usa **esclusivamente la CANDLE ufficiale daily** (campi `f8`/`f9` = day_low/day_high), mai l'aggregato dei tick realtime (feed `PRICE` cash rado che perde i minimi intraday).
+  - *Tracciabilità*: `[DOC-INTERNO CAP_10_parte_10.md:123]` (Cap.60 step 5), `[DOC-INTERNO CAP_10_parte_10.md:251]` (D-10-4), `[PROVA-EMPIRICA 2026-06-01]` (6/6 mismatch DITAS sul solo low).
+  - *Valore operativo*: evita falsi divergenti di riconciliazione dovuti alla radezza del feed cash.
 
-| Requisito ID | Sezione SPEC | Capitolo metodologia v2 | Note |
-|---|---|---|---|
-| R-1 | 1 | Cap.1 Parte I, Cap.6 Parte II | emissione segnali strutturati |
-| R-2 | 1 | Cap.1 Parte I | esecuzione delegata |
-| R-3 | 1 | Cap.42 Parte 8 | FIB-only PHASE-1 |
-| CN-1 | 1 | Cap.1 Parte I | "solo emissione" non negoziabile |
-| R-4 | 2 | Cap.2 Parte I, Cap.29 Parte VI | esecuzione manuale mobile |
-| R-5 | 2 | Cap.3 Parte I, Cap.29 Parte VI | canale Telegram obbligatorio |
-| R-6 | 3 | Cap.6 Parte II | payload immutabile |
-| R-7 | 3 | Cap.6 Parte II, Cap.28 Parte VI | segnale unico attivo |
-| R-8 | 3 | Cap.5 Parte I, Cap.8 Parte II | filtro 80pt |
-| R-9 | 3 | Cap.6 Parte II | tick discreto 5pt |
-| R-10 | 4 | Cap.7 Parte II, Cap.29 Parte VI | notifica trigger_event |
-| R-11 | 4 | Cap.11 Parte II | segnale vs position lifecycle |
-| CN-2 | 4 | Cap.7 Parte II, Cap.54 Parte 9 | marker normativi terminali |
-| NFR-1 | 5 | Cap.9 Parte II, Cap.31 Parte VII | latenza $L_{max}=30$ s (M-2 open) |
-| R-12 | 5 | Cap.9 Parte II | anti-duplicato |
-| R-13 | 5 | Cap.9 Parte II, Cap.6 Parte II | nuovo messaggio per nuovo signal_id |
-| R-14 | 5 | Cap.9 Parte II, Cap.29 Parte VI | notifica trigger separata |
-| R-15 | 6 | Cap.1 Parte I, Cap.52 Parte 9 | sessione 8-22 CET |
-| R-16 | 6 | Cap.2 Parte I | sizing 1 contratto |
-| R-17 | 6 | Cap.6 Parte II, Cap.28 Parte VI | singolo segnale attivo |
-| R-18 | 6 | Cap.2 Parte I, Cap.5 Parte I | commissioni 5 EUR/op |
-| R-19 | 6 | Cap.56 Parte 9 (D-9-NB2) | rollover / contract switch |
-| NFR-2 | 7 | Cap.32 Parte VII, Cap.36 Parte VII | DSR gate primario |
-| NFR-3 | 7 | Cap.33 Parte VII, Cap.36 Parte VII | PBO gate fragilità |
-| NFR-4 | 7 | Cap.34 Parte VII, Cap.5 Parte I | lifecycle stabile cross-regime |
-| NFR-5 | 7 | Cap.5 Parte I | 80pt pre-condizione emissione |
-| CN-3 | 8 | Cap.2 Parte I, Cap.1 Parte I | segnale informativo MiFID II |
-| CN-4 | 8 | Cap.46 Parte 9 (D-9-2) | separazione segnale/esecuzione |
-| CN-5 | 8 | Cap.54 Parte 9 (D-9-15) | audit log + retention |
-| CN-6 | 8 | Cap.46 Parte 9 (Gap-1) | minimizzazione PII |
-| CN-7 | 8 | Cap.53 Parte 9 (Q-A-3) | gating qualitativo cash |
-| R-20 | 9 | Cap.62 Parte 10, Cap.48 Parte 9 | tape esteso 13 campi |
-| R-21 | 9 | Cap.62 Parte 10, Cap.65 Parte 10 | immutabilità tape |
-| R-22 | 9 | Cap.59 Parte 10, Cap.61 Parte 10 | backfill 100gg + fallback |
-| R-23 | 9 | Cap.60 Parte 10 (D-10-3/4) | riconciliazione gate bloccante |
-| R-24 | 9 | Cap.51 Parte 9, Cap.61 Parte 10 | warm-up $L_{warmup}=30$gg |
+- **R-9.5** — Il tape DAPI runtime è archiviato in un **archivio canonico locale** con header CSV esteso a 13 campi, manifest JSON (incl. `reconcile_status`, `bar_counts_by_source`, `gap_log`) e **immutabilità append-only** (recupero gap retroattivo divergente apre una nuova versione, mai sovrascrittura).
+  - *Tracciabilità*: `[DOC-INTERNO CAP_10_parte_10.md:185]` (Cap.62 formato), `[DOC-INTERNO CAP_10_parte_10.md:207]` (idempotenza/versioning append-only).
+  - *Valore operativo*: permette ricostruzione post-hoc del replay deterministico e riconciliazione storica.
 
-Totale tracciato: **36 requisiti** = 24 `R` (R-1..R-24) + 5 `NFR` (NFR-1..NFR-5) + 7 `CN` (CN-1..CN-7), corrispondenti alle **36 righe** della matrice sopra (≥30, AC-G5 OK). Ogni requisito ha colonna "capitolo metodologia v2" non vuota (AC-G4) e valore operativo dichiarato nella sezione di origine (AC-G7).
+- **CN-9.3** — Il tape DAPI archiviato **non è fonte di training** del bundle: è destinato esclusivamente a riconciliazione, replay e bootstrap; l'apertura come fonte di training richiederebbe un nuovo task Planner.
+  - *Tracciabilità*: `[DOC-INTERNO CAP_10_parte_10.md:209]` (D-10-9), `[DOC-INTERNO CAP_08_parte_8.md:217]` (esclusione fonti alternative di training — Cap.44).
+  - *Valore operativo*: preserva la separazione fra serie di calibrazione (Portara ratio-adjusted) e tape runtime (DAPI unadjusted).
 
-### 10.5 Capitoli metodologia v2 non tracciati e motivazione
+- **CN-9.4** — Il replay del motore è **deterministico bit-exact**: dato lo stesso storico e lo stesso bundle frozen, il replay produce la stessa sequenza di emissioni, `signal_id`, transizioni e timestamp; nessun generatore pseudo-casuale non seedato.
+  - *Tracciabilità*: `[DOC-INTERNO CAP_02_parte_II.md:291]` (requisito di determinismo), `[DOC-INTERNO CAP_02_parte_II.md:295]`.
+  - *Valore operativo*: rende le metriche di lifecycle verificabili e usabili come gate decisionale per il go-live.
 
-I capitoli seguenti **non** compaiono in matrice perché fuori dalla vista operatore/prodotto (implementazione metodologica interna, opaca al consumatore). L'esclusione è esplicita e motivata:
+**Dipendenze infrastrutturali (citate come dipendenza, non requisito di prodotto)**:
+- **Compute/cloud**: training del GA su AWS spot (c5.4xlarge), inference e backtest leggero sul PC dell'operatore. `[DOC-INTERNO CAP_01_parte_I.md:63]` (Cap.4). *Citata come dipendenza infrastrutturale, non requisito.*
+- **Storico training**: serie FIB continuo 1-min ≥5 anni da Portara/CQG. `[DOC-INTERNO CAP_01_parte_I.md:43]`, `[DOC-INTERNO CAP_08_parte_8.md:155]` (Cap.42). *Materia di training; dipendenza.*
+- **Costo DAPI**: 20 EUR/mese, azzerato oltre 200 EUR/mese di commissioni. `[DOC-INTERNO CAP_01_parte_I.md:41]`, `[DOC-INTERNO CAP_09_parte_9.md:373]` (Gap-6). *Costo strutturale runtime; dipendenza.*
 
-| Capitoli | Parte | Motivazione di esclusione |
+**Out-of-scope della Sezione 9**:
+| Voce | Destinazione |
+|---|---|
+| Vendor cross-index pluriennale (PHASE-2) | spec futura / FASE-D |
+| Implementazione adapter/parser DAPI, codice pipeline | FASE-D |
+| Migrazione dump legacy 11→13 campi | FASE-D (una-tantum) |
+
+**Mini-tabella requisiti della sezione**:
+| ID | Capitolo-fonte | Tipo |
 |---|---|---|
-| Cap.4 | I | Compute budget / strategia cloud: citato come dipendenza infrastrutturale (Sez. 9, AWS) ma il dettaglio di budget/instance è materia interna, non requisito di prodotto. |
-| Cap.12 | III | Definizioni di rendimento e scala temporale: matematica interna del backtest, opaca al consumatore. |
-| Cap.13 | III | Modello EGARCH di volatilità condizionata: implementazione metodologica interna. |
-| Cap.14 | III | Stato di regime intraday: feature interna del modello, non vista dall'operatore. |
-| Cap.15 | III | Feature engineering causale / pivot detection: catalogo interno del modello. |
-| Cap.16 | IV | Geometria delle zone di entry: derivazione strutturale interna (il prodotto pubblica il risultato, non l'algoritmo). |
-| Cap.17 | IV | Derivazione target strutturali: matematica interna (output in R-1/payload). |
-| Cap.18 | IV | Derivazione stop strutturali: matematica interna (output in payload). |
-| Cap.19 | IV | Modello di survival (Cox cause-specific): implementazione metodologica interna. |
-| Cap.20 | IV | Filtri di emissione survival-based: soglia interna del cromosoma. |
-| Cap.21 | IV | Caso trade_range (geometria): derivazione interna; il vincolo 80pt è già in R-8. |
-| Cap.22-26 | V | Cromosoma, operatori NSGA-II, fitness, walk-forward, popolazione: motore di ottimizzazione interno, opaco al consumatore (i suoi gate emergono in Sez. 7). |
-| Cap.27 | VI | Pipeline di inference real-time: implementazione FASE-D (citata in AC-GO-10). |
-| Cap.30 | VI | Monitoraggio del lifecycle / dashboard: strumento interno del committente (citato per contrasto col gate bloccante R-23). |
-| Cap.35 | VII | Frozen bundle / hash: meccanismo interno (citato in AC-GO-12 e per M-16). |
-| Cap.37-44 | 8 | Convenzione dati storici / back-adjustment / sanity validation: materia di training, citata in Sez. 9 (Portara) senza ridichiararla. |
-| Cap.43 | 8 | Procedura di sanity validation: implementazione FASE-D, opaca al prodotto. |
-| Cap.45, 50, 55, 57, 58, 63, 64 | 9-10 | Premesse, recovery errori, punti aperti, coerenza inter-temporale: dettagli interni di pipeline / metodologia, citati dove pertinenti (es. punti aperti in 10.3) senza requisito dedicato. |
-| Cap.56, 65 | 9-10 | Tabelle decisioni: sono il **registro** delle decisioni che i requisiti tracciano puntualmente (D-9-*, D-10-*); non costituiscono requisito di prodotto a sé. |
-
-I capitoli sostanziali della vista prodotto sono tutti tracciati: Cap.1-3, 5 (Parte I); Cap.6-11 (Parte II); Cap.32-34, 36 (Parte VII); Cap.46-54, 56 (Parte 9); Cap.48, 51, 59-62, 65 (Parte 10); Cap.28-29 (Parte VI); Cap.42 (Parte 8, fasizzazione).
-
-**Out-of-scope Sezione 10 (quadro complessivo)**: PHASE-2 cross-index; implementazione FASE-D; consulenza legale; contratti commerciali con vendor; roadmap con date/milestone.
-
-| Requisito ID | Capitolo metodologia v2 | Tipo |
-|---|---|---|
-| (matrice complessiva) | trasversale Cap.1-65 | R/NFR/CN |
+| R-9.1..R-9.5 | CAP_09 (Cap.49,51) / CAP_10 (Cap.59,60,61,62) | R |
+| CN-9.1 | CAP_09 (Cap.49) / codice | CN |
+| CN-9.2, CN-9.3, CN-9.4 | CAP_10 (Cap.60,62) / CAP_02 (Cap.10) / CAP_08 (Cap.44) | CN |
 
 ---
 
-## Appendice — Self-review del Developer (RM-1..RM-3 applicate al consolidamento)
+## Sezione 10 — Fasizzazione e confine PHASE-1 / PHASE-2
 
-Questa sezione è **opzionale e consigliata** dal task card (vincolo Developer v1): SPEC-FUNZ-01 nel suo insieme va a **Review formale piena** (opzione B di RM-4, gestita dall'Orchestratore). Non sostituisce la review; documenta la diligenza del consolidamento.
+**Valore di prodotto della sezione**: definisce *come è fasizzato* il prodotto (PHASE-1 in scope, PHASE-2 fuori) e quali dipendenze restano aperte verso FASE-D.
 
-**(a) Natura delle asserzioni — RM-1.** SPEC-FUNZ-01 NON introduce dichiarazioni "verificato X" di prima istanza su sistemi esterni. Ogni asserzione fattuale è un **richiamo** a un CAP chiuso PASS, etichettato `[DOC-INTERNO <file>:<rif>]` o `[CODICE-ESISTENTE <path>:<linea>]`. Le uniche asserzioni con sapore empirico (schema CANDLE, codici mese `F`/`I`, schema PRICE/BOOK_5) sono richiami a fatti già chiusi negli audit RM CAP-DATA-02/03 e nel decoder di produzione, citati come tali. Nessun blocco 4-righe nuovo è dovuto (non si eseguono verifiche nuove).
+- **R-10.1** — Il prodotto corrente è **PHASE-1 FIB-only**: single-instrument FIB, senza layer di covarianza cross-index. La fasizzazione è esplicita, non semplificazione silenziosa.
+  - *Tracciabilità*: `[DOC-INTERNO CAP_08_parte_8.md:143]` (Cap.42), `[DOC-INTERNO CAP_08_parte_8.md:167]` (vincolo fasizzazione PHASE-1 vs PHASE-2).
+  - *Valore operativo*: l'operatore opera solo sul FIB; nessun segnale cross-index è in scope nel prodotto corrente.
 
-**(b) Citazioni di codice — RM-2.** Le citazioni `[CODICE-ESISTENTE]` usate sono autoritative dal task card (eredità #15) e sono state **riverificate con Read** prima della stesura:
-- `[CODICE-ESISTENTE scripts/export_directa_history_parametric.py:467-481]` — `parse_directa_candle`, schema CANDLE `C;L;H;O` (`kind, symbol, ymd, hms, uff, min_, max_, ape, qty = parts[:9]`; commento r477 `# UFF, MIN, MAX, APE => close, low, high, open`). CONFERMATO token-per-token.
-- `[CODICE-ESISTENTE scripts/export_directa_history_parametric.py:605-617]` — header CSV legacy 11 campi (`symbol, timeframe, timestamp, date, time, open, high, low, close, volume, source`, senza `tick_count`/`bar_synthetic`). CONFERMATO token-per-token.
-- `[CODICE-ESISTENTE scripts/export_directa_history_parametric.py:61]` — `DEFAULT_INTRADAY_MAX_DAYS = 100`. CONFERMATO (citato da Cap.59 Parte 10, eredità #15; non riletto qui ma autoritativo dal task card e da `[DOC-INTERNO CAP_10_parte_10.md:230]`).
-Nessun decoder è stato riscritto né scoperto ex novo (la spec non produce codice). Citazioni codice totali: 3 distinte (≤5, AC-G3).
+- **CN-10.1** — Gli strumenti cross-index PHASE-2 (DAX/EuroStoxx50/S&P mini futures) sono **dichiarazione normativa senza implementazione** nel doc v2 corrente: la loro attivazione è rinviata a un futuro ciclo di estensione, fuori scope qui.
+  - *Tracciabilità*: `[DOC-INTERNO CAP_08_parte_8.md:143]`, `[DOC-INTERNO CAP_09_parte_9.md:338]` (cash europei ≠ cross-index PHASE-2), `[DOC-INTERNO CAP_10_parte_10.md:236]` (Parte 10 non si applica ai cross-index PHASE-2).
+  - *Valore operativo*: il confine di prodotto è netto; eventuali estensioni cross-index sono un prodotto futuro distinto.
 
-**(c) Fonti esterne — RM-3.** I riferimenti a MiFID II, wiki Directa, Telegram, Portara/CQG sono etichettati `[WIKI-HINT, da verificare]` e non sono mai fonte unica di un'asserzione strutturale: ogni asserzione strutturale poggia su almeno una fonte livello 1/2/3 nei CAP chiusi. La wiki Directa è citata solo con l'avvertenza esplicita di inaffidabilità sullo schema CANDLE (nota di lettura in testa).
+- **R-10.2** — Restano **dipendenze aperte verso FASE-D**: verifica empirica della latenza Telegram ($L_{max}$, B-1/M-2), upgrade empirico dell'orario di sessione (B-2/M-GOV-1), calibrazione fine di $\theta_{reconcile}$, e il run empirico del validator sull'edge (DSR/PBO/OOS, PENDING-empirico).
+  - *Tracciabilità*: `[DOC-INTERNO CAP_09_parte_9.md:402]` (M-2 OPEN), `[DOC-INTERNO CAP_10_parte_10.md:232]` ($\theta_{reconcile}$ provvisorio), `[DOC-INTERNO CAP_07_parte_VII.md:639]` (10 parametri tuning carryover post-go-live).
+  - *Valore operativo*: rende esplicito ciò che il prodotto dichiara ma non chiude, da risolvere prima/durante FASE-D.
 
-**(d) Assunzioni usate come premesse (non verificate qui, autoritative dal task card / CAP chiusi).** Tutte le eredità #1-25 del task card sono assunte autoritative (input dell'Orchestratore già verificato): non sono ri-verificate. In particolare: stato 10/10 Parti PASS, M-2 unico M-promemoria di capitolo OPEN, schemi DAPI chiusi negli audit RM, valori numerici ($L_{max}=30$ s, 80pt, $b_{min}=5$, $L_{warmup}=30$gg, tick 5pt, sessione 8-22 CET, retention 90gg, 5 EUR/op) tutti ereditati.
+**Out-of-scope della Sezione 10**:
+| Voce | Destinazione |
+|---|---|
+| Requisiti PHASE-2 cross-index | spec futura (SPEC-FUNZ-02 o equivalente) |
+| Specifica di implementazione FASE-D | FASE-D |
 
-**(e) File del repo letti durante il consolidamento (a riprova di RM-2).** `tasks/METODO.md`, `.claude/agents/developer.md`, `tasks/ACTIVE_TASK.md`, `tasks/CARRYOVER.md`, `docs/methodology_v2/00_indice.md`, `CAP_01_parte_I.md`, `CAP_02_parte_II.md`, `CAP_03_parte_III.md` (headers), `CAP_04_parte_IV.md` (Cap.16-21 headers + righe chiave), `CAP_06_parte_VI.md` (Cap.27-30), `CAP_07_parte_VII.md` (Cap.31, Cap.36), `CAP_08_parte_8.md` (Cap.37-44), `CAP_09_parte_9.md` (Cap.46-56), `CAP_10_parte_10.md` (Cap.57-65), `scripts/export_directa_history_parametric.py:465-484,603-620`.
+**Mini-tabella requisiti della sezione**:
+| ID | Capitolo-fonte | Tipo |
+|---|---|---|
+| R-10.1, R-10.2 | CAP_08 (Cap.42) / CAP_07/09/10 | R |
+| CN-10.1 | CAP_08 (Cap.42) / CAP_09 (Cap.53) / CAP_10 (Cap.64) | CN |
 
 ---
 
-*SPEC-FUNZ-01 — fine documento. PHASE-1 FIB-only. Ponte metodologia v2 (chiusa) → FASE-D (implementazione).*
+## Sezione 11 — Matrice di tracciabilità requisito → capitolo metodologia v2
+
+Una riga per requisito. Tutte le citazioni puntuali `file:riga` sono nei requisiti delle Sezioni 1-10.
+
+| Requisito | Tipo | Capitolo/i metodologia v2 (Parte) |
+|---|---|---|
+| R-1.1 | R | CAP_01 Cap.1 (PI) |
+| R-1.2 | R | CAP_01 Cap.1 (PI) / CAP_06 Cap.27 (PVI) |
+| R-1.3 | R | CAP_01 Cap.1 (PI) / CAP_02 Cap.6 (PII) |
+| R-1.4 | R | CAP_01 Cap.1 (PI) |
+| CN-1.1 | CN | CAP_01 Cap.1 (PI) |
+| R-2.1 | R | CAP_01 Cap.2 (PI) |
+| R-2.2 | R | CAP_01 Cap.2 (PI) |
+| R-2.3 | R | CAP_01 Cap.3 (PI) / CAP_06 Cap.29 (PVI) |
+| CN-2.1 | CN | CAP_01 Cap.2 (PI) / CAP_09 Cap.47 (P9) |
+| R-3.1 | R | CAP_02 Cap.6 (PII) |
+| R-3.2 | R | CAP_02 Cap.6 (PII) |
+| R-3.3 | R | CAP_02 Cap.6 (PII) / CAP_01 Cap.2 (PI) |
+| R-3.4 | R | CAP_02 Cap.6 (PII) |
+| R-3.5 | R | CAP_02 Cap.6 (PII) |
+| R-3.6 | R | CAP_02 Cap.6 (PII) |
+| R-3.7 | R | CAP_02 Cap.6 (PII) / CAP_01 Cap.2 (PI) |
+| R-3.8 | R | CAP_02 Cap.6 (PII) |
+| R-3.9 | R | CAP_02 Cap.6 (PII) |
+| R-3.10 | R | CAP_02 Cap.6 (PII) / CAP_06 Cap.28 (PVI) |
+| R-3.11 | R | CAP_02 Cap.6 (PII) |
+| CN-3.1 | CN | CAP_02 Cap.6 (PII) |
+| R-4.1 | R | CAP_02 Cap.7 (PII) |
+| R-4.2 | R | CAP_02 Cap.7 (PII) |
+| R-4.3 | R | CAP_02 Cap.7 (PII) |
+| R-4.4 | R | CAP_02 Cap.6-7 (PII) |
+| CN-4.1 | CN | CAP_02 Cap.7 (PII) |
+| CN-4.2 | CN | CAP_09 Cap.52 (P9) |
+| R-5.1 | R | CAP_02 Cap.8 (PII) |
+| R-5.2 | R | CAP_02 Cap.8 (PII) |
+| R-5.3 | R | CAP_02 Cap.8 (PII) |
+| CN-5.1 | CN | CAP_01 Cap.5 (PI) / CAP_02 Cap.6,8 (PII) |
+| CN-5.2 | CN | CAP_02 Cap.8 (PII) |
+| R-6.1 | R | CAP_02 Cap.9 (PII) / CAP_06 Cap.29 (PVI) |
+| R-6.2 | R | CAP_02 Cap.9 (PII) |
+| R-6.3 | R | CAP_02 Cap.9 (PII) / CAP_01 Cap.2 (PI) |
+| R-6.4 | R | CAP_06 Cap.29 (PVI) / CAP_02 Cap.9 (PII) |
+| R-6.5 | R | CAP_02 Cap.9 (PII) / CAP_06 Cap.29 (PVI) |
+| R-6.6 | R | CAP_02 Cap.9 (PII) / CAP_06 Cap.29 (PVI) |
+| R-6.7 | R | CAP_02 Cap.9 (PII) |
+| NFR-6.1 | NFR | CAP_06 Cap.29 (PVI) |
+| NFR-6.2 [B-1] | NFR | CAP_02 Cap.9 (PII) / CAP_07 Cap.31 (PVII) |
+| R-7.1 [B-2] | R | CAP_01 Cap.1 (PI) / CAP_09 Cap.52 (P9) |
+| R-7.2 | R | CAP_09 Cap.47 (P9) |
+| CN-7.1 | CN | CAP_01 Cap.1 (PI) / CAP_09 Cap.46 (P9) |
+| CN-7.2 | CN | CAP_09 Cap.46 (P9) |
+| CN-7.3 | CN | CAP_01 Cap.2,5 (PI) |
+| CN-7.4 | CN | CAP_01 Cap.2 (PI) / CAP_02 Cap.11 (PII) |
+| CN-7.5 | CN | CAP_09 Cap.47 (P9) |
+| CN-7.6 | CN | CAP_09 Cap.54 (P9) |
+| CN-7.7 | CN | CAP_09 Cap.54 (P9) |
+| CN-7.8 | CN | CAP_09 Cap.46,54 (P9) |
+| CN-7.9 | CN | CAP_09 Cap.53 (P9) |
+| NFR-8.1 | NFR | CAP_01 Cap.5 (PI) / CAP_07 Cap.32,36 (PVII) |
+| NFR-8.2 | NFR | CAP_01 Cap.5 (PI) / CAP_07 Cap.33,36 (PVII) |
+| NFR-8.3 | NFR | CAP_01 Cap.5 (PI) / CAP_07 Cap.36 (PVII) |
+| NFR-8.4 | NFR | CAP_01 Cap.5 (PI) / CAP_07 Cap.31,36 (PVII) |
+| NFR-8.5 | NFR | CAP_01 Cap.5 (PI) / CAP_07 Cap.36 (PVII) |
+| NFR-8.6 | NFR | CAP_07 Cap.36 (PVII) |
+| NFR-8.7 | NFR | CAP_07 Cap.36 (PVII) |
+| NFR-8.8 | NFR | CAP_07 Cap.36 (PVII) / CAP_07 Cap.35 (PVII) |
+| NFR-8.9 | NFR | CAP_01 Cap.5 (PI) |
+| NFR-8.10 | NFR | CAP_01 Cap.5 (PI) |
+| NFR-8.11 | NFR | CAP_01 Cap.5 (PI) / CAP_02 Cap.11 (PII) |
+| CN-9.1 | CN | CAP_09 Cap.49 (P9) / codice |
+| R-9.1 | R | CAP_09 Cap.45,49 (P9) |
+| R-9.2 | R | CAP_09 Cap.51 (P9) / codice / CAP_10 Cap.59 (P10) |
+| R-9.3 | R | CAP_10 Cap.59,61 (P10) / CAP_09 Cap.51 (P9) |
+| R-9.4 | R | CAP_10 Cap.60 (P10) |
+| CN-9.2 | CN | CAP_10 Cap.60 (P10) |
+| R-9.5 | R | CAP_10 Cap.62 (P10) |
+| CN-9.3 | CN | CAP_10 Cap.62 (P10) / CAP_08 Cap.44 (P8) |
+| CN-9.4 | CN | CAP_02 Cap.10 (PII) |
+| R-10.1 | R | CAP_08 Cap.42 (P8) |
+| R-10.2 | R | CAP_09 Cap.55 (P9) / CAP_10 Cap.64 (P10) / CAP_07 Cap.36 (PVII) |
+| CN-10.1 | CN | CAP_08 Cap.42 (P8) / CAP_09 Cap.53 (P9) / CAP_10 Cap.64 (P10) |
+
+**Conteggio**: 41 R + 13 NFR + 21 CN = **75 requisiti**. Tutti tracciati ad almeno un capitolo (matrice 75 righe, riconciliata 1:1 con i requisiti definiti nelle Sez.1-10: 0 mancanti, 0 orfani). Requisiti `[B-N PROVVISORIO]`: NFR-6.2 (B-1), R-7.1 (B-2). *Micro-pass AC (2026-06-14): aggiunti NFR-8.9 (invalidation rate), NFR-8.10 (missed_target rate), NFR-8.11 ($\pi_{t_2\mid t_1}$) — enumerazione atomica della batteria KPI di lifecycle.*
+
+---
+
+## Sezione 12 — Capitoli non tracciati (con motivazione)
+
+Capitoli della metodologia v2 **non** mappati a un requisito di prodotto, con motivazione. Sono matematica/motore interni, opachi al consumatore del segnale, oppure dettagli interni già coperti via altre Parti in vista prodotto.
+
+| Capitolo (Parte) | Motivo del non-tracciamento |
+|---|---|
+| **Cap.4 (Parte I)** — compute budget / strategia cloud | Dipendenza infrastrutturale (AWS spot, TCO), non requisito di prodotto. Citato in Sez.9 come dipendenza. |
+| **Cap.10 (Parte II)** — replay/determinismo (dettaglio) | Il *requisito* di determinismo bit-exact è tracciato (CN-9.4); il formato esatto dei tre log è dettaglio interno → Appendice B/FASE-D. |
+| **Cap.12 (Parte III)** — definizioni rendimento/scala temporale | Matematica interna del modello, opaca al consumatore: il prodotto pubblica il risultato (payload), non la derivazione. |
+| **Cap.13 (Parte III)** — modello di volatilità condizionata (EGARCH) | Matematica interna; alimenta condizioni di emissione (tracciate in Sez.5) ma la formula è opaca al consumatore. |
+| **Cap.14 (Parte III)** — stato di regime intraday | Matematica interna; il regime calmo/turbolento entra negli NFR di stabilità cross-regime (Sez.8) ma la classificazione è interna. |
+| **Cap.15 (Parte III)** — feature engineering causale | Catalogo 37 feature, matematica interna del motore, opaca al consumatore del segnale. |
+| **Cap.16 (Parte IV)** — definizione zone di entry | Derivazione geometrica interna; il prodotto pubblica `entry_zone` (R-3.3), non la geometria che la produce. |
+| **Cap.17 (Parte IV)** — target strutturali | Derivazione geometrica interna; il prodotto pubblica `target_1`/`target_2`/`target_2_type` (R-3.4/3.6), non la derivazione. |
+| **Cap.18 (Parte IV)** — stop strutturali | Derivazione geometrica interna; il prodotto pubblica `stop_loss`/`stop_type` (R-3.7/3.6), non la derivazione. |
+| **Cap.19 (Parte IV)** — modello di survival per il target | Matematica interna (Cox); alimenta filtri di emissione e tie-break, opaca al consumatore. |
+| **Cap.20 (Parte IV)** — filtri di emissione basati sul survival | Filtro $E_{surv}$ interno; il prodotto espone l'esito (segnale emesso o no), non la matematica del survival. |
+| **Cap.21 (Parte IV)** — caso trade_range | Derivazione interna di $A_{range}$; il prodotto espone `setup_class=trade_range` e il filtro 80pt (R-3.8/CN-5.1), non la derivazione. |
+| **Cap.22-26 (Parte V)** — cromosoma, NSGA-II, fitness, walk-forward, calibrazione | Motore GA interno, opaco al consumatore. I suoi *gate* emergono come NFR via Parte VII (Sez.8); la meccanica del GA non è prodotto. |
+| **Cap.27 (Parte VI)** — pipeline di inference real-time | Interna/FASE-D; citata per il vincolo emissione-only (R-1.2) e per AC-GO-10 (NFR-8.8), non requisito a sé. |
+| **Cap.30 (Parte VI)** — monitoraggio/dashboard | Interna/FASE-D; citata per contrasto col gate bloccante di riconciliazione (R-9.4) e per AC-GO-11 (NFR-8.8), non requisito a sé. |
+| **Cap.34 (Parte VII)** — bootstrap stazionario | Meccanismo statistico interno; alimenta l'IC bootstrap di NFR-8.3 ma la procedura è interna. |
+| **Cap.35 (Parte VII)** — frozen bundle / hash | Meccanismo interno; citato (AC-GO-12, hash valido) in NFR-8.8, non requisito a sé. |
+| **Cap.37-44 (Parte 8) salvo Cap.42** — dati storici/back-adjustment/sanity/esclusione fonti | Materia di training; dipendenza infrastrutturale (Portara/CQG) in Sez.9. Cap.44 citato in CN-9.3 (esclusione fonti training). Solo Cap.42 (fasizzazione) è tracciato (R-10.1/CN-10.1). |
+| **Cap.45, 48, 50 (Parte 9)** — premessa, format dati canonico, gestione errori/recovery | Dettagli interni dell'adapter/recovery DAPI; il *requisito* di schema simmetrico è tracciato (R-9.1, CN-9.1), il dettaglio del format e dei codici errore è interno/FASE-D. |
+| **Cap.55 (Parte 9)** — punti aperti fuori scope | Capitolo di rinvii; le sue voci aperte sono recepite in R-10.2, non requisito a sé. |
+| **Cap.57, 58, 63, 64, 65 (Parte 10)** — premessa, tassonomia gap, coerenza inter-temporale, punti aperti, tabella decisioni | Premesse/tassonomia/coerenza/rinvii interni; i requisiti operativi (backfill, riconciliazione, archivio) sono tracciati in Sez.9 (R-9.3/9.4/9.5), questi capitoli di cornice no. |
+
+**Parti interamente non tracciate**: **Parte III** (Cap.12-15), **Parte IV** (Cap.16-21), **Parte V** (Cap.22-26) — matematica/motore interni, opachi al consumatore del segnale, come da tabella sopra.
+
+---
+
+## Sezione 13 — Blocchi / Domande aperte
+
+Due blocchi aperti incardinati. I requisiti dipendenti portano il tag `[B-N PROVVISORIO]`.
+
+- **B-1 — Latenza Telegram $L_{max}$ non verificata empiricamente (M-2 OPEN)**.
+  - *Requisito dipendente*: **NFR-6.2**.
+  - *Motivo*: il valore $L_{max}=30$ s è valore di lavoro provvisorio; la verifica empirica della latenza effettiva del canale Telegram non è stata eseguita ed è carryover di Appendice E / FASE-D. `[DOC-INTERNO CAP_09_parte_9.md:402]`, `[DOC-INTERNO CAP_07_parte_VII.md:23]`.
+  - *Cosa serve per sbloccarlo*: probe empirico sulla latenza del bot Telegram reale (Appendice E / FASE-D) → upgrade del requisito da provvisorio a verificato.
+
+- **B-2 — Orario di sessione FIB in attesa di upgrade a PROVA-EMPIRICA (M-GOV-1)**.
+  - *Requisito dipendente*: **R-7.1**.
+  - *Motivo*: l'orario 08:00-22:00 CET è recepito da decisione AC 13/06/2026 + `[WIKI-HINT Borsa Italiana, da verificare]`; l'upgrade a `[PROVA-EMPIRICA]` dal primo probe V-1 sul tape DAPI è APERTO (M-GOV-1, namespace governance).
+  - *Cosa serve per sbloccarlo*: primo probe V-1 che confermi empiricamente la finestra di negoziazione continua sul tape DAPI → upgrade del requisito da provvisorio a verificato.
+
+**Nota**: nessun altro blocco. Tutti gli altri M citati nel task card (M-4, M-9, M-10, M-16, ecc.) sono CLOSED o note tecniche già incorporate come fonte; nessuno è incardinato come blocco aperto. La dipendenza da CAP-01/02/03 a SHA-non-pinnabile (freeze G-09) è dichiarata in nota di testa e **non** è un blocco aperto (i capitoli sono chiusi e congelati, citabili).

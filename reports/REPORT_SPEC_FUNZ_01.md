@@ -1,175 +1,84 @@
-### REPORT SUPERVISORE — SPEC-FUNZ-01
+# REPORT — SPEC-FUNZ-01 v2 (ricostruzione ex-novo, modalità B)
 
-**Task**: SPEC-FUNZ-01 — Specifica funzionale del prodotto-segnale FIB (PHASE-1)
-**Stato**: COMPLETATO
-
-> **Natura non-CAP**: SPEC-FUNZ-01 e' una specifica funzionale / di prodotto, NON un capitolo metodologico ne' una Parte della metodologia v2. Adattamenti rispetto al flusso CAP-XX (da prompt di invocazione): output in `docs/spec_funzionale/` (cartella nuova), nessuna modifica a `docs/methodology_v2/00_indice.md`, commit tag `[SPEC-FUNZ-01]`, segnale `READY_FOR_REVIEW` per Review formale piena adattata.
+**Autore**: spec_developer (track Business-spec). **Output**: `docs/spec_funzionale/SPEC_FUNZ_01_v2.md` + questo report (deliverable contrattuale del ruolo spec_developer).
+**Cecità rispettata**: confermo di NON aver aperto `SPEC_FUNZ_01.md`, `SPEC_FUNZ_01_v1_storico.md`, `REPORT_SPEC_FUNZ_01.md` né alcuna copia `*_v1_storico*`. I requisiti sono ricostruiti esclusivamente dai capitoli-fonte in `docs/methodology_v2/` (Cap.1-65).
 
 ---
 
-#### Cosa e' stato prodotto
+## 1. Cosa è stato prodotto
 
-| File | Operazione | Descrizione |
-|------|-----------|-------------|
-| `docs/spec_funzionale/SPEC_FUNZ_01.md` | CREATE (cartella nuova) | Specifica funzionale, 10 sezioni + matrice di tracciabilita' a 36 righe + self-review Developer. ~6.440 parole (~13-15 pp). Consolida la metodologia v2 (Cap.1-65, tutte PASS) in 36 requisiti: 24 `R`, 5 `NFR`, 7 `CN`. |
-| `reports/REPORT_SPEC_FUNZ_01.md` | CREATE | Questo report supervisore (5 sezioni + tabella verifica AC). |
-| `tasks/DEV_STATUS.md` | EDIT | `READY_FOR_REVIEW` dopo pre-consegna OK (adattata al non-CAP). |
+`docs/spec_funzionale/SPEC_FUNZ_01_v2.md` — specifica funzionale di prodotto PHASE-1 FIB-only, ricostruita ex-novo dai 10 capitoli-fonte. Struttura:
 
-**NON modificati** (vincoli espliciti del task): `docs/methodology_v2/00_indice.md`, `tasks/STATO_CORRENTE.md`, `tasks/CARRYOVER.md`, `tasks/QUESTIONS.md`, `tasks/ACTIVE_TASK.md` (gia' committato dall'Orchestratore). **Non committati** file di noise (`.claude/settings.json`, `build/`, PDF, `.lock`).
+- **13 sezioni**: nota di testa (provenienza/cautele RM-1/RM-3) + 10 sezioni di requisiti (obiettivo/solo-emissione; destinatario; payload; esecuzione/6 terminali; condizioni emissione; consegna Telegram; vincoli operativi/compliance; criteri go-live; dipendenze dato/infrastruttura; fasizzazione) + matrice di tracciabilità + capitoli non tracciati + blocchi/domande aperte.
+- **75 requisiti atomici** (N1): **41 R** (funzionali) + **13 NFR** (qualità/non-funzionali) + **21 CN** (compliance/normativi). *(72 nella stesura v2 originale; +3 NFR dal micro-pass AC 2026-06-14 — vedi §3.)*
+- Ogni requisito: una sola proposizione verificabile, tracciabilità `[DOC-INTERNO CAP_XX_parte_*.md:<riga>]` puntuale, valore operativo dichiarato.
+- **Matrice di tracciabilità** finale (75 righe, riconciliata 1:1 con i requisiti definiti: 0 mancanti, 0 orfani) + **sezione capitoli non tracciati** che motiva Parti III/IV/V intere e i singoli capitoli interni (Cap.4, 10, 27, 30, 34, 35, 37-44 salvo 42, 45/48/50/55, 57/58/63/64/65).
+- **2 blocchi aperti** incardinati con tag `[B-N PROVVISORIO]` sui requisiti dipendenti.
 
----
+Le domande operative del done-when del task card (1-10) trovano risposta univoca nelle Sezioni 1-10 e nella matrice (Sez.11).
 
-#### Ipotesi di partenza
+## 2. Ipotesi di partenza
 
-Criterio di valore del track (reinterpretazione dell'"orientamento al GA", da task card): SPEC-FUNZ-01 e' un documento di **prodotto/requisiti**, non una modifica al comportamento del GA. Ogni requisito traccia simultaneamente a (a) un **valore operativo / di prodotto reale** per l'operatore retail FIB E (b) un **capitolo della metodologia v2** di origine. Nessuna analisi "impatto sul ranking dei cromosomi" e' forzata.
+- I 10 capitoli metodologia v2 sono **chiusi PASS e frozen G-09**: fonte autoritativa, non ri-derivata, non ri-verificata. Letti selettivamente per citazioni accurate.
+- I 17 fatti dell'eredità del task card + gli M citati sono **autoritativi** (input Orchestratore/Planner): non ri-verificati, citati con etichetta di livello-fonte.
+- Lo scope è **invariato** rispetto al vecchio: Fase 1 = vista operatore/prodotto PHASE-1 FIB-only. Nessun ampliamento (no PHASE-2, no implementazione FASE-D, no nuovi temi).
+- Il vecchio `SPEC_FUNZ_01.md` e il suo report sono **non consultabili**: ricostruzione cieca. La motivazione (sfiducia nel processo pre-GOV-FIX) è del supervisore; il confronto vecchio↔nuovo è materia del supervisore a valle.
 
-Cosa il documento intende ottenere: **consolidare** la metodologia v2 chiusa (dispersa su 65 capitoli, non leggibile da un esterno) in un documento di requisiti **cantierabile da FASE-D** e **mostrabile fuori dal team metodologico** (consulenza legale MiFID II, valutatori AWS, fornitori Portara/CQG e bot Telegram). Fa da **ponte** fra metodologia chiusa e implementazione FASE-D. Incardina M-2 (latenza Telegram) come NFR del prodotto e ne dichiara la verifica empirica come dipendenza aperta, senza risolverla.
+## 3. Decisioni rilevanti
 
----
+- **Granularità requisiti (N1)**: ho spezzato concern eterogenei. Es.: payload (Cap.6) → R-3.1 (12 campi) separato da R-3.2 (direction), R-3.3 (entry_zone), R-3.4 (target), R-3.5 (target_2 informativo), R-3.6 (type qualifiers), R-3.7 (stop+vincolo geometrico), R-3.8 (setup_class), R-3.9 (immutabilità), R-3.10 (segnale unico), R-3.11 (sostituzione). Il tick 5pt (CN-3.1) è separato come vincolo trasversale.
+- **Classificazione R/NFR/CN**: R = comportamento funzionale del prodotto; NFR = qualità/gate (latenza, mobile-readability, DSR/PBO/CVaR/MDD, checklist go-live); CN = vincoli normativi/compliance non negoziabili (solo emissione, porta 10002 mai aperta, commissioni, PII, audit/retention, gating cash, tick discreto, determinismo, no-training-da-DAPI).
+- **Etichette di provenienza**: usata grafia canonica `[CODICE-ESISTENTE …]`. Schema CANDLE (CN-9.1) citato col decoder canonico `export_directa_history_parametric.py:477-481` + `[PROVA-EMPIRICA M-1 2026-05-29]`, mai col wiki (etichettato `[WIKI-HINT, da verificare]` e dimostrato inesatto) — RACC-METODO-2 rispettata.
+- **Blocchi F6 in batch (non a goccia)**: mappato l'intero task, poi i 2 blocchi insieme in Sez.13 del documento e §5 di questo report. Marcatura `[B-N PROVVISORIO]` su NFR-6.2 (B-1, latenza M-2) e R-7.1 (B-2, orario M-GOV-1).
+- **Dipendenza CAP-01/02/03 a SHA non pinnabile**: dichiarata UNA volta in nota di testa, non ripetuta per requisito (come da task card); NON genera `[B-N PROVVISORIO]` (i capitoli sono chiusi/citabili; la sola dipendenza a SHA non confermato non è un blocco aperto).
+- **M-2 incardinato come NFR** (NFR-6.2 [B-1]); **M-GOV-1 recepito come R** (R-7.1 [B-2]) citando il pendente upgrade empirico — come richiesto da AC-G12.
+- **Cash europei**: classificati CN-7.9 (perimetro vincolante Q-A-3, gating qualitativo post-emissione mai soppressione) e CN-9.2 (riconciliazione low/high via CANDLE ufficiale).
+- **Claim empiriche sull'edge**: NFR-8.1..8.8 recepite come criteri **dichiarati**, marcate PENDING-empirico (validator FASE-D) in Sez.8 out-of-scope; nessun verdetto GO/CONDITIONAL/NO-GO emesso (esclusiva del validator).
+- **Micro-pass AC (2026-06-14) — enumerazione batteria KPI lifecycle**: la batteria di KPI di lifecycle del segnale era coperta solo parzialmente (NFR-8.3 metrica primaria $E[R_{net}]$; NFR-8.4 stabilità cross-regime di target hit rate + executable rate). I tre KPI di lifecycle restanti, definiti alla fonte ma non enumerati come criteri di accettazione atomici nella v2, sono stati aggiunti come NFR distinti: **NFR-8.9** (invalidation rate) e **NFR-8.10** (missed_target rate) tracciati a `[DOC-INTERNO CAP_01_parte_I.md:77]` (paragrafo "Metriche di lifecycle del segnale"); **NFR-8.11** ($\pi_{t_2\mid t_1}$, probabilità condizionata target_2 dato target_1) tracciato a `[DOC-INTERNO CAP_01_parte_I.md:77]` + `[DOC-INTERNO CAP_02_parte_II.md:372]` (hit-rate condizionale, submacchina position lifecycle IN-SCOPE per reporting/validazione). Entrambe le righe-fonte (CAP_01:77, CAP_02:372) verificate token-per-token con Read prima della stesura. Coerenti con gli stati terminali di R-4.1 (`invalidated`, `missed_target`) e con `target_2` informativo di R-3.5; **non** duplicano NFR-8.4 (che misura stabilità cross-regime di hit/executable rate, non i KPI di invalidazione/missed/condizionale). Nessun altro requisito toccato; CAP frozen non toccati; `00_indice.md` non toccato. Conteggio: 72 → **75** (10 → 13 NFR).
 
-#### Decisioni rilevanti prese durante lo sviluppo
+## 4. Misura prima/dopo (greenfield di consolidamento, onesto)
 
-1. **36 requisiti, numerazione progressiva per tipo** (R-1..R-24 funzionali, NFR-1..NFR-5 qualita'/quantitativi, CN-1..CN-7 compliance). Ogni requisito ha ID univoco, valore operativo dichiarato e tracciabilita' a capitolo. Scelta: numerazione globale progressiva (non per-sezione) per facilitare il riferimento da FASE-D.
-2. **M-2 opzione (a) del Planner**: NFR-1 fissa il requisito $L_{max}=30$ s come SLA consumer-facing; la verifica empirica resta dipendenza aperta Appendice E / FASE-D, dichiarata esplicitamente in Sez. 5.3 e Sez. 10.3. Un documento di prodotto deve dichiarare lo SLA di consegna; non dichiararlo lo lascerebbe amputato.
-3. **Esempi numerici coerenti col layout mobile chiuso** (Cap.29 Parte VI): il payload e il messaggio Telegram di Sez. 3.3 / 5.2 riusano l'esempio normativo di `CAP_06_parte_VI.md:176` (prezzi multipli di 5, 80pt rispettato, $d_{stop}>b$). Nessun valore inventato.
-4. **Distinzione 9 voci pubblicate vs 10 campi payload consumer-facing** (Sez. 3.1): il messaggio Telegram pubblica 9 voci (Cap.9.2 Iterazione 5), la tupla del segnale ha 12 campi formali di cui 2 timer non pubblicati; la tabella di prodotto elenca i 10 campi consumer-facing (timer esclusi). Risolve la potenziale ambiguita' "9 vs 12" senza contraddire i CAP.
-5. **Capitoli non tracciati motivati esplicitamente** (Sez. 10.5): Cap.4, 12-26, 27, 30, 35, 37-44, 45/50/55/57/58/63/64, 56/65 esclusi dalla matrice con motivazione "implementazione metodologica interna / tabelle-registro / training, opaca al consumatore". Richiesto da AC-G5.
-6. **Self-review Developer inclusa** (opzione consigliata dal task card, non sostitutiva della Review formale piena): documenta diligenza RM-1/2/3 e i file letti, con riverifica token-per-token delle 3 citazioni di codice.
+Questo è un greenfield di consolidamento, non una modifica al motore: nessuna metrica GA inventata, nessuna analisi "impatto sul ranking dei cromosomi".
 
-##### Decoder/convenzioni esistenti nel repo consultati (RM-2 — citazioni codice riverificate con Read)
+- **PRIMA**: i requisiti di prodotto erano **dispersi** in 10 Parti / 65 capitoli metodologici (matematica, decisioni D-*, AC di review intrecciati), non leggibili da un esterno in vista prodotto; un consumatore del segnale non poteva enumerare cosa pubblica il sistema, quali esiti, quali vincoli, senza leggere l'intera metodologia.
+- **DOPO**: **75 requisiti** R/NFR/CN atomici (72 nella stesura v2 originale + 3 NFR dal micro-pass AC del 2026-06-14), ciascuno tracciato a `capitolo:riga`, con valore operativo dichiarato, raccolti in 10 sezioni leggibili in vista operatore/prodotto + matrice di tracciabilità + capitoli non tracciati motivati. Le 10 domande operative del done-when hanno risposta univoca.
 
-Le citazioni `[CODICE-ESISTENTE]` sono autoritative dal task card (eredita' #15) e sono state **riverificate con Read** prima della stesura (la spec NON le ha scoperte ex novo via grep, NON ha riscritto alcun decoder — e' documento di prodotto):
+## 5. Domande aperte (Blocchi / Domande aperte — batch F6)
 
-- `[CODICE-ESISTENTE scripts/export_directa_history_parametric.py:467-481]` — `parse_directa_candle`, schema CANDLE `C;L;H;O` (`kind, symbol, ymd, hms, uff, min_, max_, ape, qty = parts[:9]`; commento r477 `# UFF, MIN, MAX, APE => close, low, high, open`; `close_v=Decimal(uff)`/`low_v=Decimal(min_)`/`high_v=Decimal(max_)`/`open_v=Decimal(ape)`). **CONFERMATO token-per-token** (Read r465-484).
-- `[CODICE-ESISTENTE scripts/export_directa_history_parametric.py:605-617]` — header CSV legacy 11 campi (`symbol, timeframe, timestamp, date, time, open, high, low, close, volume, source`, senza `tick_count`/`bar_synthetic`). **CONFERMATO token-per-token** (Read r603-620).
-- `[CODICE-ESISTENTE scripts/export_directa_history_parametric.py:61]` — `DEFAULT_INTRADAY_MAX_DAYS = 100`. Autoritativo dal task card + `[DOC-INTERNO CAP_10_parte_10.md:230]`; non riletto in questa sessione ma citato come fatto chiuso.
+Due soli blocchi aperti, entrambi incardinati con `[B-N PROVVISORIO]` sui requisiti dipendenti:
 
-Citazioni di codice totali nel documento: **3 distinte** (<=5, AC-G3 OK).
-
----
-
-#### Misura prima/dopo
-
-Adattata onestamente al greenfield (non sono metriche del GA):
-
-| Metrica | Prima | Dopo | Delta |
-|---------|-------|------|-------|
-| Requisiti di prodotto consolidati e tracciati | 0 (dispersi e impliciti nei 65 capitoli metodologici, non leggibili da un esterno) | 36 (24 R + 5 NFR + 7 CN), ognuno con ID + valore operativo + capitolo di origine | +36 |
-| Righe di matrice tracciabilita' requisito->metodologia | 0 (nessuna matrice esistente) | 36 righe (>=30, AC-G5) | +36 |
-| Documento di prodotto mostrabile fuori dal team metodologico | assente | 1 (`SPEC_FUNZ_01.md`, ~13-15 pp) | +1 |
-| M-2 (latenza Telegram) incardinato come requisito di prodotto | OPEN, solo carryover senza requisito esplicito | NFR-1 fissato + dipendenza empirica dichiarata aperta (M-2 resta OPEN) | requisito incardinato; verifica empirica invariata (OPEN) |
-| Dipendenze aperte FASE-D censite e tracciate | implicite/sparse | 6 voci esplicite (Sez. 10.3) | +6 |
-
----
-
-#### Verifica esplicita degli Acceptance Criteria
-
-**AC di sezione** (sintesi; evidenza nel file):
-
-| AC sezione | Esito | Evidenza (file:rif) |
-|---|---|---|
-| Sez.1 — valore <=3 righe + >=3 R-PERIM + CN-1 "solo emissione" + out-of-scope chiuso | OK | SPEC_FUNZ_01.md Sez.1 (proposta di valore, R-1/2/3, CN-1, sez.1.3) |
-| Sez.2 — persona >=5 attributi + >=2 R contesto + stakeholder | OK | SPEC_FUNZ_01.md Sez.2 (sez.2.1 5 attributi, R-4/R-5, sez.2.2) |
-| Sez.3 — tabella payload >=9 voci + tipo/dominio/vincoli/cap + immutabilita' + segnale unico + 80pt + esempio | OK | SPEC_FUNZ_01.md Sez.3 (tabella 10 voci sez.3.1, R-6/7/8/9, esempio sez.3.3) |
-| Sez.4 — diagramma 1+6 + ogni terminale spiegato + trigger_event R+CN + distinzione segnale/position | OK | SPEC_FUNZ_01.md Sez.4 (sez.4.1 diagramma, sez.4.2, R-10/CN-2, R-11) |
-| Sez.5 — esempio emissione + esempio trigger + NFR L_max 30s + M-2 dichiarata + >=3 R | OK | SPEC_FUNZ_01.md Sez.5 (sez.5.2 due esempi, NFR-1, blocco M-2, R-12/13/14) |
-| Sez.6 — >=5 R operativi + rollover D-9-NB2 con esempio FIB6F->FIB6I 2026-06-19 | OK | SPEC_FUNZ_01.md Sez.6 (R-15..R-19, sez.6.2 esempio rollover) |
-| Sez.7 — KPI >=6 + DSR/PBO gate + checklist <=12 + M-16 metadato | OK | SPEC_FUNZ_01.md Sez.7 (tabella 8 KPI sez.7.1, NFR-2/3, checklist 12 sez.7.3, blocco M-16) |
-| Sez.8 — CN segnale informativo + CN separazione + CN retention valori + catalogo eventi riferito | OK | SPEC_FUNZ_01.md Sez.8 (CN-3, CN-4, CN-5 90gg+permanente, sez.8.2 catalogo) |
-| Sez.9 — tabella dipendenze >=6 + legacy 11 vs esteso 13 + >=2 R tape + riconciliazione bloccante | OK | SPEC_FUNZ_01.md Sez.9 (tabella 6 dip. sez.9.1, R-20 13vs11, R-20/21, R-23) |
-| Sez.10 — PHASE-1 vs PHASE-2 + >=5 dipendenze aperte + matrice >=30 righe + capitoli non tracciati motivati | OK | SPEC_FUNZ_01.md Sez.10 (sez.10.1, sez.10.3 6 voci, sez.10.4 36 righe, sez.10.5) |
-
-**AC globali AC-G1..AC-G15**:
-
-| AC-ID | Criterio (estratto) | Esito | Evidenza (file:rif) |
-|-------|---------------------|-------|---------------------|
-| AC-G1 | RM-1 — no nuovi "verificato X" di prima istanza; ogni asserzione richiama un CAP chiuso etichettato | OK | Nessun "verificato X" nuovo; etichette `[DOC-INTERNO]`/`[CODICE-ESISTENTE]` ovunque; self-review (a). I richiami a fatti empirici (CANDLE, F/I, PRICE/BOOK_5) sono richiami ad audit/decoder gia' chiusi, non asserzioni nuove. |
-| AC-G2 | RM-3 — fonti esterne `[WIKI-HINT, da verificare]`; nessuna conclusione solo livello-4; wiki Directa con avvertenza | OK | Nota di lettura in testa (wiki inesatta su CANDLE); `[WIKI-HINT]` su MiFID II (Sez.2/8). Nessuna asserzione strutturale wiki-only. |
-| AC-G3 | RM-2 — citazioni codice puntuali e verificabili, <=5 | OK | 3 citazioni `[CODICE-ESISTENTE export_directa_history_parametric.py:467-481 / :605-617 / :61]`, riverificate token-per-token (REPORT Decisioni). |
-| AC-G4 | Ogni requisito ha colonna "capitolo v2 di origine" non vuota | OK | Mini-tabelle per ogni sezione + matrice sez.10.4: 36/36 righe con capitolo non vuoto. |
-| AC-G5 | Matrice sez.10 >=30 righe + capitoli non tracciati motivati | OK | Matrice sez.10.4 = 36 righe; sez.10.5 "Capitoli non tracciati e motivazione" (Cap.4,12-26,27,30,35,37-44,45/50/55/57/58/63/64,56/65). |
-| AC-G6 | Nessuna contraddizione con CAP chiusi | OK | Punti rischiosi verificati per scrupolo contro i CAP: solo emissione (Cap.1), 1+6 state machine (Cap.7), target_2 informazione (Q-05/Cap.6), 80pt (Cap.5/8), tick 5pt (Cap.6), sessione 8-22 (Cap.1/52), M-2 OPEN (CARRYOVER:21), L_warmup=30gg (D-9-NB4), riconciliazione bloccante vs Cap.30 (D-10-3). Tutti coerenti. |
-| AC-G7 | Ogni requisito ha valore operativo/di prodotto dichiarato | OK | Ogni R/NFR/CN ha campo "*Valore operativo*" o "*Valore di prodotto*" nella sezione di origine. |
-| AC-G8 | M-2 NFR latenza presente + dichiarata dipendenza aperta Appendice E/FASE-D | OK | NFR-1 Sez.5.3 + blocco "M-2 OPEN — dipendenza aperta" + Sez.10.3 voce 1. Verifica empirica NON risolta (resta carryover). |
-| AC-G9 | Out-of-scope sistematico per sezione + quadro complessivo sez.10 | OK | Ogni sezione 1-10 ha riga "Out-of-scope Sezione N"; sez.10.5 quadro complessivo. |
-| AC-G10 | Lunghezza 12-16 pp | OK | ~6.440 parole ~ 13-15 pp (entro target; deviazione <20%). |
-| AC-G11 | Italiano formale, tecnico, conciso | OK | Registro coerente coi CAP v2; nessun paragrafo divulgativo non necessario. |
-| AC-G12 | Formato: `docs/spec_funzionale/SPEC_FUNZ_01.md` (nuova) + `reports/REPORT_SPEC_FUNZ_01.md`; tag `[SPEC-FUNZ-01]`; indice NON modificato | OK | File creati nei path corretti; commit tag `[SPEC-FUNZ-01]`; `00_indice.md` non toccato. |
-| AC-G13 | Reviewer applica RM-1 a se' stesso | N/A (Reviewer) | Vincolo per il Reviewer v1, non per il Developer. Citato per completezza. |
-| AC-G14 | Reviewer non riapre CAP chiusi | N/A (Reviewer) | Vincolo per il Reviewer v1. Il Developer ha usato i CAP come autoritativi (nessuna contraddizione, AC-G6). |
-| AC-G15 | Reviewer applica RACC-METODO-2 su schemi esterni citati | N/A (Reviewer) | Vincolo per il Reviewer v1. La spec NON ridichiara schemi DAPI: li cita come chiusi (CANDLE via decoder :467-481; PRICE/BOOK_5 via audit RM CLI; legacy CSV :605-617). |
-
-**Onesta'**: nessun AC e' PARZIALE o MANCA. AC-G13/14/15 sono vincoli per il **Reviewer**, marcati N/A lato Developer (non sono auto-valutazioni del proprio lavoro). Tutti gli AC di sezione e AC-G1..AC-G12 sono OK con evidenza puntuale.
-
----
-
-#### Domande aperte per il Planner
-
-Nessuna. Il task card e' dettagliato e non ha lasciato ambiguita' non risolvibili dai documenti; nessuna Q-XX aperta (coerente con il vincolo del task: il Developer NON apre Q-XX di sua iniziativa). M-2 resta dipendenza aperta dichiarata (non e' una domanda al Planner: e' carryover gia' deciso opzione (a)).
-
----
-
-#### Criterio di rollback
-
-SPEC-FUNZ-01 e' un documento di consolidamento, non una modifica al motore: il rollback non comporta re-training ne' impatto sul bundle frozen. Condizioni che giustificano il rollback (ritorno a versione precedente o re-stesura):
-
-- La Review trova una **contraddizione reale** fra un requisito della spec e un fatto/decisione chiusa in un CAP (BUG REALE AC-G6): si corregge il requisito (la spec e' sempre la parte che cede, mai il CAP — AC-G14).
-- La Review trova un **requisito senza tracciabilita' a metodologia o senza valore operativo** (BUG REALE AC-G4/AC-G7): si aggiunge la tracciabilita'/valore o si rimuove il requisito.
-- La Review trova **citazioni codice non verificabili** (BUG REALE AC-G3): si correggono.
-- Deviazione di lunghezza >=40% dal target 12-16 pp (AC-G10 BUG REALE): la spec e' amputata o bloated -> re-bilanciamento.
-
-Il rollback e' sempre **chirurgico** sul requisito o sulla sezione interessata, mai re-stesura integrale, salvo FAIL strutturale.
-
----
-
-## Iterazione 2 — risposta ai finding di Review
-
-**Contesto.** Review v1 = **PASS** (`d8a40a0`): 0 bloccanti, 0 BUG REALE. I 3 finding sono **NEUTRO** (igiene-citazione), approvati dal supervisore come micro-pass opzionale. Patch **chirurgiche** su `docs/spec_funzionale/SPEC_FUNZ_01.md` (solo le 3 zone OM-1/2/3); nessuna re-stesura, nessuna altra modifica. **Impatto sulla correttezza: nullo** (la spec era gia' tracciabilmente corretta); **impatto: +precisione di citazione** (puntatore a riga esatta dell'asserzione invece che a riga di intestazione capitolo / adiacente).
-
-**Vincolo RM-1 applicato.** Ogni nuovo numero di riga e' stato verificato con `Read` del file di destinazione PRIMA di scriverlo: la riga deve contenere davvero il costrutto citato. Nessun target ha richiesto fallback al capitolo (tutti hanno risolto alla riga esatta).
-
-### OM-1 — 6 numeri di riga corretti (puntatore header/adiacente → riga esatta)
-
-Tutti su `SPEC_FUNZ_01.md`. Ogni mapping confermato con `Read` del CAP di destinazione.
-
-| # | Citazione | Prima | Dopo | Riga spec | Contenuto reale della riga di destinazione (verificato con Read) |
-|---|---|---|---|---|---|
-| 1 | `CAP_10_parte_10.md` (Sez.9.2, invariante research=runtime esteso al tape) | `:11` (header "Capitolo 57") | `:5` | 384 | r5 = "l'invariante `research semantics = runtime semantics` ... e' esteso ... all'**intero ciclo di vita del tape**". MATCH col testo spec "fino all'intero ciclo di vita del tape". |
-| 2 | `CAP_10_parte_10.md` (R-22, Cap.59 limite ~100gg) | `:74` (header "Capitolo 59") | `:76` | 390 | r76 = "Questo capitolo norma il recupero gap di durata $\leq \sim 100$gg ... Il limite e' stabilito empiricamente". MATCH. |
-| 3 | `CAP_10_parte_10.md` (R-22, Cap.61 fallback Portara) | `:151` (header "Capitolo 61") | `:161` | 390 | r161 = "**Step C — Fallback Portara.** Se ne' archivio locale ne' `CANDLERANGE` daily coprono ... fallback all'archivio Portara/CQG". E' la riga esatta del costrutto "fallback Portara" nel corpo del capitolo. MATCH. |
-| 4 | `CAP_10_parte_10.md` (Sez.10.1, PHASE-2 fuori scope) | `:226` (header "Capitolo 64") | `:236` | 417 | r236 = "**Convenzione cross-index PHASE-2** ... Parte 10 NON si applica ai cross-index PHASE-2 (fuori scope PHASE-1)". MATCH. |
-| 5 | `CAP_10_parte_10.md` (Sez.10.3 voce 4, riavvio Darwin mezzanotte) | `:234` (estensione immutabilita' barre, riga adiacente) | `:233` | 428 | r233 = "**Riavvio Darwin mezzanotte** — osservazione empirica diretta: residuo Empirico-CLI di Parte 9 Cap.50 Gap-3". MATCH col costrutto "riavvio Darwin mezzanotte". |
-| 6 | `CAP_07_parte_VII.md` (NFR-4, tag "AC-GO-4") | `:574` (AC-GO-3, expected net return) | `:576` | 301 | r576 = "**AC-GO-4 — Lifecycle stabile cross-regime.** $|f_5^{global}(\theta^*)| < \theta_{f_5} = 0{,}30$". MATCH col tag (AC-GO-4) gia' presente nella spec. |
-
-**Verifica anti-regressione**: `grep` sulla spec dei 5 vecchi numeri `CAP_10:11/74/151/226/234` e `CAP_07:574` → **0 occorrenze residue** (nessuna citazione stale lasciata). I nuovi 6 numeri tutti presenti. La citazione `CAP_10_parte_10.md:230` (DEFAULT_INTRADAY_MAX_DAYS / migrazione legacy, Sez.9.3 + self-review (b)) NON e' nella lista OM-1 ed e' stata **lasciata invariata** (corretta).
-
-**Impatto OM-1**: nullo sulla tracciabilita' sostanziale (gia' risolveva al capitolo corretto col costrutto presente); +precisione "riga-esatta", ora allineata allo standard di citazione tenuto nelle Sez. 1-8.
-
-### OM-2 — R-17 (Sez.6): rimosso "per direzione" dal titolo
-
-- **Prima** (spec r256): "**R-17 — Singolo segnale attivo per direzione.** Vincolo $|\mathcal{A}(t)|\le 1$: nessuna politica multi-segnale concorrente."
-- **Dopo** (spec r256): "**R-17 — Singolo segnale attivo.** Vincolo $|\mathcal{A}(t)|\le 1$: nessuna politica multi-segnale concorrente."
-- **Razionale**: il vincolo chiuso e' $|\mathcal{A}(t)|\le 1$ **globale** (`[DOC-INTERNO CAP_02_parte_II.md:81]`; cfr. CAP_02:87 "elimina tutte le politiche multi-segnale concorrente"), non "uno per direzione". La locuzione "per direzione", isolata, poteva suggerire $|\mathcal{A}|\le 2$. La forma corretta era gia' enunciata **in-linea** ed e' stata **mantenuta**; rimosso solo il wording lasco dal titolo, allineandolo a R-7 (Sez.3.2) che era gia' senza "per direzione". Il riferimento autoritativo `CAP_02_parte_II.md:81` resta invariato.
-- **Impatto**: nullo sulla correttezza (il constraint corretto gia' governava in-linea, AC-G6 reggeva); +coerenza terminologica titolo↔formula e R-17↔R-7.
-
-### OM-3 — Sez.9.2: aggiunta ancora puntuale STATO_CORRENTE:76 per la numerazione `fN` di PRICE
-
-- **Prima** (spec r384): "...il feed cash usa `PRICE` (schema realtime `f4=last`/`f6=volume_cum`/`f8=day_low`/`f9=day_high`, M-9 `[DOC-INTERNO CAP_09_parte_9.md:94]`)."
-- **Dopo** (spec r384): "...il feed cash usa `PRICE` (schema realtime `f4=last`/`f6=volume_cum`/`f8=day_low`/`f9=day_high`, M-9 `[DOC-INTERNO tasks/STATO_CORRENTE.md:76]`, descritto anche in `[DOC-INTERNO CAP_09_parte_9.md:94]`)."
-- **Razionale**: l'indicizzazione `fN` esatta proviene da **M-9 in `tasks/STATO_CORRENTE.md:76`** (verificato con Read: r76 = "**Schema PRICE realtime (DAPI)** [PROVA-EMPIRICA 2026-06-01 W2, CAP-DATA-02]: `PRICE;<tk>;<HH:mm:ss>;<f4=last>;<f5>;<f6=volume_cum>;<f7>;<f8=day_low>;<f9=day_high>`"), riprodotta dalla spec token-per-token. Aggiunta l'**ancora puntuale** alla numerazione `fN`; **mantenuto** il richiamo descrittivo a `CAP_09_parte_9.md:94` (che riporta lo schema in forma descrittiva, coerente con M-9), come richiesto dal finding.
-- **Impatto**: nullo sulla correttezza (fatto gia' corretto e tracciabile); +precisione di provenienza (ancora alla riga sorgente della numerazione `fN`).
-
-### Misura prima/dopo (Iterazione 2)
-
-| Metrica | Prima (v1) | Dopo (v2) | Delta |
+| Blocco | Requisito dipendente | Motivo | Cosa serve per sbloccarlo |
 |---|---|---|---|
-| Citazioni `[DOC-INTERNO]` che puntano a riga di header/adiacente invece che alla riga esatta (OM-1) | 6 | 0 | -6 |
-| Titoli di requisito con wording lasco rispetto alla formula vincolante (OM-2) | 1 (R-17) | 0 | -1 |
-| Ancore di provenienza puntuali per la numerazione `fN` dello schema PRICE (OM-3) | 0 (solo richiamo descrittivo a CAP_09:94) | 1 (STATO_CORRENTE:76 + richiamo CAP_09:94 mantenuto) | +1 |
-| Correttezza sostanziale / tracciabilita' / contraddizioni con CAP chiusi | corretta (PASS) | corretta (invariata) | 0 |
+| **B-1** — Latenza Telegram L_max=30s non verificata (M-2 OPEN) | NFR-6.2 | Valore di lavoro provvisorio; verifica empirica del canale Telegram non eseguita, carryover Appendice E/FASE-D `[DOC-INTERNO CAP_09_parte_9.md:402]` | Probe empirico latenza bot Telegram reale → upgrade requisito |
+| **B-2** — Orario sessione FIB in attesa di upgrade a PROVA-EMPIRICA (M-GOV-1) | R-7.1 | Orario 08:00-22:00 CET da decisione AC 13/06/2026 + `[WIKI-HINT Borsa Italiana]`; upgrade empirico dal primo probe V-1 APERTO | Primo probe V-1 sul tape DAPI → upgrade requisito |
 
-**Onesta'**: nessun target OM-1 ha richiesto di restare al livello capitolo (tutti hanno risolto alla riga esatta con costrutto presente, verificato con Read). Nessun finding contestato. Le modifiche sono confinate alle 3 zone OM-1/2/3 del solo `SPEC_FUNZ_01.md`; nessun CAP, indice o file di stato toccato.
+Nessun altro blocco. Gli altri M citati (M-4, M-9, M-10, M-16, ecc.) sono CLOSED o note tecniche già incorporate come fonte. Il task è **interamente mappato**; lo stato di blocco non impedisce la consegna (i 2 blocchi sono dichiarazioni di provvisorietà su 2 requisiti, non gap di consolidamento).
 
-### Criterio di rollback (Iterazione 2)
+## 6. Criterio di rollback
 
-Trattandosi di sole correzioni di numero-di-riga e di wording (nessun cambiamento di contenuto sostanziale), il rollback dell'Iterazione 2 e' il ripristino dei 6 numeri precedenti + del titolo R-17 + rimozione dell'ancora STATO_CORRENTE:76, senza alcun impatto sul motore. Condizione di rollback: se la re-review v2 rilevasse che un nuovo numero di riga non risolve al costrutto atteso (regressione di citazione), si ripristina quella singola citazione al livello capitolo (livello meno puntuale ma corretto).
+- Se il **confronto vecchio↔nuovo** (materia del supervisore a valle) rivela divergenze sostanziali nei requisiti che indicano un errore di ricostruzione, il rollback è la ri-esecuzione del task con prompt mirato ai requisiti divergenti — non la fusione col vecchio (che resta non consultabile dal Developer).
+- Se un **finding di Review** classificato BUG REALE riguarda un requisito (multi-concern non spezzato, tracciabilità mancante/errata, citazione non risolvente, valore operativo assente, marcatura `[B-N PROVVISORIO]` mancante, traccia del vecchio testo): patch chirurgica al solo requisito + ri-verifica citazione con Read + ri-pre-consegna.
+- Il documento è **additivo e isolato** (`SPEC_FUNZ_01_v2.md`, file nuovo): il vecchio `SPEC_FUNZ_01.md` resta intatto; il rollback completo è la semplice rimozione di `SPEC_FUNZ_01_v2.md` + `REPORT_SPEC_FUNZ_01_v2.md`, senza impatto su alcun CAP (frozen G-09) né su `00_indice.md` (non toccato).
+
+---
+
+## Tabella verifica AC (AC-ID | OK/PARZIALE/MANCA | evidenza)
+
+| AC | Esito | Evidenza |
+|---|---|---|
+| **AC-G1** (atomicità N1) | OK | 75 requisiti mono-concern; concern eterogenei spezzati (es. payload Cap.6 → R-3.1..R-3.11 + CN-3.1; KPI lifecycle → NFR-8.9/8.10/8.11 distinti). SPEC_FUNZ_01_v2.md Sez.3. |
+| **AC-G2** (tracciabilità obbligatoria) | OK | Ogni requisito ha ≥1 `[DOC-INTERNO CAP_XX_parte_*.md:<riga>]`; matrice completa 75 righe in Sez.11, riconciliata 1:1 coi requisiti definiti. |
+| **AC-G3** (valore operativo obbligatorio) | OK | Ogni requisito chiude con riga *Valore operativo*. Sez.1-10. |
+| **AC-G4** (floor citazioni 100% verificabili) | OK | Tutte le citazioni `[DOC-INTERNO]`/`[CODICE-ESISTENTE]` verificate token-per-token con Read/sed contro la fonte (CAP_01/02/06/07/08/09/10 + codice :61, :477-481). Correzione applicata: CN-9.3 `CAP_08:218`→`:217`. |
+| **AC-G5** (divieto "verificato X" prima istanza, RM-1) | OK | Nessuna nuova dichiarazione "verificato X"; ogni asserzione è richiamo etichettato a CAP chiuso/codice/prova. Nessun blocco VERIFICA/PROVE/ALTERNATIVE nuovo. Nota di testa. |
+| **AC-G6** (etichette RM-3) | OK | MiFID II, Borsa Italiana, wiki Directa etichettati `[WIKI-HINT, da verificare]`, mai fonte unica strutturale; wiki Directa citata con avvertenza inesattezza CANDLE (CN-9.1, nota di testa). |
+| **AC-G7** (grafia etichette canonica) | OK | Usata `[CODICE-ESISTENTE …]` ovunque; `[CODICE-EXISTENTE …]` assente (nessuna occorrenza nel documento). |
+| **AC-G8** (marcatura `[B-N PROVVISORIO]`) | OK | NFR-6.2 `[B-1 PROVVISORIO]`, R-7.1 `[B-2 PROVVISORIO]` con riga di spiegazione; blocchi enumerati in Sez.13. |
+| **AC-G9** (cecità rispetto al vecchio) | OK | File vietati NON aperti (confermato sopra). Nessun riferimento/parafrasi del vecchio testo; ID requisito derivati ex-novo dai capitoli-fonte. |
+| **AC-G10** (scope invariato, no ampliamento) | OK | Solo PHASE-1 FIB-only; PHASE-2 dichiarata fuori scope (R-10.1/CN-10.1); implementazione FASE-D fuori scope (out-of-scope di ogni sezione). |
+| **AC-G11** (matrice + capitoli non tracciati) | OK | Sez.11 (matrice 75 righe) + Sez.12 (capitoli non tracciati: Parti III/IV/V intere + Cap.4/10/27/30/34/35/37-44 salvo 42/45/48/50/55/57/58/63/64/65, ciascuno motivato). |
+| **AC-G12** (M-2 incardinato; M-GOV-1 recepito) | OK | M-2 → NFR-6.2 `[B-1]` con verifica OPEN (Appendice E/FASE-D); M-GOV-1 → R-7.1 `[B-2]` con pendente upgrade empirico citato. |
+| **AC-S1** (out-of-scope + mini-tabella per sezione) | OK | Ogni Sez.1-10 chiude con lista out-of-scope (destinazione per voce) + mini-tabella requisito→capitolo→tipo. |
+| **AC-S2** (schemi-dato con diff col decoder canonico) | OK | CN-9.1 cita schema CANDLE `C;L;H;O;V` via `[CODICE-ESISTENTE export_directa_history_parametric.py:477-481]` + `[PROVA-EMPIRICA M-1 2026-05-29]`, non via wiki (RACC-METODO-2/RM-2). |
+
+**Nota onestà claim→evidenza (BASE_COMUNE §8)**: ogni "OK" sopra ha evidenza puntuale nel documento o nella verifica con Read/sed delle citazioni. La verifica AC-G4 è stata eseguita campionando e risolvendo le citazioni contro la fonte (riga restituita ≡ contenuto citato); l'unico mismatch trovato (`CAP_08:218` blank) è stato corretto a `:217`.
