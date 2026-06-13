@@ -31,7 +31,7 @@ Sessione operativa: negoziazione continua FIB 08:00-22:00 CET, asta di apertura 
 
 Il progetto ha **due track**, con **base comune** in `.claude/BASE_COMUNE.md` (ciclo Planner→Developer→Reviewer, reviewer **bi-sede CLI+Web**, classificazione finding, punto di controllo supervisore, disciplina dei file di stato, registry subagenti) e regole universali in `tasks/METODO.md` (RM-1..RM-4):
 
-- **Track A — Metodologia v2 (CAP-XX)**: capitoli in `docs/methodology_v2/`. Ruoli `.claude/agents/{planner,developer,reviewer}.md`. **Tutte le sezioni di questo file da "## Macchina a stati" in poi descrivono questo track** (discriminatore `00_indice.md`, 7 condizioni di chiusura CAP, check post-Developer, ecc.).
+- **Track A — Metodologia v2 (CAP-XX)**: capitoli in `docs/methodology_v2/`. Ruoli `.claude/agents/{planner,developer,reviewer}.md`. **Tutte le sezioni di questo file da "## Macchina a stati" in poi descrivono questo track** (discriminatore = marcatore `CAP-XX: CHIUSO PASS` in `tasks/STATO_CORRENTE.md`, 7 condizioni di chiusura CAP, check post-Developer, ecc.).
 - **Track B — Business-spec (SPEC-FUNZ-NN)**: specifiche funzionali/di prodotto in `docs/spec_funzionale/`, ponte fra metodologia v2 e FASE-D. Ruoli **nuovi** `.claude/agents/spec_{planner,developer,reviewer}.md` (invocati via `general-purpose` che li adotta). Vedi **§"Track business-spec (SPEC-FUNZ)"** subito sotto per gli adattamenti.
 
 **Determina il track attivo** dall'intestazione di `tasks/ACTIVE_TASK.md`: `# TASK ATTIVO: CAP-XX ...` → Track A; `# TASK ATTIVO: SPEC-FUNZ-NN ...` → Track B. Applica il set di ruoli e le condizioni di chiusura del track corrispondente. Se l'intestazione non matcha nessuno dei due pattern (malformata o assente), **fermati e chiedi al supervisore**: non assumere un track per default. Il track Metodologia **non è stato modificato** dall'introduzione del track Business-spec.
@@ -60,11 +60,11 @@ Il ciclo e la macchina a stati sono gli stessi (pattern in `BASE_COMUNE.md`), co
 
 ## Macchina a stati — come determini l'azione successiva
 
-Leggi i file di stato nell'ordine seguente e agisci sulla prima condizione vera. Il discriminatore tra **sessione N** (che ha appena prodotto il PASS) e **sessione N+1** (fresh, che apre il capitolo successivo) è lo stato di `docs/methodology_v2/00_indice.md`: se l'indice riporta già Parte X come PASS, le 7 condizioni di chiusura sono state eseguite e siamo in sessione N+1.
+Leggi i file di stato nell'ordine seguente e agisci sulla prima condizione vera. Il discriminatore tra **sessione N** (che ha appena prodotto il PASS) e **sessione N+1** (fresh, che apre il capitolo successivo) è il marcatore `CAP-XX: CHIUSO PASS <sha-review>` in `tasks/STATO_CORRENTE.md`: se `STATO_CORRENTE` riporta già `CAP-X: CHIUSO PASS`, le 7 condizioni di chiusura sono state eseguite e siamo in sessione N+1. L'indice `docs/methodology_v2/00_indice.md` resta documento leggibile (aggiornato dal Planner come primo atto di N+1), NON è il discriminatore.
 
 | Condizione | Azione |
 |------------|--------|
-| `tasks/ACTIVE_TASK.md` non esiste **OPPURE** è puntato a CAP-X chiuso PASS **E** `00_indice.md` riporta già Parte X come PASS (siamo in **nuova sessione** che apre CAP-(X+1)) | Chiama subagente **planner** per CAP-(X+1) |
+| `tasks/ACTIVE_TASK.md` non esiste **OPPURE** è puntato a CAP-X chiuso PASS **E** `tasks/STATO_CORRENTE.md` riporta già `CAP-X: CHIUSO PASS` (siamo in **nuova sessione** che apre CAP-(X+1)) | Chiama subagente **planner** per CAP-(X+1) |
 | La sessione corrente sta per produrre/committare **output non-CAP** che soddisfa uno dei 3 criteri OR di RM-4 (vedi §"Workflow per output non-CAP", i 3 bullet — parsing payload esterno, dichiarazione "fatti verificati" per CAP successivi, asserzioni destinate a CARRYOVER) | **Prima del commit** instrada il flusso nel §"Workflow per output non-CAP": scegli opzione A (self-review blindata dall'autore secondo `developer.md` §"Pre-consegna per output non-CAP") o opzione B (probe-review del Reviewer). Nessun commit non-CAP determinante passa senza A o B documentate |
 | `tasks/DEV_STATUS.md` non esiste o è vuoto **E** `tasks/ACTIVE_TASK.md` descrive un task non ancora chiuso PASS | Chiama subagente **developer** |
 | `tasks/DEV_STATUS.md` contiene `READY_FOR_REVIEW` e non esiste ancora la review corrispondente in `reviews/` | Esegui **check post-Developer** (vedi sotto); se OK chiama subagente **reviewer**, altrimenti rilancia **developer** con prompt mirato ai gap |
@@ -127,7 +127,7 @@ Se Review e Development entrano in disaccordo dopo 3 iterazioni sullo stesso pun
 - `tasks/ACTIVE_TASK.md` — task corrente (scritto da Planner)
 - `tasks/DEV_STATUS.md` — segnale di Developer: `READY_FOR_REVIEW` quando ha finito, azzerato dall'orchestratore a ogni nuovo ciclo
 - `tasks/CARRYOVER.md` — registro persistente dei M-promemoria fra capitoli (input obbligatorio per Planner della nuova sessione)
-- `docs/methodology_v2/00_indice.md` — riporta lo stato di ogni Parte (IN CORSO / IN REVIEW / PASS con hash). **Discriminatore sessione N vs N+1** nella macchina a stati.
+- `docs/methodology_v2/00_indice.md` — riporta lo stato di ogni Parte (IN CORSO / IN REVIEW / PASS con hash). Documento leggibile, aggiornato dal Planner in N+1; **NON è il discriminatore** della macchina (lo è il marcatore `CAP-XX: CHIUSO PASS` in `tasks/STATO_CORRENTE.md`).
 - `reviews/REVIEW_CAP_XX_review.md` — output di Review
 - `reports/REPORT_CAP_XX.md` — output di Developer
 
@@ -147,12 +147,12 @@ Esempio di prompt-template per la nuova sessione:
 
 ```
 Sei l'Orchestratore del progetto ga-zone-engine, sessione NUOVA per CAP-(X+1).
-Stato iniziale: CAP-X chiuso PASS (review <sha-corto>). DEV_STATUS vuoto. ACTIVE_TASK ancora puntato a CAP-X. 00_indice.md riporta Parte X come PASS.
+Stato iniziale: CAP-X chiuso PASS (review <sha-corto>). DEV_STATUS vuoto. ACTIVE_TASK ancora puntato a CAP-X. STATO_CORRENTE riporta il marcatore `CAP-X: CHIUSO PASS <sha-corto>` (l'indice 00_indice.md lo aggiorna il Planner come primo atto).
 Leggi: .claude/CLAUDE.md, MEMORY.md, tasks/CARRYOVER.md.
 Come primo atto chiama il subagente `planner` per CAP-(X+1) — eredità iniziale: vedi CARRYOVER.md per i M-promemoria.
 ```
 
-L'Orchestratore della NUOVA sessione, come primo atto, verifica autoconsistenza delle 7 condizioni della sessione precedente (autocheck su file). Se anche una sola è mancata (in particolare la 4 sull'indice), segnala al supervisore prima di procedere. **Verifica anche se la sessione precedente ha committato output non-CAP** (probe, script di parsing/decoder, handoff, indagini, documenti che dichiarano "fatti verificati"): per ognuno controlla che esista un blocco self-review (opzione A — blocco 4-righe RM-1 + grep RM-2 documentato + fonti RM-3 etichettate, in fondo al documento o nel commit message esteso) **oppure** una probe-review committata (opzione B — file in `reviews/PROBE_REVIEW_<nome>_web.md` o `_cli.md`). Se per anche un solo output non-CAP entrambe mancano, apri un task `AUDIT-RECUPERO-<nome>` come **secondo atto** (subito dopo la verifica delle 7 condizioni, prima del normale flusso di chiamata al Planner). Poi chiama il subagente `planner` per CAP-(X+1).
+L'Orchestratore della NUOVA sessione, come primo atto, verifica autoconsistenza delle 7 condizioni della sessione precedente (autocheck su file). Se anche una sola è mancata (in particolare la 4 — il marcatore `CAP-X: CHIUSO PASS` in `tasks/STATO_CORRENTE.md`), segnala al supervisore prima di procedere. **Verifica anche se la sessione precedente ha committato output non-CAP** (probe, script di parsing/decoder, handoff, indagini, documenti che dichiarano "fatti verificati"): per ognuno controlla che esista un blocco self-review (opzione A — blocco 4-righe RM-1 + grep RM-2 documentato + fonti RM-3 etichettate, in fondo al documento o nel commit message esteso) **oppure** una probe-review committata (opzione B — file in `reviews/PROBE_REVIEW_<nome>_web.md` o `_cli.md`). Se per anche un solo output non-CAP entrambe mancano, apri un task `AUDIT-RECUPERO-<nome>` come **secondo atto** (subito dopo la verifica delle 7 condizioni, prima del normale flusso di chiamata al Planner). Poi chiama il subagente `planner` per CAP-(X+1).
 
 ## Workflow per output non-CAP (probe, script, handoff) — RM-4
 
