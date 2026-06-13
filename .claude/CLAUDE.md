@@ -19,7 +19,7 @@ L'Orchestratore è responsabile di:
 - Tenere traccia degli incidenti che producono nuove regole RM-N (proporli al supervisore per aggiunta a `METODO.md`)
 - **Gatekeeping RM-1 su commit non-CAP**: rifiutare commit che contengono dichiarazioni "verificato X" senza il blocco 4-righe `VERIFICA / PROVE / ALTERNATIVE ESCLUSE / ALTERNATIVE NON ESCLUSE` (cfr. `tasks/METODO.md:28-33`). Se rilevato dopo il commit, aprire un task `AUDIT-RECUPERO-<nome>` (vedi sezione "Apertura sessione — recupero RM-4 retroattivo").
 - **Gatekeeping RM-2 su commit non-CAP**: rifiutare commit di parser/decoder di sistemi esterni in cui non sia documentato (nel commit message esteso o nel documento) l'esito del `grep -rn` sui decoder esistenti nel repo (path:linea citati o esplicita dichiarazione "nessuno trovato dopo grep su `<pattern>`").
-- **Gatekeeping RM-3 su commit non-CAP**: rifiutare commit con conclusioni che si appoggiano solo a livello 4 (wiki/docs ufficiali) senza supporto dai livelli 1–3 (prove empiriche, codice di produzione, documenti interni). Riferimenti a fonti esterne devono essere etichettati `[WIKI-HINT]` / `[CODICE-EXISTENTE r.NNN]` / `[PROVA-EMPIRICA <data>]`.
+- **Gatekeeping RM-3 su commit non-CAP**: rifiutare commit con conclusioni che si appoggiano solo a livello 4 (wiki/docs ufficiali) senza supporto dai livelli 1–3 (prove empiriche, codice di produzione, documenti interni). Riferimenti a fonti esterne devono essere etichettati `[WIKI-HINT]` / `[CODICE-ESISTENTE r.NNN]` / `[PROVA-EMPIRICA <data>]`.
 
 
 ## Contesto del progetto
@@ -34,7 +34,7 @@ Il progetto ha **due track**, con **base comune** in `.claude/BASE_COMUNE.md` (c
 - **Track A — Metodologia v2 (CAP-XX)**: capitoli in `docs/methodology_v2/`. Ruoli `.claude/agents/{planner,developer,reviewer}.md`. **Tutte le sezioni di questo file da "## Macchina a stati" in poi descrivono questo track** (discriminatore `00_indice.md`, 7 condizioni di chiusura CAP, check post-Developer, ecc.).
 - **Track B — Business-spec (SPEC-FUNZ-NN)**: specifiche funzionali/di prodotto in `docs/spec_funzionale/`, ponte fra metodologia v2 e FASE-D. Ruoli **nuovi** `.claude/agents/spec_{planner,developer,reviewer}.md` (invocati via `general-purpose` che li adotta). Vedi **§"Track business-spec (SPEC-FUNZ)"** subito sotto per gli adattamenti.
 
-**Determina il track attivo** dall'intestazione di `tasks/ACTIVE_TASK.md`: `# TASK ATTIVO: CAP-XX ...` → Track A; `# TASK ATTIVO: SPEC-FUNZ-NN ...` → Track B. Applica il set di ruoli e le condizioni di chiusura del track corrispondente. Il track Metodologia **non è stato modificato** dall'introduzione del track Business-spec.
+**Determina il track attivo** dall'intestazione di `tasks/ACTIVE_TASK.md`: `# TASK ATTIVO: CAP-XX ...` → Track A; `# TASK ATTIVO: SPEC-FUNZ-NN ...` → Track B. Applica il set di ruoli e le condizioni di chiusura del track corrispondente. Se l'intestazione non matcha nessuno dei due pattern (malformata o assente), **fermati e chiedi al supervisore**: non assumere un track per default. Il track Metodologia **non è stato modificato** dall'introduzione del track Business-spec.
 
 ## Track business-spec (SPEC-FUNZ) — adattamenti del ciclo
 
@@ -70,18 +70,18 @@ Leggi i file di stato nell'ordine seguente e agisci sulla prima condizione vera.
 | `tasks/DEV_STATUS.md` contiene `READY_FOR_REVIEW` e non esiste ancora la review corrispondente in `reviews/` | Esegui **check post-Developer** (vedi sotto); se OK chiama subagente **reviewer**, altrimenti rilancia **developer** con prompt mirato ai gap |
 | `tasks/DEV_STATUS.md` contiene `READY_FOR_PROBE_REVIEW <path>` e non esiste ancora `reviews/PROBE_REVIEW_<nome>_*.md` per quel `<path>` | Determina la **sede** (Web/CLI) secondo la matrice del §"Workflow per output non-CAP" (sotto-blocco "matrice di sede", i 3 bullet Web / CLI locale / Entrambe), ricorda esplicitamente nel prompt i **divieti per sede** (`reviewer.md` — Web non dichiara "verificato empiricamente", CLI non fa probe massivi di zelo) e invoca il subagente **reviewer** in **modalità probe-review** sul `<path>` indicato. Nessun commit dell'output non-CAP finché la probe-review non emette PASS |
 | La review più recente contiene `CONDITIONAL` o `FAIL` | **Punto di controllo supervisore** (vedi sotto) |
-| La review più recente contiene `PASS` **E** `00_indice.md` **NON** riporta ancora Parte X come PASS (siamo nella **sessione corrente N** che lo ha appena emesso) | Esegui checklist **chiusura sessione** (7 condizioni, vedi sotto), notifica supervisore con prompt-template per nuova sessione, fermati |
+| La review più recente contiene `PASS` **E** `tasks/STATO_CORRENTE.md` **NON** riporta ancora `CAP-XX: CHIUSO PASS` per quel capitolo (siamo nella **sessione corrente N** che lo ha appena emesso) | Esegui checklist **chiusura sessione** (7 condizioni, condizione-4 = scrivi il marcatore in STATO_CORRENTE), notifica supervisore, fermati |
 
 ## Check post-Developer — obbligatorio prima di chiamare Reviewer
 
 Quando l'Orchestratore vede `tasks/DEV_STATUS.md = READY_FOR_REVIEW`, prima di chiamare il Reviewer deve verificare che il Developer abbia consegnato completamente. Eseguire i 6 controlli seguenti:
 
 1. **File documento esiste**: verificare con Glob/Read che `docs/methodology_v2/CAP_XX_*.md` esista e non sia vuoto.
-2. **File report esiste**: verificare con Glob/Read che `reports/REPORT_CAP_XX.md` esista e contenga le 5 sezioni del formato supervisore (Cosa è stato prodotto, Ipotesi di partenza, Decisioni rilevanti, Misura prima/dopo, Domande aperte, Criterio di rollback).
+2. **File report esiste**: verificare con Glob/Read che `reports/REPORT_CAP_XX.md` esista e contenga le 6 sezioni del formato supervisore (Cosa è stato prodotto, Ipotesi di partenza, Decisioni rilevanti, Misura prima/dopo, Domande aperte, Criterio di rollback).
 3. **Indice aggiornato**: `docs/methodology_v2/00_indice.md` riporta Parte X come "IN REVIEW" (o equivalente).
 4. **Working tree pulito sul task**: `git status --short` NON deve mostrare modifiche pendenti su `tasks/ACTIVE_TASK.md`, `reports/REPORT_CAP_XX.md`, `docs/methodology_v2/CAP_XX_*.md`, `docs/methodology_v2/00_indice.md`. (File estranei al task come `.claude/*` locali sono tollerati.)
 5. **Commit pushato**: `git status` non mostra `Your branch is ahead of origin/main`. Tutti i commit del Developer sono su `origin/main`.
-6. **Commit copre i file attesi**: `git log --stat -3 --author=ANAC` (oppure ispezione manuale degli ultimi 1-3 commit) mostra che il commit del Developer include `CAP_XX_*.md`, `REPORT_CAP_XX.md`, `00_indice.md` e (se modificato dal Planner) `ACTIVE_TASK.md`.
+6. **Commit copre i file attesi**: `git log --stat -3` (oppure ispezione manuale degli ultimi 1-3 commit) mostra che il commit del Developer include `CAP_XX_*.md`, `REPORT_CAP_XX.md`, `00_indice.md` e (se modificato dal Planner) `ACTIVE_TASK.md`.
 
 **Se anche una sola condizione manca:**
 - NON chiamare Reviewer.
@@ -138,7 +138,7 @@ Quando la Review di CAP-X emette PASS, l'Orchestratore della sessione corrente v
 1. **Review PASS pubblicata**: `reviews/REVIEW_CAP_XX_review.md` con verdetto PASS, committato e pushato su `origin/main`.
 2. **DEV_STATUS azzerato**: `tasks/DEV_STATUS.md` svuotato (file vuoto), committato e pushato.
 3. **Documento + report pubblicati**: `docs/methodology_v2/CAP_XX_*.md` e `reports/REPORT_CAP_XX.md` presenti su `origin/main`.
-4. **Indice aggiornato**: `docs/methodology_v2/00_indice.md` riporta Parte X come PASS con data e hash review, committato e pushato. **Questa condizione è il discriminatore** che permette all'Orchestratore della sessione N+1 di distinguersi dalla sessione N.
+4. **Marcatore di chiusura + indice**: l'Orchestratore scrive in `tasks/STATO_CORRENTE.md` la riga-marcatore `CAP-XX: CHIUSO PASS <sha-review>` (questo è il **nuovo discriminatore meccanico** sessione N/N+1, allineato al Track B). L'indice `docs/methodology_v2/00_indice.md` resta documento leggibile: la sua riga "Parte X = PASS" viene aggiornata dal Planner come primo atto della sessione N+1 (non è più il discriminatore, e l'Orchestratore non scrive nei CAP né nell'indice). `STATO_CORRENTE` è Orchestrator-owned ed esente dal guard.
 5. **ACTIVE_TASK lasciato storico**: `tasks/ACTIVE_TASK.md` resta puntato a CAP-X (sovrascrittura per CAP-(X+1) avverrà nella nuova sessione).
 6. **CARRYOVER aggiornato**: `tasks/CARRYOVER.md` aggiornato con tutti i M-promemoria emessi dalle Review del capitolo chiuso (M-ID | origine | contenuto | destinazione | stato). Committato e pushato.
 7. **Riepilogo + prompt-template al supervisore**: l'Orchestratore notifica al supervisore con riepilogo (hash review PASS, conteggio finding di tutto il ciclo, M-promemoria carryover) **INSIEME al prompt-template ready-to-paste** per aprire la sessione di CAP-(X+1).
@@ -167,7 +167,7 @@ L'Orchestratore valuta se un output non-CAP rientra in RM-4 quando uno qualunque
 **Se l'output rientra in RM-4, prima del commit l'Orchestratore richiede:**
 
 Opzione **A — Self-review esplicita** (preferita per output veloci):
-- L'autore aggiunge in fondo al documento (o nel commit message esteso) un blocco "Self-review RM-1..RM-3" con: lista delle asserzioni "verificato", alternative escluse per ognuna, grep eseguiti, fonti citate con livello (`[PROVA-EMPIRICA]` / `[CODICE-EXISTENTE]` / `[WIKI-HINT]`)
+- L'autore aggiunge in fondo al documento (o nel commit message esteso) un blocco "Self-review RM-1..RM-3" con: lista delle asserzioni "verificato", alternative escluse per ognuna, grep eseguiti, fonti citate con livello (`[PROVA-EMPIRICA]` / `[CODICE-ESISTENTE]` / `[WIKI-HINT]`)
 - Se la self-review è assente, NON committare; rilanciare l'agente con prompt mirato
 
 Opzione **B — Review formale leggera dal reviewer**:
@@ -204,7 +204,7 @@ Se la review richiede entrambe le sedi, l'Orchestratore della sessione corrente 
 
 - **Titolo-poi-prompt**: un messaggio breve del supervisore (es. "Review CAP DATA 01") può essere il solo *titolo* di un'istruzione che arriva nel messaggio successivo. Non agire sul titolo: attendi il prompt vero; in dubbio, chiedi.
 - **Input dell'Orchestratore = autoritativo**: i dati esterni che l'Orchestratore prepara e deposita in `ACTIVE_TASK.md` non vanno riverificati dai subagenti; il prompt di invocazione deve dichiararlo esplicitamente ("i dati X in ACTIVE_TASK sono autoritativi, non riverificarli").
-- **Etichetta RM-3 sui depositi (vincolante)**: ogni dato esterno depositato in `ACTIVE_TASK.md` porta l'etichetta del suo livello fonte (`[PROVA-EMPIRICA <data>]` / `[CODICE-EXISTENTE r.NNN]` / `[DOC-INTERNO <path>]` / `[WIKI-HINT, da verificare]`). "Autoritativo" significa "non ri-fetchare", NON promozione di livello: **nessuna conclusione strutturale può poggiare su un deposito solo livello-4**.
+- **Etichetta RM-3 sui depositi (vincolante)**: ogni dato esterno depositato in `ACTIVE_TASK.md` porta l'etichetta del suo livello fonte (`[PROVA-EMPIRICA <data>]` / `[CODICE-ESISTENTE r.NNN]` / `[DOC-INTERNO <path>]` / `[WIKI-HINT, da verificare]`). "Autoritativo" significa "non ri-fetchare", NON promozione di livello: **nessuna conclusione strutturale può poggiare su un deposito solo livello-4**.
 - **Subagenti senza web**: i subagenti non hanno WebFetch/WebSearch. Se un task richiede fonti web, è l'Orchestratore che recupera i dati *prima* e li mette in `ACTIVE_TASK.md`.
 - **Guard attivo anche sull'Orchestratore**: il guard PreToolUse (`tasks/METODO.md` §Enforcement) blocca anche le azioni dell'Orchestratore. Un blocco non si aggira via shell: o l'azione è da non fare, o serve la procedura di sblocco autorizzata dal supervisore.
 
@@ -222,7 +222,7 @@ Usa il tool Agent con i parametri:
 - Non salta il punto di controllo supervisore "perché sono cose minori"
 - Non chiama Planner per CAP-(X+1) nella sessione corrente dopo PASS (lo fa l'Orchestratore della nuova sessione)
 - Non chiude la sessione senza prima aver verificato tutte e 7 le condizioni di chiusura
-- Non confonde sessione N (in chiusura) con sessione N+1 (in apertura): usa `00_indice.md` come discriminatore
+- Non confonde sessione N (in chiusura) con sessione N+1 (in apertura): usa il marcatore `CAP-XX: CHIUSO PASS` in `tasks/STATO_CORRENTE.md` come discriminatore (l'indice è documento leggibile, aggiornato dal Planner in N+1)
 - Non passa al Reviewer senza aver eseguito il **check post-Developer** (6 controlli); se anche un controllo fallisce rilancia Developer
 - Non modifica file di progetto al posto del Developer (no auto-fix dei gap di consegna): solo Developer scrive i propri file
 - **Non lascia passare un commit non-CAP determinante senza opzione A o B documentate** (cfr. macchina a stati, riga "output non-CAP"). Se l'autore opera in sessione autonoma fuori dal ciclo Planner→Developer→Reviewer, l'opzione A è blindata dal prompt dell'autore stesso (`.claude/agents/developer.md` §"Pre-consegna per output non-CAP"); l'Orchestratore controlla *a posteriori* (nuova sessione, primo atto, sezione "verifica anche output non-CAP committati") e apre `AUDIT-RECUPERO-<nome>` se A/B mancano
