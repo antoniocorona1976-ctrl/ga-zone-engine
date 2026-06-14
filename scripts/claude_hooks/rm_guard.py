@@ -60,6 +60,8 @@ QUAR_READ_CMD = re.compile(
     re.I)
 GIT_COMMIT = re.compile(r"\bgit\b[\s\S]*\bcommit\b")
 GIT_ADD = re.compile(r"\bgit\b[^\n|;&]*\badd\b")
+GIT_PUSH = re.compile(r"\bgit\b[\s\S]*\bpush\b")
+FORCE_FLAGS = re.compile(r"--force-with-lease|--force\b|(?:^|\s)-f(?:\s|$)")
 
 
 def deny(msg):
@@ -218,6 +220,12 @@ def main():
 
     if tool in ("Bash", "PowerShell"):
         cmd = str(ti.get("command") or "")
+        if GIT_PUSH.search(cmd) and FORCE_FLAGS.search(cmd) and "[FORCE-PUSH-OK]" not in cmd:
+            deny("BLOCCATO - force-push vietato (riscrittura history su origin/main). "
+                 "Vietato a chiunque (subagenti e Orchestratore). Un refuso nel messaggio di un "
+                 "commit NON e' motivo sufficiente: si lascia, o si aggiunge un commit correttivo. "
+                 "Eccezione solo su autorizzazione esplicita di AC: aggiungere [FORCE-PUSH-OK] al "
+                 "comando, da motivare. Vedi tasks/METODO.md sezione force-push (G-23).")
         if "RM-HOOK-OVERRIDE" in cmd:
             sys.exit(0)
         if QUAR in cmd and QUAR_READ_CMD.search(cmd):
