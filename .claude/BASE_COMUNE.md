@@ -28,7 +28,7 @@ Sequenza forzata:
 
 ## 2. Macchina a stati dell'Orchestratore (pattern generico)
 
-L'Orchestratore legge i file di stato nell'ordine e agisce **sulla prima condizione vera**. Il pattern è comune; il **discriminatore di chiusura**, i **path di output** e le **condizioni di chiusura** sono definiti dalla sezione del track attivo in `CLAUDE.md` (Metodologia: `00_indice.md` + 7 condizioni CAP; Business-spec: `STATO_CORRENTE.md`/`ACTIVE_TASK.md` + chiusura adattata, indice N/A). L'Orchestratore determina il **track attivo** dall'intestazione di `tasks/ACTIVE_TASK.md` (`# TASK ATTIVO: CAP-XX ...` → Metodologia; `# TASK ATTIVO: SPEC-FUNZ-NN ...` → Business-spec).
+L'Orchestratore legge i file di stato nell'ordine e agisce **sulla prima condizione vera**. Il pattern è comune; il **discriminatore di chiusura**, i **path di output** e le **condizioni di chiusura** sono definiti dalla sezione del track attivo in `CLAUDE.md` (Metodologia: marcatore `CAP-XX: CHIUSO PASS` in `tasks/STATO_CORRENTE.md` + 7 condizioni CAP — l'indice `00_indice.md` resta documento leggibile aggiornato dal Planner in N+1, **NON** è il discriminatore; Business-spec: marcatore `SPEC-FUNZ-NN: CHIUSO PASS` in `tasks/STATO_CORRENTE.md` + chiusura adattata, indice N/A). L'Orchestratore determina il **track attivo** dall'intestazione di `tasks/ACTIVE_TASK.md` (`# TASK ATTIVO: CAP-XX ...` → Metodologia; `# TASK ATTIVO: SPEC-FUNZ-NN ...` → Business-spec).
 
 ## 3. ★ Reviewer BI-SEDE — Claude Code CLI + Claude Code Web
 
