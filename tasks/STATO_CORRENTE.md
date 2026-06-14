@@ -4,9 +4,9 @@
 
 **Marcatori di chiusura (Track A + B — macchina a stati `.claude/CLAUDE.md`)**:
 `SPEC-FUNZ-01: CHIUSO PASS ab7450f`
-`CAP-01: CHIUSO PASS <sha-da-confermare>`
+`CAP-01: CHIUSO PASS b76c32c`
 `CAP-02: CHIUSO PASS <sha-da-confermare>`
-`CAP-03: CHIUSO PASS <sha-da-confermare>`
+`CAP-03: CHIUSO PASS 1e3172d`
 `CAP-04: CHIUSO PASS a1625df`
 `CAP-05: CHIUSO PASS 72e00df`
 `CAP-06: CHIUSO PASS d3f029d`
