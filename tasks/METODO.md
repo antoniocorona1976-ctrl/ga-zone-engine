@@ -229,7 +229,11 @@ Da 2026-06-12 un guard meccanico (`scripts/claude_hooks/rm_guard.py`, registrato
 - **Quarantena impianto B**: lettura/scrittura in `Business Spec/OLD_NOT_USE_NOT_READ_FILES_MODEL_4_CANALI/` negata (decisione AC 11/06/2026).
 - **Protezione ruoli**: scrittura su `.claude/agents/` negata, salvo flag `.claude/AGENTS_UNLOCK` (file vuoto untracked, creato e rimosso solo su autorizzazione esplicita del supervisore).
 
+**Modalità permessi (dichiarata)** — 2026-06-14 (G-24): `.claude/settings.json` ha `"defaultMode": "bypassPermissions"` **per scelta** (autonomia dei subagenti e routine cloud; nessun prompt interattivo di conferma). Verificato (indagine GOV-FIX-03) che il bypass **NON** scavalca le regole `deny` né l'hook `rm_guard.py`: entrambi restano attivi a ogni tool. Conseguenza nota: non esiste un gate umano interattivo; la protezione è interamente su deny-list + hook. Per questo le azioni irreversibili critiche (force-push, scrittura ruoli, override) sono coperte da **regole nel guard**, non da prompt.
+
 **Limite dichiarato** (cfr. finding F4 dell'audit governance 4-canali): il guard verifica la *presenza* dei blocchi, non la loro *verità*. Un guard verde NON significa "verificato davvero": la sostanza di RM-1..RM-4 resta interamente in carico al gatekeeping dell'Orchestratore e alle review. Residui noti non coperti: Grep project-wide può restituire contenuto della quarantena; redirezioni shell dirette non sono intercettate. RM-2 e RM-3 restano deliberatamente senza enforcement automatico (rapporto rumore/valore sfavorevole): valgono per via procedurale.
+
+- **Divieto di force-push (riscrittura history)** — 2026-06-14 (G-23): `git push --force`, `--force-with-lease`, `-f` riscrivono la history su `origin/main` e sono **vietati a chiunque** — subagenti **e** Orchestratore. Il guard (`rm_guard.py`) li blocca meccanicamente (exit 2). L'unica eccezione è il tag `[FORCE-PUSH-OK]` nel comando, ammesso **solo su autorizzazione esplicita di AC**, da motivare. Un refuso in un messaggio di commit NON è motivo sufficiente: si lascia, o si aggiunge un commit correttivo. (Origine: force-push di un subagente in SPEC-FUNZ-01-bis micro-pass, passato perché né deny né hook lo coprivano.)
 
 **Override d'emergenza**: tag `[RM-HOOK-OVERRIDE]` nel comando git — ammesso solo su autorizzazione esplicita del supervisore, da motivare nel commit message.
 
