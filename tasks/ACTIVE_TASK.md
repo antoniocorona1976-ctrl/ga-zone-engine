@@ -1,5 +1,16 @@
 # TASK ATTIVO: SPEC-FUNZ-01-B2 — Payload del segnale (ricostruzione cieca, modalità B, blocco 2/8)
 
+## Finding di Review da risolvere (micro-pass, approvato dal supervisore 2026-06-15)
+
+> Re-apertura del solo blocco B2 dopo Review PASS `079552c`, per correggere **1 finding NEUTRO** che il supervisore ha deciso di instradare. **Niente altro va toccato**: nessun nuovo requisito, nessuna ri-numerazione, nessun cambio di contenuto/tracciabilità/cecità. Solo la correzione editoriale sotto. Dopo il fix → re-review leggera → ri-chiusura sul nuovo SHA.
+
+- **OM-1 (NEUTRO — cross-reference interno rotto)**: in `docs/spec_funzionale/SPEC_FUNZ_01_B2.md` due rinvii a B2-CN-01 puntano a **§3.10** (che è la sezione dei campi-timer $\Delta t_{cromosoma}/T_{touch}^{max}$), mentre **B2-CN-01 è definito sotto §8.1** (blocco invariante subito dopo la matrice di tracciabilità). Correggere `§3.10` → `§8.1` nei **due** punti:
+  1. riga ~159: `*(Il vincolo geometrico $d_{stop}>b$ è reso come requisito invariante — vedi B2-CN-01 al §3.10.)*`
+  2. riga ~298 (cella della matrice §8.1, riga `B2-CN-01`): `... (vedi §3.10) ...`
+  - Nessun'altra modifica. Il contenuto di B2-CN-01, la sua tracciabilità (`:47, :49`) e tutto il resto restano invariati.
+
+---
+
 > **Track**: Business-spec (SPEC-FUNZ). **Sede**: CLI per tutto il ciclo (GOV-SURFACES-01, METODO §Superfici). **Tag commit**: `[SPEC-FUNZ-01-B2]`. Tutto su `main` (trunk); isolamento via cartella dedicata, non via branch.
 >
 > **Letture obbligatorie del Developer, in quest'ordine, PRIMA di scrivere**: `tasks/METODO.md` (RM-1..RM-4 + RACC-METODO-2), `.claude/BASE_COMUNE.md` (ciclo, sede CLI per la spec, onestà claim→evidenza), `.claude/agents/spec_developer.md` (il tuo ruolo), questo `tasks/ACTIVE_TASK.md`. **Conferma in testa al REPORT di averli letti** (formato richiamato anche al §5).
