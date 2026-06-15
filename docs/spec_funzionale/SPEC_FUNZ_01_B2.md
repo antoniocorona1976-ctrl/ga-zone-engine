@@ -156,7 +156,7 @@ Questa sezione consolida la natura del payload come oggetto-dato. Il *ciclo di v
 - *Tracciabilità*: `[DOC-INTERNO CAP_02_parte_II.md:43]`.
 - *Valore operativo*: quantifica per l'operatore l'ampiezza del rischio (distanza dal riferimento allo stop), grandezza centrale per dimensionare mentalmente la perdita massima attesa per contratto.
 
-*(Il vincolo geometrico $d_{stop}>b$ è reso come requisito invariante — vedi B2-CN-01 al §3.10.)*
+*(Il vincolo geometrico $d_{stop}>b$ è reso come requisito invariante — vedi B2-CN-01 al §8.1.)*
 
 ### 3.8 `stop_type`
 
@@ -295,7 +295,7 @@ Tutti i requisiti di B2 sono **richiami** a fatti già asseriti e chiusi nel Cap
 | B2-R-35 | `entry_zone` insieme discreto multipli di 5 | :29, :31 | livelli operabili espliciti |
 | B2-R-36 | cardinalità banda $(2b/5)+1$ | :33 | numero livelli prevedibile |
 | B2-R-37 | floor $b_{min}$ evita banda nulla | :33 | zona sempre operabile |
-| B2-CN-01 | vincolo geometrico $d_{stop}>b$ (vedi §3.10) | :47, :49 | nessun stop sul tick del fill |
+| B2-CN-01 | vincolo geometrico $d_{stop}>b$ (vedi §8.1) | :47, :49 | nessun stop sul tick del fill |
 | B2-CN-02 | payload congelato all'emissione | :73 | valori stabili fra lettura e ordine |
 | B2-CN-03 | nessun edit a parità di `signal_id` | :73 | chiave = contenuto immutabile |
 | B2-CN-04 | segnale unico attivo $|\mathcal{A}(t)|\le1$ | :79, :81 | un solo segnale operabile per volta |
