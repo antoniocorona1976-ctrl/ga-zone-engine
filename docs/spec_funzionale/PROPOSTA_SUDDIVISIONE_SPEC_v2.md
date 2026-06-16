@@ -100,13 +100,11 @@ Numero **derivato dal piano a 6 + due split decisi da AC** (§3.2). Nomi e sezio
 
 | # | Blocco | Sez.-spec | CAP-fonte (da §11) | Req o.d.g. | Citazioni o.d.g. (~1-2/req) | 1 sessione? |
 |---|---|---|---|---|---|---|
-| **B1** | **Ambito & operatore** | Sez.1+2 (escl. CN-2.1) | CAP_01 PI Cap.1-3 — **CN-2.1 → B5** (dualità miniFIB/FIB-pieno, nucleo su CAP_09 Cap.47; B1 copre la parte FIB-pieno Cap.2) | ~8 | ~11-17 | **sì** (margine ampio) |
+| **B1** | **Ambito & operatore** | Sez.1+2 (escl. CN-2.1) **+ CN-7.3** | CAP_01 PI Cap.1-3 — **CN-2.1 → B5**; **CN-7.3 (commissioni 5€/op) coperto qui** (B1-CN-05/B1-R-19, fonte Cap.2) | ~9 | ~11-17 | **sì** (margine ampio) |
 | **B2** | **Payload del segnale** | Sez.3 | CAP_02 PII Cap.6 (+ tocchi PI/PVI) | ~12 | ~13-20 | **sì** (il più carico con B4, ma in soglia) |
-| **B3** | **State-machine & lifecycle** | Sez.4 (escl. CN-4.2) | CAP_02 PII Cap.7+Cap.11 — **CN-4.2 → B5** (fonte CAP_09 Cap.52, sessione runtime; già escluso da B3 in review) | ~5 | ~7-10 | **sì** (margine ampio) |
+| **B3** | **State-machine & lifecycle** | Sez.4 (escl. CN-4.2) **+ CN-7.4** | CAP_02 PII Cap.7+Cap.11 — **CN-4.2 → B5**; **CN-7.4 (gestione post-fill all'operatore) coperto qui** (B3-R-40/B3-R-41, fonte Cap.11) | ~6 | ~7-10 | **sì** (margine ampio) |
 | **B4** | **Emissione & consegna Telegram** | Sez.5+6 | CAP_02 PII Cap.8-9 + CAP_06 PVI **Cap.29** (mobile-first §29.1-2 + 3 notifiche standard §29.4) | ~14 | ~18-25 | **sì** (il più carico con B2, ma in soglia) |
-| **B5a** | **Motore & emissione runtime** `[PROVVISORIO — conferma AC: 0 req-v2 propri]` | — (nessun req-v2 di Sez.7) | CAP_06 PVI Cap.27 (pipeline inference, emission-only, latenza, ricalibr. EGARCH) + Cap.28 (anti-doppio, non-refresh, tie-break, determinismo replay) | **0** | — | n/a |
-| **B5b** | **Canale dati DAPI** | parte Sez.7 + CN-2.1 | CAP_09 P9 Cap.46 (architettura canale/porte) + Cap.47 (catalogo/rollover/codici mese) + Cap.50 (errori/recovery/Darwin) | **~4** (R-7.2, CN-7.2, CN-7.5, CN-2.1) `+CN-7.1†, +CN-7.8†` | ~6-9 | **sì** |
-| **B5c** | **Sessione, gating & compliance** | parte Sez.7 + CN-4.2 | CAP_09 P9 Cap.45 (premessa) + Cap.52 (sessione 08:00-22:00) + Cap.53 (gating cash) + Cap.54 (audit/retention) + CAP_01 Cap.1 (tocco) | **~5** (R-7.1, CN-7.6, CN-7.7, CN-7.9, CN-4.2) `+CN-7.8†` | ~7-10 | **sì** |
+| **B5** | **Runtime DAPI, sessione & compliance** | Sez.7 (escl. CN-7.3→B1, CN-7.4→B3; +CN-4.2 da Sez.4, +CN-2.1 da Sez.2) | CAP_09 P9 Cap.45, 46, 47, 50, 52, 53, 54 + CAP_01 Cap.1 (+ CAP_06 Cap.27-28 come capitoli-fonte, vedi nota) | **11** (R-7.1, R-7.2, CN-7.1, CN-7.2, CN-7.5, CN-7.6, CN-7.7, CN-7.8, CN-7.9, CN-2.1, CN-4.2) | ~14-19 | **sì** |
 | **B6** | **Schema-dato DAPI & continuità tape** | Sez.9 | CAP_09 P9 **Cap.48, 49, 51** + CAP_10 P10 Cap.59-62 (CN-9.4→CAP_02 Cap.10) | ~9 | ~13-18 | **sì (con cautela RM massima)** |
 | **B7** | **Gate di go-live** | Sez.8 | CAP_07 PVII Cap.31-36 + CAP_01 Cap.5 PI | ~11 | ~16-22 | **sì** |
 | **B8** | **Confine PHASE-2 & fasizzazione** | Sez.10 | CAP_08 Cap.42 P8 (+ P9/P10/PVII) | ~3 | ~6-9 | **sì** (margine ampio) |
@@ -131,6 +129,14 @@ Numero **derivato dal piano a 6 + due split decisi da AC** (§3.2). Nomi e sezio
 > - **CN-7.8** (account code PII, Cap.46+Cap.54): duale B5b (Cap.46) / B5c (Cap.54 audit) — raccomando B5c.
 > - **CN-7.3** (commissioni 5€, Cap.2,5 = B1/B7) e **CN-7.4** (gestione post-fill, Cap.2/Cap.11 = B1/B3): capitolo-fonte **fuori** dai tre sotto-blocchi B5; **verosimilmente già coperti** (CN-7.3 in B1-CN-05/B1-R-19; CN-7.4 in B3 out-of-scope post-target_1). **Decisione AC**: confermare che escono da B5 (già in B1/B3) o riportarli in un sotto-blocco B5.
 > **Conteggio Sez.7 (11) preservato**: B5b 3 + B5c 4 + provvisori {CN-7.1, CN-7.8, CN-7.3, CN-7.4} 4 = 11. Partizione 1-a-1 **con riserva sui †** (sub-judice AC); nessun requisito perso o duplicato.
+
+> **Consolidamento 2026-06-16 (MAP-CONSOLIDATE-B5-04, deciso da AC — ultimo passo mappa)**: lo split a 3 è **annullato** (B5a era vuoto, verificato). **B5 torna blocco unico** (11 req, due nature: canale + sessione/compliance). Disposizione dei 4 provvisori risolta:
+> - **CN-7.1** (non instrada ordini) → **B5** (canale/compliance, Cap.46/Cap.1). **CN-7.8** (account PII) → **B5** (audit, Cap.54).
+> - **CN-7.3** (commissioni 5€/op, fonte Cap.2,5) → **B1**: coperto per contenuto da **B1-CN-05** (`SPEC_FUNZ_01_B1.md:160`) + **B1-R-19** (`:165`). Annotazione di partizione, **nessuna riapertura di B1**.
+> - **CN-7.4** (gestione post-fill all'operatore, fonte Cap.2/Cap.11) → **B3**: coperto per contenuto da **B3-R-40** (`SPEC_FUNZ_01_B3.md:226`) + **B3-R-41** OUT-OF-SCOPE (`:231`). Annotazione di partizione, **nessuna riapertura di B3**.
+> - **Cap.27-28 (CAP_06)**: capitoli-fonte/elaborazione runtime di requisiti già specificati altrove — R-1.2 (B1), R-3.10 (B2), NFR-6.2 (B4), CN-9.4 (B6). **0 requisiti-v2 propri** (verificato MAP-SPLIT-03 via grep matrice §11). Citabili come premessa in B5; **nessun blocco dedicato**; **non** fuori-scope (in scope via i 4 requisiti nei rispettivi blocchi).
+> - **Capitoli framing in B5 senza requisito-v2 proprio**: **Cap.45** (premessa/collocazione) e **Cap.50** (errori/recovery/riavvio Darwin) — nessun req di Sez.7 li fonda nella matrice §11; contesto/elaborazione runtime in B5, come Cap.27-28. I capitoli che **fondano** req-v2 in B5: Cap.52→R-7.1/CN-4.2; Cap.53→CN-7.9; Cap.54→CN-7.6/7.7/CN-7.8; Cap.46→CN-7.2/CN-7.1; Cap.47→R-7.2/CN-7.5/CN-2.1.
+> **Partizione globale 75 (1-a-1, 0 perso/duplicato)**: B1 9 (Sez.1+2 escl.CN-2.1 +CN-7.3) · B2 12 · B3 6 (Sez.4 escl.CN-4.2 +CN-7.4) · B4 14 · **B5 11** · B6 9 · B7 11 · B8 3 = **75**. **Mappa consolidata e chiusa.**
 
 **Fattibilità in 1 sessione (grana 8)**: a questa grana **tutti i blocchi sono fattibili in 1 sessione**. I due più carichi sono **B2 (~12 req)** e **B4 (~14 req)**, entrambi **in soglia** (~10-14): sono i tetti del piano, ma non sforano la grana fine decisa da AC. Gli altri sei hanno margine.
 
