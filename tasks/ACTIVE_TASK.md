@@ -213,4 +213,24 @@ Al PASS, un lettore deve poter rispondere senza ambiguità, **solo leggendo `SPE
 
 ---
 
+## 10. Finding di Review da risolvere — MICRO-PASS post-PASS (decisione AC)
+
+**Contesto**: B3 ha ricevuto **PASS** (review `e94ef17`, 0 BUG REALE) e chiusura B (`389220c`, marcatore `SPEC-FUNZ-01-B3: CHIUSO PASS e94ef17`). Su **decisione esplicita di AC** si apre un micro-pass per risolvere il **solo finding #1 (OM-1, MIGLIORA PERFORMANCE)**. I finding #2 e #3 (NEUTRO) **non** vanno toccati. Questo è un rework di atomicità su un requisito già tracciato, **non** una riapertura del perimetro.
+
+**Finding #1 (OM-1)** — `reviews/REVIEW_SPEC_FUNZ_01_B3_review.md:122`: **B3-CN-09** (`SPEC_FUNZ_01_B3.md:254`) impacchetta **due proposizioni** sotto un solo ID, in violazione di N1 (AC-G1):
+- (a) *indipendenza-di-stato*: «la submacchina **non modifica mai lo stato del segnale**; il segnale è terminato in `target_1_hit` prima che la submacchina inizi a tracciare»;
+- (b) *separazione-dei-log*: «i log della submacchina sono **separati e referenziati dal `signal_id`**».
+Entrambe tracciano a `[DOC-INTERNO CAP_02_parte_II.md:393]`.
+
+**Mandato (TUTTO E SOLO questo)**:
+1. **Spezza B3-CN-09 in due requisiti atomici**, entrambi tracciati a `:393` (la riga del CAP li afferma insieme — verifica token-per-token, AC-G7):
+   - **B3-CN-09** (mantieni l'ID): solo la proposizione (a) *indipendenza-di-stato*.
+   - **nuovo requisito** *separazione-dei-log*: proposizione (b). **Usa il prossimo ID libero `B3-CN-12`** per evitare la rinumerazione a cascata degli altri ID (NON rinumerare nient'altro: niente churn sui riferimenti incrociati).
+2. Aggiorna di conseguenza: la **Sezione 7** (riepilogo invarianti, righe ~274 — il bullet "Indipendenza della submacchina" cita B3-CN-09; se opportuno aggiungi il rimando a B3-CN-12 per la separazione-log) e la **matrice §8.1** (correggi la riga B3-CN-09 alla sola (a); **aggiungi** la riga B3-CN-12 per (b)). Mantieni il valore dichiarato coerente (operativo per entrambi, come l'attuale B3-CN-09).
+3. **Niente altro**: non toccare gli altri 60 requisiti, non il perimetro, non gli altri finding, non il CAP (frozen G-09), non l'indice (N/A).
+
+**Vincoli**: resta entro `SPEC_FUNZ_01_B3.md` + il CAP `:393`. **NON** aprire v2 / `_v1_storico` / B1 / B2 / file di chunking (la cecità non è più necessaria al confronto-copertura — già chiuso — ma resta buona prassi: lo split non richiede di guardare altre spec). Aggiorna il **REPORT** (`reports/REPORT_SPEC_FUNZ_01_B3.md`): conteggio **62 requisiti** (47 R + **12** CN + 3 NFR), evidenza AC-G1 aggiornata, una riga in §3 "Decisioni rilevanti" sul micro-pass OM-1, e la "Applicazione RM-1 a me stesso" aggiornata. Commit `[SPEC-FUNZ-01-B3]` (body: "micro-pass OM-1, split B3-CN-09→B3-CN-09+B3-CN-12") pushato su `origin/main`; `tasks/DEV_STATUS.md` = `READY_FOR_REVIEW`; poi **fermati**.
+
+---
+
 *Task card scritta dallo spec_planner, **revisione `rev-B1`** (editoriale, post-CARD-UPDATE-01; base: `rev-B` post-review di supervisione, F-1/F-2/F-3/F-5/F-6 chiusi, F-4 ritirato). NON committata dal Planner (lo fa l'Orchestratore). Nessuna spec scritta, nessun CAP modificato (freeze G-09 rispettato). Le modifiche rev-B1 sono **solo editoriali**: aggiornano due prose stale per riflettere che i pin sono ora risolti — non introducono ID-requisito né contenuti copiati dalla v2 / da B1 / da B2 / dai file di chunking; cecità del Developer preservata. I pin della transizione `active→revoked` (Cap.7.2, `CAP_02_parte_II.md:127`) e della premessa di supersessione (Cap.6.3, `CAP_02_parte_II.md:77`) sono **ora risolti e confermati in CLI** (CARD-UPDATE-01); restano comunque soggetti alla verifica token-per-token del Developer (AC-G7), come ogni citazione del §2.*
