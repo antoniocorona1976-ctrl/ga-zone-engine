@@ -103,13 +103,15 @@ Numero **derivato dal piano a 6 + due split decisi da AC** (§3.2). Nomi e sezio
 | **B1** | **Ambito & operatore** | Sez.1+2 | CAP_01 PI Cap.1-3 (+ tocchi PVI/P9) | ~9 | ~11-17 | **sì** (margine ampio) |
 | **B2** | **Payload del segnale** | Sez.3 | CAP_02 PII Cap.6 (+ tocchi PI/PVI) | ~12 | ~13-20 | **sì** (il più carico con B4, ma in soglia) |
 | **B3** | **State-machine & lifecycle** | Sez.4 | CAP_02 PII Cap.7 (CN-4.2→CAP_09 Cap.52) | ~6 | ~7-10 | **sì** (margine ampio) |
-| **B4** | **Emissione & consegna Telegram** | Sez.5+6 | CAP_02 PII Cap.8-9 + CAP_06 PVI Cap.27-29 | ~14 | ~18-25 | **sì** (il più carico con B2, ma in soglia) |
-| **B5** | **Runtime DAPI, sessione & compliance** | Sez.7 | CAP_09 P9 Cap.45-54 (+ CAP_01 Cap.1) | ~11 | ~13-18 | **sì** |
+| **B4** | **Emissione & consegna Telegram** | Sez.5+6 | CAP_02 PII Cap.8-9 + CAP_06 PVI **Cap.29** (mobile-first §29.1-2 + 3 notifiche standard §29.4) | ~14 | ~18-25 | **sì** (il più carico con B2, ma in soglia) |
+| **B5** | **Runtime DAPI, sessione & compliance** | Sez.7 | CAP_09 P9 Cap.45-54 + **CAP_06 PVI Cap.27-28** (runtime: pipeline/inference EGARCH, anti-doppio, tie-break, logging, determinismo replay) (+ CAP_01 Cap.1) | ~11 | ~13-18 | **sì** |
 | **B6** | **Schema-dato DAPI & continuità tape** | Sez.9 | CAP_09 P9 Cap.49,51 + CAP_10 P10 Cap.59-62 (CN-9.4→CAP_02 Cap.10) | ~10 | ~13-18 | **sì (con cautela RM massima)** |
 | **B7** | **Gate di go-live** | Sez.8 | CAP_07 PVII Cap.31-36 + CAP_01 Cap.5 PI | ~11 | ~16-22 | **sì** |
 | **B8** | **Confine PHASE-2 & fasizzazione** | Sez.10 | CAP_08 Cap.42 P8 (+ P9/P10/PVII) | ~3 | ~6-9 | **sì** (margine ampio) |
 
 **Somma o.d.g.**: ~9+12+6+14+11+10+11+3 = **~76**, coerente con i 75 req `[SPEC §11:604]` (la forchetta = sovrapposizioni sezionali, §3.1).
+
+> **Aggiornamento 2026-06-16 (decisione AC, B4-EXT-01 — Opzione 1)**: la riga B4 originaria assegnava `CAP_06 PVI Cap.27-29 interi` a B4. Verifica CLI (RM-2) su `CAP_06_parte_VI.md`: la **consegna** vive in **Cap.29** (mobile-first §29.1 `:146` → NFR-6.1; 3 notifiche standard §29.4 `:220` → R-6.4), mentre **Cap.27** (pipeline/inference EGARCH) e **Cap.28 intero** (§28.1 vincolo, §28.2 non-refresh, §28.3 tie-break, §28.4 determinismo/logging) sono **runtime**. Nota: le 3 notifiche standard sono fondate in **Cap.29.4**, **non** in Cap.28.4 (che è determinismo/logging). Decisione AC (Opzione 1): **B4 = Cap.8-9 + Cap.29** (consegna); **Cap.27-28 → B5** (runtime). Scostamento da "27-29 interi a B4" **autorizzato dal supervisore** e tracciato: nessun requisito perso (taglio consegna/runtime), divergenza solo sul contenitore.
 
 **Fattibilità in 1 sessione (grana 8)**: a questa grana **tutti i blocchi sono fattibili in 1 sessione**. I due più carichi sono **B2 (~12 req)** e **B4 (~14 req)**, entrambi **in soglia** (~10-14): sono i tetti del piano, ma non sforano la grana fine decisa da AC. Gli altri sei hanno margine.
 
