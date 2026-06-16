@@ -398,7 +398,7 @@ Il messaggio di consegna è progettato perché l'operatore lo legga e ci agisca 
 *Valore operativo*: chi opera da cellulare in pause brevi coglie il segnale a colpo d'occhio e può agire subito, riducendo il rischio di errore di lettura prima dell'invio manuale dell'ordine.
 
 **B4-NFR-06 — Il layout mobile-first rappresenta lo stesso payload formale senza introdurre né omettere campi (estensione cosmetica, non del contratto).**
-Il layout mobile-first **rappresenta** le 9 voci del payload formale di Cap.9.2 di Parte II (già B4) riordinandole per priorità di lettura: **nessun campo nuovo** è introdotto e nessuno è omesso; la distinzione dichiarata è *payload formale (immutabile) vs rappresentazione mobile (cosmetica)* `[DOC-INTERNO CAP_06_parte_VI.md:146]` `[DOC-INTERNO CAP_06_parte_VI.md:154]`.
+Il layout mobile-first **rappresenta** le 9 voci del payload formale di Cap.9.2 di Parte II (già B4) riordinandole per priorità di lettura: **nessun campo nuovo** è introdotto e nessuno è omesso; la distinzione dichiarata è *payload formale (immutabile) vs rappresentazione mobile (cosmetica)* `[DOC-INTERNO CAP_06_parte_VI.md:146]` `[DOC-INTERNO CAP_06_parte_VI.md:148]`.
 *Valore operativo*: l'operatore vede sempre le stesse informazioni del contratto (niente in più che lo distragga, niente in meno che gli manchi), solo disposte per la lettura mobile; ciò che legge sul cellulare è esattamente ciò che il motore ha pubblicato e loggato.
 *(Premessa citata, non ri-derivata: il contratto a 9 voci del messaggio è B4 — §7, B4-CN-06/B4-R-17..R-25 — e Cap.9.2 di Parte II resta il riferimento normativo del contenuto.)*
 
@@ -419,19 +419,19 @@ Tra una notifica standard e la successiva l'operatore **non** riceve aggiornamen
 ## E.3 — Notifica 1: emissione (Cap.29.2)
 
 **B4-R-35 — La 1ª notifica standard è il messaggio di emissione, pubblicato al momento dell'emissione del segnale.**
-La prima delle 3 notifiche standard è il **messaggio di emissione**, che pubblica le 9 voci del payload nel layout mobile-first al momento dell'emissione del segnale `[DOC-INTERNO CAP_06_parte_VI.md:220]` `[DOC-INTERNO CAP_06_parte_VI.md:154]`.
+La prima delle 3 notifiche standard è il **messaggio di emissione**, che pubblica le 9 voci del payload nel layout mobile-first al momento dell'emissione del segnale `[DOC-INTERNO CAP_06_parte_VI.md:220]` `[DOC-INTERNO CAP_06_parte_VI.md:156]`.
 *Valore operativo*: l'operatore è avvisato dell'esistenza del segnale e ne riceve i parametri appena il motore lo emette, in tempo per valutare l'ingresso.
 *(Premessa citata, non duplicata: la pubblicazione del messaggio di emissione e il suo contratto informativo a 9 voci sono già B4 — §7; qui si consolida solo il suo ruolo di **prima delle 3 notifiche standard**.)*
 
 ## E.4 — Notifica 2: `trigger_event` (Cap.29.3)
 
 **B4-R-36 — La 2ª notifica standard è la notifica `trigger_event`, pubblicata al raw touch dell'entry zone.**
-La seconda delle 3 notifiche standard è la notifica **`trigger_event`**, pubblicata **se avviene** il raw touch della `entry_zone`, come messaggio Telegram separato dal messaggio di emissione `[DOC-INTERNO CAP_06_parte_VI.md:220]` `[DOC-INTERNO CAP_06_parte_VI.md:190]`.
+La seconda delle 3 notifiche standard è la notifica **`trigger_event`**, pubblicata **se avviene** il raw touch della `entry_zone`, come messaggio Telegram separato dal messaggio di emissione `[DOC-INTERNO CAP_06_parte_VI.md:220]` `[DOC-INTERNO CAP_06_parte_VI.md:192]`.
 *Valore operativo*: l'operatore è avvisato nel momento esatto in cui il prezzo è entrato in zona e il segnale è eseguibile, informazione tempestiva e azionabile.
 *(Premessa citata, non duplicata: la **pubblicazione** della notifica `trigger_event` come messaggio separato è già consolidata in B4 — §9, B4-R-28/B4-CN-12, da Cap.9.5 di Parte II; il `trigger_event` come **evento** del lifecycle è materia di B3, citato come premessa e non ri-derivato. Qui si consolida solo il suo ruolo di **seconda delle 3 notifiche standard**.)*
 
 **B4-R-37 — La notifica `trigger_event` non modifica il messaggio di emissione (è un messaggio separato, no edit/append).**
-La notifica `trigger_event` è un messaggio distinto che **non** modifica il messaggio di emissione (no edit, no append) e riporta esplicitamente il `signal_id` del segnale originario `[DOC-INTERNO CAP_06_parte_VI.md:190]`.
+La notifica `trigger_event` è un messaggio distinto che **non** modifica il messaggio di emissione (no edit, no append) e riporta esplicitamente il `signal_id` del segnale originario `[DOC-INTERNO CAP_06_parte_VI.md:192]`.
 *Valore operativo*: l'operatore distingue nettamente la comunicazione "esiste un segnale" da "ora puoi eseguire", e il messaggio già letto non gli cambia sotto gli occhi; il `signal_id` gli permette di correlare le due notifiche.
 *(Coerente con l'invariante no-edit/immutabilità già in B4 — §9, B4-CN-11; qui ribadito a livello di consegna mobile sulla notifica `trigger_event`.)*
 
@@ -456,13 +456,13 @@ La notifica di chiusura riporta il risultato **$R_{gross}$** in punti FIB (posit
 | ID | Proposizione (sintesi) | Citazione CAP | Valore |
 |---|---|---|---|
 | B4-NFR-05 | Consegna leggibile/azionabile da cellulare in attenzione limitata (mobile-first) | CAP_06_parte_VI.md:146 | operativo |
-| B4-NFR-06 | Layout mobile-first rappresenta lo stesso payload, senza nuovi/omessi campi | CAP_06_parte_VI.md:146, :154 | operativo |
+| B4-NFR-06 | Layout mobile-first rappresenta lo stesso payload, senza nuovi/omessi campi | CAP_06_parte_VI.md:146, :148 | operativo |
 | B4-NFR-07 | Contenuto critico senza scroll orizzontale ed entro la prima schermata | CAP_06_parte_VI.md:152 | operativo |
 | B4-R-33 | Esattamente 3 notifiche standard per segnale | CAP_06_parte_VI.md:220 | operativo |
 | B4-R-34 | Nessun aggiornamento di stato tra le notifiche (no polling/refresh) | CAP_06_parte_VI.md:220 | operativo |
-| B4-R-35 | Notifica 1 = emissione, al momento dell'emissione | CAP_06_parte_VI.md:220, :154 | operativo |
-| B4-R-36 | Notifica 2 = `trigger_event`, al raw touch, messaggio separato | CAP_06_parte_VI.md:220, :190 | operativo |
-| B4-R-37 | Notifica `trigger_event` non modifica l'emissione (no edit/append), con `signal_id` | CAP_06_parte_VI.md:190 | operativo |
+| B4-R-35 | Notifica 1 = emissione, al momento dell'emissione | CAP_06_parte_VI.md:220, :156 | operativo |
+| B4-R-36 | Notifica 2 = `trigger_event`, al raw touch, messaggio separato | CAP_06_parte_VI.md:220, :192 | operativo |
+| B4-R-37 | Notifica `trigger_event` non modifica l'emissione (no edit/append), con `signal_id` | CAP_06_parte_VI.md:192 | operativo |
 | B4-R-38 | Notifica 3 = chiusura, alla transizione a stato terminale | CAP_06_parte_VI.md:220, :223, :225 | operativo |
 | B4-R-39 | Notifica di chiusura veicola lo stato terminale finale (1 di 6) | CAP_06_parte_VI.md:230 | operativo |
 | B4-R-40 | Notifica di chiusura veicola $R_{gross}$ (vuoto/`n/a` se non eseguito) | CAP_06_parte_VI.md:232 | operativo |
