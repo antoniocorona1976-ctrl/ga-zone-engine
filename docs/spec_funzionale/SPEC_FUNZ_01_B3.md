@@ -251,8 +251,11 @@ Ogni requisito porta: la **proposizione** (atomica, N1), la **tracciabilità** `
 **B3-R-46** — Lo **stato terminale** della submacchina è `tracking_closed`; la submacchina termina al verificarsi del primo evento terminante dichiarato in Parte V (in backtest: `target_2_reached`, `stop_after_target_1` o fine sessione, quello che avviene prima). `[DOC-INTERNO CAP_02_parte_II.md:391]`
 *Valore operativo*: definisce quando il tracking della posizione si conclude nel reporting, chiudendo il ciclo informativo post-target_1.
 
-**B3-CN-09** — La submacchina **non modifica mai lo stato del segnale**: il segnale è terminato in `target_1_hit` prima che la submacchina inizi a tracciare; i log della submacchina sono separati e referenziati dal `signal_id`. `[DOC-INTERNO CAP_02_parte_II.md:393]`
+**B3-CN-09** — La submacchina **non modifica mai lo stato del segnale**: il segnale è terminato in `target_1_hit` prima che la submacchina inizi a tracciare. `[DOC-INTERNO CAP_02_parte_II.md:393]`
 *Valore operativo*: garantisce all'operatore che l'esito registrato del segnale (`target_1_hit`) resta inalterato qualunque cosa accada alla posizione dopo, preservando l'integrità del track record.
+
+**B3-CN-12** — I **log della submacchina sono separati** dai log del lifecycle del segnale e referenziati dal `signal_id` del segnale che ha innescato il tracking. `[DOC-INTERNO CAP_02_parte_II.md:393]`
+*Valore operativo*: garantisce all'operatore che la traccia di ciò che accade alla posizione dopo `target_1_hit` è registrata distintamente dall'esito del segnale, così che reporting e track record restino leggibili e non si mescolino.
 
 ### 6.4 Impatto sul GA
 
@@ -271,7 +274,7 @@ Questa sezione raccoglie, per evidenza, le proprietà **invarianti/strutturali**
 - **Terminalità assoluta** degli stati terminali → B3-CN-02; chiusura definitiva di `target_1_hit` → B3-R-07; assenza di transizioni uscenti in forma di transizioni → B3-CN-04; non-esistenza di `target_1_hit → revoked` (NB-9) → B3-CN-03.
 - **Invariante evento-vs-stato**: il `trigger_event`/raw touch è evento, non stato → B3-CN-06; gli eventi della submacchina (`target_2_reached`, ecc.) sono eventi, non stati del segnale → B3-R-45, B3-CN-08.
 - **Precedenza degli eventi** come condizione del determinismo del replay → B3-CN-05.
-- **Indipendenza della submacchina** (non modifica mai lo stato del segnale) → B3-CN-09.
+- **Indipendenza della submacchina** (non modifica mai lo stato del segnale) → B3-CN-09; separazione dei log della submacchina (referenziati dal `signal_id`) → B3-CN-12.
 
 **B3-CN-11** — Il vincolo $|\mathcal{A}(t)| \leq 1$ si riferisce ai **soli segnali attivi**: un segnale terminato non è attivo, quindi non è soggetto a sostituzione. `[DOC-INTERNO CAP_02_parte_II.md:113]`
 *Valore di sistema/validazione*: disambigua la sostituzione `active→revoked` rispetto agli stati terminali (premessa per la coerenza del lifecycle e del replay). *Nota di confine*: il vincolo $|\mathcal{A}(t)| \leq 1$ **come tale** (proprietà del payload-oggetto) è consolidato in B2 (Cap.6.3); qui è richiamato solo per la sua conseguenza sul lifecycle (inapplicabilità della revoca a un segnale terminato), non ri-derivato.
@@ -342,6 +345,7 @@ Questa sezione raccoglie, per evidenza, le proprietà **invarianti/strutturali**
 | B3-CN-09 | submacchina non modifica lo stato del segnale | :393 | operativo |
 | B3-CN-10 | space search GA non esteso | :397 | operativo |
 | B3-CN-11 | $|\mathcal{A}(t)| \leq 1$ sui soli segnali attivi | :113 | sistema/validazione |
+| B3-CN-12 | log della submacchina separati, referenziati dal `signal_id` | :393 | operativo |
 | B3-NFR-01 | osservazione barre 1-min da 8:00 CET | :171, :173 | operativo |
 | B3-NFR-02 | primo pivot disponibile entro $N_{pivot}$ (valore → Parte V) | :173 | operativo |
 | B3-NFR-03 | cadenza = barra 1-min chiusa, no tick intra-bar | :175 | operativo |
