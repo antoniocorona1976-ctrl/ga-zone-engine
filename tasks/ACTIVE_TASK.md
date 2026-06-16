@@ -108,4 +108,19 @@ Un lettore, leggendo la sezione di estensione di `SPEC_FUNZ_01_B4.md`, risponde 
 
 ---
 
+## 8. Finding di Review da risolvere — CONDITIONAL `f369276` (micro-fix citazioni, decisione AC)
+
+Review B4-EXT iterazione 1 = **CONDITIONAL** (`reviews/REVIEW_SPEC_FUNZ_01_B4_EXT_review.md`). Punto di controllo supervisore eseguito: instradati il **BUG REALE #1** (obbligatorio) + i **3 MIGLIORA #2/#3/#4** (approvati da AC). Il **NEUTRO #5 NON va toccato**. Tutti sono lo **stesso pattern**: la citazione punta all'**header** di sottosezione invece che al **paragrafo di contenuto** immediatamente successivo (convenzione CAP_06: header e paragrafo sono righe distinte). **Micro-fix di solo puntatore-riga: NESSUN cambio di contenuto, proposizione o scope.** Verifica ogni nuova riga token-per-token sul CAP (AC-G7) prima di ri-citare.
+
+| # | Requisito (file:riga) | Citazione attuale | Correzione | Costrutto da coprire |
+|---|---|---|---|---|
+| 1 (BUG REALE) | `B4-R-37` (`SPEC_FUNZ_01_B4.md:433–436`) | `:190` (header §29.3) | **→ `:192`** | "non modifica il messaggio di emissione (no edit, no append)"; "`signal_id` esplicito" |
+| 2 (MIGLIORA) | `B4-NFR-06` (`:401`) | `:146`, `:154` | **aggiungi `:148`** (lascia `:146`; togli `:154` header) | "nessun campo nuovo/omesso; payload formale immutabile vs rappresentazione mobile cosmetica" |
+| 3 (MIGLIORA) | `B4-R-35` (`:422`) | `:220`, `:154` | **`:154` → `:156`** (mantieni `:220`) | "pubblica le 9 voci nel layout mobile-first" |
+| 4 (MIGLIORA) | `B4-R-36` (`:429`) | `:220`, `:190` | **`:190` → `:192`** (mantieni `:220`) | "messaggio separato al raw touch" |
+
+**Mandato (tutto e solo questo)**: correggi le 4 citazioni come sopra in `docs/spec_funzionale/SPEC_FUNZ_01_B4.md` (sezione di estensione); aggiorna le righe corrispondenti della **matrice E.6** se vi compaiono i puntatori; aggiorna il **REPORT** (tabella AC-G7 → da PARZIALE a OK; nota nel §"Decisioni"/RM-1 sul micro-fix). **NON** toccare: gli altri requisiti, le proposizioni, il perimetro, il finding #5 (`B4-R-38` `:223` ridondante — si lascia), la parte CAP_02 Cap.8-9 (PASS `c3be05e`), il CAP (frozen). Conta come iterazione di rework v2 legata a finding di Review. Commit `[SPEC-FUNZ-01-B4-EXT]` (body: "iter.2 — fix citazioni #1 BUG + #2/#3/#4 MIGLIORA: header→paragrafo") + `READY_FOR_REVIEW`; poi fermati.
+
+---
+
 *Card di estensione scritta in fase di supervisione, **rev. RM-2** (correzione fonte Cap.28.4→Cap.29.4 confermata da AC), NON committata dal Planner (lo fa l'Orchestratore). Scostamento dalla mappa autorizzato dal supervisore (AC, Opzione 1) e tracciato; mappa aggiornata in pari data. Nessuna spec scritta qui, nessun CAP modificato (freeze G-09). I pin Cap.29 sono stati risolti in CLI (RM-2), non asseriti a monte.*
