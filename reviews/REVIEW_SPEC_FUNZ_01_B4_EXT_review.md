@@ -142,3 +142,69 @@ Nessuno.
 ---
 
 *Review iterazione 1 prodotta dallo spec_reviewer in sede CLI (audit documentale no-DAPI, divieto CLI rispettato — nessuna probe eseguita). Floor citazioni verificato token-per-token su tutte e 11 le citazioni-bersaglio contro `CAP_06_parte_VI.md` Cap.29 (frozen G-09, sola lettura — nessun CAP modificato). Parte B4 base (PASS `c3be05e`) non ri-auditata.*
+
+---
+
+## ITERAZIONE 2 (re-review di DELTA) — verdetto: **PASS**
+
+> **Tipo**: re-review di **DELTA** sul solo rework iter.2. Commit del rework **`570d684`** (`[SPEC-FUNZ-01-B4-EXT] iter.2 — fix citazioni #1 BUG + #2/#3/#4 MIGLIORA: header->paragrafo`); HEAD READY_FOR_REVIEW `632a9f6`.
+> **Delta certificato**: `git diff b954f17 570d684 -- docs/spec_funzionale/SPEC_FUNZ_01_B4.md` = numstat **`8 8`** (8 righe modificate, 8 sostituite, **0 aggiunte/eliminate nette**) = 4 citazioni nel corpo (B4-NFR-06, B4-R-35, B4-R-36, B4-R-37) + le 4 righe corrispondenti della matrice E.6. Nessun cambio di proposizione/testo.
+> **Sede**: CLI (GOV-SURFACES-01). Audit documentale no-DAPI, divieto CLI rispettato (nessuna probe). CAP `CAP_06_parte_VI.md` aperto in **sola lettura** (frozen G-09), non modificato.
+> **Letture confermate**: `tasks/METODO.md` (RM-1..RM-4 + RACC-METODO-2), `.claude/BASE_COMUNE.md` (§3/§4/§6/§8), `.claude/agents/spec_reviewer.md`, review iter.1 (finding #1..#5 §7), `tasks/ACTIVE_TASK.md` §8 (mandato dei 4 fix).
+
+**Motivazione**: i 4 fix di citazione risolvono ora token-per-token al costrutto affermato; il BUG REALE #1 è chiuso; nessuna regressione; finding #5 (NEUTRO) lasciato invariato come da mandato. 0 BUG REALE in tabella ⇒ PASS (BASE_COMUNE §4).
+
+### A. Le 4 citazioni corrette risolvono token-per-token (floor 100% pulito sull'estensione)
+
+Verifica diretta sulle righe-paragrafo di `CAP_06_parte_VI.md` (Read, frozen):
+
+| Fix | Requisito | Citazione iter.2 | Riga CAP — costrutto presente | Esito |
+|---|---|---|---|---|
+| **#1 (era BUG REALE)** | B4-R-37 | `:192` (sola) | `:192` = "il motore pubblica una **notifica `trigger_event` come messaggio Telegram separato** … ha `signal_id` esplicito … **non modifica il messaggio di emissione (no edit, no append)**" | **RISOLVE — BUG #1 CHIUSO** |
+| #2 (era MIGLIORA) | B4-NFR-06 | `:146`, `:148` (rimosso `:154`) | `:148` = "**Nessun campo nuovo viene introdotto nel payload formale** … **payload formale (immutabile …) vs rappresentazione mobile (cosmetica …)**" | **RISOLVE** |
+| #3 (era MIGLIORA) | B4-R-35 | `:220`, `:156` (era `:154`) | `:156` = "**Le 9 voci pubblicate** di Cap.9.2 … riordinate per **priorità di lettura mobile** … numero totale … **esattamente 9**" (+ `:220` "esattamente 3 notifiche standard", 1ª = emissione) | **RISOLVE** |
+| #4 (era MIGLIORA) | B4-R-36 | `:220`, `:192` (era `:190`) | `:192` = "notifica `trigger_event` come **messaggio Telegram separato** … al verificarsi del **raw touch della `entry_zone`**" (+ `:220` 2ª = trigger_event) | **RISOLVE** |
+
+Le 4 righe `:154` e `:190` precedentemente citate erano gli header `### 29.2` / `### 29.3` (confermato: `:154` = "### 29.2 Layout mobile-first del messaggio di emissione"; `:190` = "### 29.3 Notifica `trigger_event` come messaggio separato"), privi del costrutto. Ora rimpiazzate/integrate dai paragrafi di contenuto `:148`/`:156`/`:192`. **Floor citazioni AC-G7 = 100% pulito sull'estensione** (le 7 citazioni già RISOLVE in iter.1 sono immutate; i 3 PARZIALI e l'1 NON-RISOLVE sono ora tutti RISOLVE).
+
+### B. Chiusura BUG #1 + 3 MIGLIORA
+
+- **BUG REALE #1 (B4-R-37)**: chiuso. L'unica citazione non era più l'header `:190` ma il paragrafo `:192` che porta esattamente "no edit, no append" + "`signal_id` esplicito".
+- **MIGLIORA #2/#3/#4**: chiusi (stesso pattern header→paragrafo), tutti risolti come da mandato §8.
+
+### C. Finding #5 (NEUTRO, B4-R-38 `:223`) — lasciato invariato
+
+Confermato: la riga di matrice di B4-R-38 resta `CAP_06_parte_VI.md:220, :223, :225`; il diff completo `b954f17..570d684` NON contiene alcuna modifica a B4-R-38 (né corpo né matrice). Non instradato, non toccato — corretto.
+
+### D. 0 regressioni
+
+- **Numstat SPEC = `8 8`**: 8 righe modificate, 0 aggiunte/eliminate nette. Le 8 sono esattamente le 4 del corpo (B4-NFR-06 :401, B4-R-35 :422, B4-R-36 :429, B4-R-37 :434) + le 4 della matrice E.6. Nessun altro requisito toccato.
+- **Proposizioni/testo invariati**: ogni hunk del diff cambia solo il token di puntatore `[…:NNN]`; il testo del requisito e il *Valore operativo* sono identici.
+- **Conteggio invariato**: parte base = 50 (riga :375); totale B4 = **61** (riga :472: 40 R + 14 CN + 7 NFR). Invariato.
+- **50 requisiti B4 base intatti** (fuori dal diff) e gli altri 7 requisiti dell'estensione (B4-NFR-05/07, B4-R-33/34/38/39/40) intatti.
+
+### E. Coerenza REPORT
+
+`reports/REPORT_SPEC_FUNZ_01_B4.md`: tabella **AC-G7 aggiornata PARZIALE→OK** con annotazione iter.2 (le 4 citazioni spostate header→paragrafo, righe `:148`/`:156`/`:192` ri-verificate token-per-token); aggiunto §"Conferma letture (iter.2)" + punto 6 in §Decisioni con blocco RM-1 (VERIFICA/PROVE/ALTERNATIVE ESCLUSE/NON ESCLUSE) coerente con quanto verificato qui. Onesto e allineato al delta.
+
+### F. Tabella "Classificazione per il supervisore" (re-review)
+
+| # | Problema | file:riga | Classificazione | Mandare a Development? |
+|---|----------|-----------|-----------------|------------------------|
+| — | Nessun residuo. I 4 finding instradati (iter.1 #1 BUG + #2/#3/#4 MIGLIORA) sono chiusi; #5 (NEUTRO) lasciato come deciso da AC. | — | — | — |
+
+**0 BUG REALE, 0 bloccanti, 0 non-bloccanti. Tabella vuota.**
+
+### G. Applicazione RM-1 a me stesso (re-review)
+
+- **VERIFICA**: "Le 4 citazioni corrette risolvono token-per-token". **PROVE**: Read diretta di `CAP_06_parte_VI.md` righe :144-:159, :189-:194, :219-:220 (frozen, sola lettura): `:192` contiene "no edit, no append" + "`signal_id` esplicito" + "messaggio Telegram separato … raw touch"; `:148` contiene "Nessun campo nuovo … payload formale (immutabile) vs rappresentazione mobile (cosmetica)"; `:156` contiene "Le 9 voci pubblicate … riordinate per priorità di lettura mobile … esattamente 9"; `:220` "esattamente 3 notifiche standard … no polling, no refresh". **ALTERNATIVE ESCLUSE**: che una delle 4 conservasse ancora un puntatore-header — esclusa per ispezione del diff (`:154`/`:190` non più presenti nelle 4 righe corrette). **ALTERNATIVE NON ESCLUSE**: nessuna.
+- **VERIFICA**: "0 regressioni, delta = solo 4 citazioni + 4 righe matrice". **PROVE**: `git diff b954f17 570d684 --numstat` su SPEC = `8 8`; ispezione hunk = solo token di puntatore cambiati, testo immutato. **ALTERNATIVE ESCLUSE**: cambio di proposizione/scope/conteggio — esclusa (conteggio 61 a :472 invariato; nessuna riga di requisito modificata oltre il puntatore). **ALTERNATIVE NON ESCLUSE**: nessuna.
+- **VERIFICA**: "Finding #5 lasciato". **PROVE**: assenza di B4-R-38 dal diff + riga matrice `:220, :223, :225` immutata. **ALTERNATIVE NON ESCLUSE**: nessuna.
+
+### H. Empirico-CLI da verificare
+
+**VUOTA** — come atteso (track Business-spec, sede CLI). Il delta è puramente documentale (ri-puntamento di citazioni a un CAP frozen); nessun fatto empirico nuovo, nessun accesso DAPI/filesystem locale richiesto.
+
+---
+
+*Re-review iterazione 2 (delta) prodotta dallo spec_reviewer in sede CLI (audit documentale no-DAPI, divieto CLI rispettato). Delta circoscritto a `git diff b954f17 570d684`. Le 4 righe-bersaglio (:148/:156/:192) ri-verificate token-per-token contro `CAP_06_parte_VI.md` (frozen G-09, sola lettura — nessun CAP modificato). BUG #1 chiuso, floor citazioni 100% pulito sull'estensione, 0 regressioni, finding #5 lasciato. Verdetto: PASS.*
