@@ -100,11 +100,11 @@ Numero **derivato dal piano a 6 + due split decisi da AC** (§3.2). Nomi e sezio
 
 | # | Blocco | Sez.-spec | CAP-fonte (da §11) | Req o.d.g. | Citazioni o.d.g. (~1-2/req) | 1 sessione? |
 |---|---|---|---|---|---|---|
-| **B1** | **Ambito & operatore** | Sez.1+2 | CAP_01 PI Cap.1-3 (+ tocchi PVI/P9) | ~9 | ~11-17 | **sì** (margine ampio) |
+| **B1** | **Ambito & operatore** | Sez.1+2 (escl. CN-2.1) | CAP_01 PI Cap.1-3 — **CN-2.1 → B5** (dualità miniFIB/FIB-pieno, nucleo su CAP_09 Cap.47; B1 copre la parte FIB-pieno Cap.2) | ~8 | ~11-17 | **sì** (margine ampio) |
 | **B2** | **Payload del segnale** | Sez.3 | CAP_02 PII Cap.6 (+ tocchi PI/PVI) | ~12 | ~13-20 | **sì** (il più carico con B4, ma in soglia) |
 | **B3** | **State-machine & lifecycle** | Sez.4 (escl. CN-4.2) | CAP_02 PII Cap.7+Cap.11 — **CN-4.2 → B5** (fonte CAP_09 Cap.52, sessione runtime; già escluso da B3 in review) | ~5 | ~7-10 | **sì** (margine ampio) |
 | **B4** | **Emissione & consegna Telegram** | Sez.5+6 | CAP_02 PII Cap.8-9 + CAP_06 PVI **Cap.29** (mobile-first §29.1-2 + 3 notifiche standard §29.4) | ~14 | ~18-25 | **sì** (il più carico con B2, ma in soglia) |
-| **B5** | **Runtime DAPI, sessione & compliance** | Sez.7 (+CN-4.2 da Sez.4) | CAP_09 P9 **Cap.45, 46, 47, 50, 52, 53, 54** + **CAP_06 PVI Cap.27-28** (pipeline/inference EGARCH, anti-doppio, tie-break, logging, determinismo replay) + CAP_01 Cap.1 | ~12 | ~14-19 | **sì** |
+| **B5** | **Runtime DAPI, sessione & compliance** | Sez.7 (+CN-4.2 da Sez.4, +CN-2.1 da Sez.2) | CAP_09 P9 **Cap.45, 46, 47, 50, 52, 53, 54** + **CAP_06 PVI Cap.27-28** (pipeline/inference EGARCH, anti-doppio, tie-break, logging, determinismo replay) + CAP_01 Cap.1-2 | ~13 | ~15-20 | **sì** |
 | **B6** | **Schema-dato DAPI & continuità tape** | Sez.9 | CAP_09 P9 **Cap.48, 49, 51** + CAP_10 P10 Cap.59-62 (CN-9.4→CAP_02 Cap.10) | ~9 | ~13-18 | **sì (con cautela RM massima)** |
 | **B7** | **Gate di go-live** | Sez.8 | CAP_07 PVII Cap.31-36 + CAP_01 Cap.5 PI | ~11 | ~16-22 | **sì** |
 | **B8** | **Confine PHASE-2 & fasizzazione** | Sez.10 | CAP_08 Cap.42 P8 (+ P9/P10/PVII) | ~3 | ~6-9 | **sì** (margine ampio) |
@@ -120,7 +120,8 @@ Numero **derivato dal piano a 6 + due split decisi da AC** (§3.2). Nomi e sezio
 > - **Cap.53 → B5** (fonda CN-7.9, gating qualitativo post-emissione, fuori-GA, `config/gating_rules.yaml`). L'**annotazione di gating si attacca al messaggio Telegram** = **premessa verso B4** (contratto del messaggio), **non** uno split verso B6. Il logging dei tick PRICE resta in audit (Cap.54, già B5).
 > - **Dualità sull'asse-requisito verificata (RM-2)**: né Cap.47 né Cap.53 fondano alcun requisito di **Sez.9** (grep `R-9.*`/`CN-9.*` × `Cap.47|Cap.53` = 0 occorrenze; la Sez.9 è fondata da Cap.48/49/51) → assegnazione B5 pulita, non duale sull'asse-requisito.
 > - **Cap.30 (Parte VI, "Monitoraggio del lifecycle in produzione") → FUORI perimetro spec**: nessun requisito-prodotto v2 lo fonda come fonte primaria; la v2 lo colloca in §12 "capitoli non tracciati" (`SPEC_FUNZ_01.md:628`: "monitoraggio/dashboard — Interna/FASE-D; citata per contrasto col gate bloccante R-9.4 e per AC-GO-11/NFR-8.8, **non requisito a sé**"). Annotato qui perché non sparisca all'assemblaggio: **dettaglio di monitoraggio FASE-D, nessun blocco lo consolida**.
-> **Overlap residui: nessuno. Mappa finalizzata.**
+> **CN-2.1 → B5 (decisione AC, opzione A, 2026-06-16)**: la dualità **miniFIB (1€/punto, esecuzione) / FIB-pieno (5€/punto, calibrazione+inference)** ha il nucleo distintivo su **CAP_09 Cap.47** (catalogo simboli MINI6F/MINI6I), perimetro B5. B1 copre la sola parte FIB-pieno (CAP_01 Cap.2: moltiplicatore 5€/punto, 1 contratto). Riassegnato a **B5** (analogo a CN-4.2), non estensione di B1 → **B1 resta CLEAN sul perimetro Cap.1-3**. Trovato dall'audit per-ID MAP-FINAL-AUDIT-02 (la dualità non era nel perimetro-fonte di B1, quindi non rilevabile dal confronto-copertura della review B1).
+> **Overlap residui: nessuno. Partizione req-v2: 1-a-1, 0 gap, 0 orfani (Sez.2 escl. CN-2.1→B1; CN-2.1→B5). Mappa finalizzata.**
 
 **Fattibilità in 1 sessione (grana 8)**: a questa grana **tutti i blocchi sono fattibili in 1 sessione**. I due più carichi sono **B2 (~12 req)** e **B4 (~14 req)**, entrambi **in soglia** (~10-14): sono i tetti del piano, ma non sforano la grana fine decisa da AC. Gli altri sei hanno margine.
 
