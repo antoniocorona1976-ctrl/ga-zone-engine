@@ -23,7 +23,7 @@ Questo documento è il **quarto blocco** della specifica funzionale `SPEC_FUNZ_0
 - **`B4-CN-NN`** — requisiti **invarianti/strutturali / di compliance-contratto** (filtro 80pt non allentabile, emissione tutto-o-niente, anti-duplicato, no-edit/messaggio separato, assenza di filtri post-emissione, esclusione delle istruzioni di gestione attiva).
 - **`B4-NFR-NN`** — requisiti **non-funzionali / di qualità-di-servizio** (latenza di consegna; formato di lettura mobile).
 
-Gli ID sono assegnati da zero per questo blocco; nessuna numerazione importata da spec preesistenti o da altri blocchi.
+Gli ID sono assegnati da zero per questo blocco; nessuna numerazione importata da spec preesistenti o da altri blocchi. *(L'estensione consegna §E — CAP_06 Cap.29 — continua questi stessi schemi-ID senza rinumerare i 50 requisiti della parte CAP_02: prossimi liberi `B4-NFR-05`, `B4-R-33`.)*
 
 ### 0.3 — Carve-out numeri
 
@@ -372,8 +372,116 @@ Nessuna fonte esterna è usata come fonte unica in B4. La Telegram Bot API è li
 | B4-CN-13 | Al fallimento `signal_id` non aggiunto a $\mathcal{P}$, segnale non pubblicato | CAP_02_parte_II.md:279 | di sistema |
 | B4-CN-14 | Fallimento tracciato, non implicito | CAP_02_parte_II.md:281 | di sistema |
 
-**Totale**: 32 R + 14 CN + 4 NFR = **50 requisiti atomici**.
+**Totale (parte CAP_02 Cap.8-9)**: 32 R + 14 CN + 4 NFR = **50 requisiti atomici**. *(Per il totale aggiornato comprensivo dell'estensione Cap.29 vedi §E.6.)*
 
 ---
 
-*Documento B4 della spec ricostruita a blocchi. Costruito in cieco dai soli Cap.8 (8.1–8.4) e Cap.9 (9.1–9.6) di `CAP_02_parte_II.md` (pin `a1625df`). File autonomo, sarà ricomposto a fine serie (dopo B8).*
+# Estensione consegna — CAP_06 PVI (Cap.29)
+
+> **Tag commit**: `[SPEC-FUNZ-01-B4-EXT]`. **Sede**: CLI. **Fonte unica**: `docs/methodology_v2/CAP_06_parte_VI.md`, **Cap.29 (§29.1–29.5)**.
+
+## E.0 — Nota di provenienza ed estensione
+
+Questa sezione è un'**estensione autorizzata** del blocco B4, **non** un nuovo blocco e **non** un rifacimento.
+
+- **Autorizzazione**: decisione del supervisore AC, **Opzione 1** (recuperare la materia di **consegna** di CAP_06 Parte VI omessa dal perimetro-fonte originario di B4). La mappa di chunking assegnava a B4 anche CAP_06 PVI Cap.27-29; di quei tre capitoli **solo Cap.29 è consegna** (operatività mobile), mentre Cap.27 (pipeline di inference/EGARCH) e Cap.28 (anti-doppio operazionale, non-refresh, tie-break, logging candidati, determinismo del replay) sono **runtime** e sono **rinviati a B5** (vedi §E.5). La mappa è stata aggiornata in pari data per riflettere il taglio consegna/runtime: scostamento **autorizzato e tracciato**, non un drift.
+- **Cosa recupera**: i due requisiti-bersaglio della consegna di CAP_06 — **mobile-first** (famiglia `B4-NFR`, recupera **NFR-6.1** della v2) e le **3 notifiche standard** (famiglia `B4-R`, recupera **R-6.4** della v2).
+- **Invarianza della parte già PASS**: la parte di B4 su CAP_02 Cap.8-9 (i 50 requisiti delle §1–§12, **PASS `c3be05e`**) **non** si ri-deriva, **non** si riapre, **non** si rivede. Gli ID esistenti non sono rinumerati: questa estensione **continua** lo schema-ID di B4 (prossimi liberi: `B4-NFR-05`, `B4-R-33`).
+- **Fonte e cecità**: i requisiti di questa estensione sono derivati **dal solo Cap.29** di `CAP_06_parte_VI.md`. Le voci del contratto a 9 campi (Cap.9.2) e la pubblicazione della notifica `trigger_event` (Cap.9.5) — già consolidate in B4 — sono **citate come premessa**, **non** ri-elencate. Gli stati terminali del lifecycle (Cap.7, materia di B3) sono **citati come premessa**, **non** ri-derivati.
+
+## E.1 — Requisiti mobile-first (Cap.29.1–29.2) — recupera NFR-6.1
+
+La consegna del segnale avviene sul **bot Telegram personale** dell'operatore, che esegue manualmente da cellulare in attenzione limitata. Cap.29 **rappresenta** il payload formale già fissato (le 9 voci del contratto di Cap.9.2 di Parte II, **già consolidate in B4 — §7, B4-CN-06/B4-R-17..R-25**, qui citate come premessa e **non** ri-elencate) in un **layout mobile-first**, senza introdurre campi nuovi.
+
+**B4-NFR-05 — La consegna è progettata per essere leggibile e azionabile da cellulare in attenzione limitata (mobile-first).**
+Il messaggio di consegna è progettato perché l'operatore lo legga e ci agisca da schermo di cellulare in condizioni di attenzione limitata e discontinua durante la giornata lavorativa; questo profilo operativo è il criterio di progettazione del messaggio Telegram in Cap.29 `[DOC-INTERNO CAP_06_parte_VI.md:146]`.
+*Valore operativo*: chi opera da cellulare in pause brevi coglie il segnale a colpo d'occhio e può agire subito, riducendo il rischio di errore di lettura prima dell'invio manuale dell'ordine.
+
+**B4-NFR-06 — Il layout mobile-first rappresenta lo stesso payload formale senza introdurre né omettere campi (estensione cosmetica, non del contratto).**
+Il layout mobile-first **rappresenta** le 9 voci del payload formale di Cap.9.2 di Parte II (già B4) riordinandole per priorità di lettura: **nessun campo nuovo** è introdotto e nessuno è omesso; la distinzione dichiarata è *payload formale (immutabile) vs rappresentazione mobile (cosmetica)* `[DOC-INTERNO CAP_06_parte_VI.md:146]` `[DOC-INTERNO CAP_06_parte_VI.md:154]`.
+*Valore operativo*: l'operatore vede sempre le stesse informazioni del contratto (niente in più che lo distragga, niente in meno che gli manchi), solo disposte per la lettura mobile; ciò che legge sul cellulare è esattamente ciò che il motore ha pubblicato e loggato.
+*(Premessa citata, non ri-derivata: il contratto a 9 voci del messaggio è B4 — §7, B4-CN-06/B4-R-17..R-25 — e Cap.9.2 di Parte II resta il riferimento normativo del contenuto.)*
+
+**B4-NFR-07 — Il contenuto critico è leggibile sul cellulare senza scroll orizzontale ed entro la prima schermata verticale.**
+Il messaggio è interamente testuale e self-contained ed è progettato per schermi mobile di larghezza tipica, leggibile **senza scroll orizzontale** (linee corte) e con il contenuto critico (direzione, entry_zone, target_1, stop_loss) visibile **entro la prima schermata** (senza scroll verticale eccessivo) `[DOC-INTERNO CAP_06_parte_VI.md:152]`.
+*Valore operativo*: l'operatore legge le informazioni che servono per decidere senza dover scorrere il messaggio, evitando di perdere un campo critico (es. il lato o lo stop) in fondo a un testo lungo.
+
+## E.2 — Le 3 notifiche standard per segnale (Cap.29.4) — recupera R-6.4
+
+**B4-R-33 — Il canale pubblica esattamente 3 notifiche standard per segnale.**
+Per ogni segnale il canale Telegram pubblica **esattamente 3 notifiche standard**: (i) **emissione** (§E.3), (ii) **`trigger_event`** se avviene il raw touch (§E.4), (iii) **transizione a stato terminale** (§E.5) `[DOC-INTERNO CAP_06_parte_VI.md:220]`.
+*Valore operativo*: l'operatore sa in anticipo quante e quali comunicazioni riceverà per ciascun segnale, così non resta in attesa di messaggi che non arriveranno né teme di averne persi.
+
+**B4-R-34 — Tra una notifica e la successiva il canale non invia aggiornamenti di stato (no polling, no refresh).**
+Tra una notifica standard e la successiva l'operatore **non** riceve aggiornamenti di stato del segnale: il motore monitora silenziosamente e l'operatore segue lo stato sul terminale Telegram in modo statico, senza polling né refresh `[DOC-INTERNO CAP_06_parte_VI.md:220]`.
+*Valore operativo*: il canale resta sgombro tra un evento e l'altro; l'operatore non è bombardato da aggiornamenti continui e dedica attenzione solo ai tre momenti che contano.
+
+## E.3 — Notifica 1: emissione (Cap.29.2)
+
+**B4-R-35 — La 1ª notifica standard è il messaggio di emissione, pubblicato al momento dell'emissione del segnale.**
+La prima delle 3 notifiche standard è il **messaggio di emissione**, che pubblica le 9 voci del payload nel layout mobile-first al momento dell'emissione del segnale `[DOC-INTERNO CAP_06_parte_VI.md:220]` `[DOC-INTERNO CAP_06_parte_VI.md:154]`.
+*Valore operativo*: l'operatore è avvisato dell'esistenza del segnale e ne riceve i parametri appena il motore lo emette, in tempo per valutare l'ingresso.
+*(Premessa citata, non duplicata: la pubblicazione del messaggio di emissione e il suo contratto informativo a 9 voci sono già B4 — §7; qui si consolida solo il suo ruolo di **prima delle 3 notifiche standard**.)*
+
+## E.4 — Notifica 2: `trigger_event` (Cap.29.3)
+
+**B4-R-36 — La 2ª notifica standard è la notifica `trigger_event`, pubblicata al raw touch dell'entry zone.**
+La seconda delle 3 notifiche standard è la notifica **`trigger_event`**, pubblicata **se avviene** il raw touch della `entry_zone`, come messaggio Telegram separato dal messaggio di emissione `[DOC-INTERNO CAP_06_parte_VI.md:220]` `[DOC-INTERNO CAP_06_parte_VI.md:190]`.
+*Valore operativo*: l'operatore è avvisato nel momento esatto in cui il prezzo è entrato in zona e il segnale è eseguibile, informazione tempestiva e azionabile.
+*(Premessa citata, non duplicata: la **pubblicazione** della notifica `trigger_event` come messaggio separato è già consolidata in B4 — §9, B4-R-28/B4-CN-12, da Cap.9.5 di Parte II; il `trigger_event` come **evento** del lifecycle è materia di B3, citato come premessa e non ri-derivato. Qui si consolida solo il suo ruolo di **seconda delle 3 notifiche standard**.)*
+
+**B4-R-37 — La notifica `trigger_event` non modifica il messaggio di emissione (è un messaggio separato, no edit/append).**
+La notifica `trigger_event` è un messaggio distinto che **non** modifica il messaggio di emissione (no edit, no append) e riporta esplicitamente il `signal_id` del segnale originario `[DOC-INTERNO CAP_06_parte_VI.md:190]`.
+*Valore operativo*: l'operatore distingue nettamente la comunicazione "esiste un segnale" da "ora puoi eseguire", e il messaggio già letto non gli cambia sotto gli occhi; il `signal_id` gli permette di correlare le due notifiche.
+*(Coerente con l'invariante no-edit/immutabilità già in B4 — §9, B4-CN-11; qui ribadito a livello di consegna mobile sulla notifica `trigger_event`.)*
+
+## E.5 — Notifica 3: transizione terminale (Cap.29.5)
+
+**B4-R-38 — La 3ª notifica standard è il messaggio di chiusura, pubblicato alla transizione del segnale a uno stato terminale.**
+La terza delle 3 notifiche standard è il **messaggio di chiusura**, pubblicato alla transizione del segnale dallo stato `active` a uno degli **stati terminali** del lifecycle, e informa l'operatore della conclusione del segnale e del risultato `[DOC-INTERNO CAP_06_parte_VI.md:220]` `[DOC-INTERNO CAP_06_parte_VI.md:223]` `[DOC-INTERNO CAP_06_parte_VI.md:225]`.
+*Valore operativo*: l'operatore sa quando il segnale è concluso e con quale esito, così può chiudere mentalmente la posizione e non resta in attesa di un segnale già terminato.
+*(Premessa citata, non ri-derivata: gli **stati terminali** e le transizioni del lifecycle sono materia di B3 (Cap.7); qui si consolida solo la **notifica** della transizione — che esiste, quando scatta, cosa veicola — non la state machine.)*
+
+**B4-R-39 — La notifica di chiusura veicola lo stato terminale finale del segnale.**
+La notifica di chiusura riporta lo **stato terminale finale** raggiunto dal segnale, uno fra i sei stati terminali del lifecycle `[DOC-INTERNO CAP_06_parte_VI.md:230]`.
+*Valore operativo*: l'operatore conosce il motivo preciso della chiusura (target raggiunto, stop, scadenza, invalidazione, mancato target, revoca) e può registrarlo per la propria contabilità manuale.
+*(Premessa citata, non ri-derivata: l'**insieme** dei sei stati terminali è definito in B3 (Cap.7); qui si consolida solo che la notifica li **veicola** alla consegna.)*
+
+**B4-R-40 — La notifica di chiusura veicola il risultato $R_{gross}$ del segnale (vuoto/`n/a` per i segnali non eseguiti).**
+La notifica di chiusura riporta il risultato **$R_{gross}$** in punti FIB (positivo, negativo o nullo) per i segnali eseguiti, e **vuoto o `n/a`** per i segnali non eseguiti `[DOC-INTERNO CAP_06_parte_VI.md:232]`.
+*Valore operativo*: l'operatore legge a chiusura il risultato lordo del segnale in punti, utile per la propria contabilità, con la distinzione esplicita fra segnali eseguiti e segnali mai entrati.
+
+## E.6 — Matrice di tracciabilità (estensione Cap.29)
+
+| ID | Proposizione (sintesi) | Citazione CAP | Valore |
+|---|---|---|---|
+| B4-NFR-05 | Consegna leggibile/azionabile da cellulare in attenzione limitata (mobile-first) | CAP_06_parte_VI.md:146 | operativo |
+| B4-NFR-06 | Layout mobile-first rappresenta lo stesso payload, senza nuovi/omessi campi | CAP_06_parte_VI.md:146, :154 | operativo |
+| B4-NFR-07 | Contenuto critico senza scroll orizzontale ed entro la prima schermata | CAP_06_parte_VI.md:152 | operativo |
+| B4-R-33 | Esattamente 3 notifiche standard per segnale | CAP_06_parte_VI.md:220 | operativo |
+| B4-R-34 | Nessun aggiornamento di stato tra le notifiche (no polling/refresh) | CAP_06_parte_VI.md:220 | operativo |
+| B4-R-35 | Notifica 1 = emissione, al momento dell'emissione | CAP_06_parte_VI.md:220, :154 | operativo |
+| B4-R-36 | Notifica 2 = `trigger_event`, al raw touch, messaggio separato | CAP_06_parte_VI.md:220, :190 | operativo |
+| B4-R-37 | Notifica `trigger_event` non modifica l'emissione (no edit/append), con `signal_id` | CAP_06_parte_VI.md:190 | operativo |
+| B4-R-38 | Notifica 3 = chiusura, alla transizione a stato terminale | CAP_06_parte_VI.md:220, :223, :225 | operativo |
+| B4-R-39 | Notifica di chiusura veicola lo stato terminale finale (1 di 6) | CAP_06_parte_VI.md:230 | operativo |
+| B4-R-40 | Notifica di chiusura veicola $R_{gross}$ (vuoto/`n/a` se non eseguito) | CAP_06_parte_VI.md:232 | operativo |
+
+**Estensione Cap.29**: 8 R + 0 CN + 3 NFR = **11 requisiti atomici**.
+
+**Totale B4 (CAP_02 Cap.8-9 + CAP_06 Cap.29)**: 40 R + 14 CN + 7 NFR = **61 requisiti atomici**.
+
+## E.7 — Nota di rinvio (materia di CAP_06 PVI deliberatamente rinviata a B5)
+
+Le seguenti materie di CAP_06 Parte VI sono **runtime**, non consegna, e sono **deliberatamente rinviate a B5** (non sono gap di questa estensione):
+
+| Materia di CAP_06 PVI | Destinazione | Perché fuori da questa estensione (consegna) |
+|---|---|---|
+| Pipeline di inference real-time, modello di volatilità EGARCH (Cap.27) | **B5** (runtime) | È la logica di produzione del segnale, non la sua consegna all'operatore |
+| Politica anti-doppio-segnale operazionale, non-refresh, tie-break, logging dei candidati, determinismo del replay (Cap.28 intero, §28.1–28.4) | **B5** (runtime) | È comportamento del motore a runtime, non rappresentazione/consegna del messaggio |
+
+**Distinzione consegna/runtime (cardine)**: questa estensione consolida **solo** la materia di **consegna** (Cap.29: come il segnale e le sue notifiche sono rappresentati e recapitati all'operatore mobile). La materia **runtime** (Cap.27 pipeline/inference; Cap.28 intero) è di B5. Nota di confine: la gestione duplicati/idempotenza di lettura di Cap.29.4 (idempotenza visiva via `signal_id`, anti-ripubblicazione ai restart) è già coperta in B4 — §9, B4-CN-09/B4-CN-10 — da Cap.9.4 di Parte II; di Cap.29.4 questa estensione recupera **solo** la regola delle 3 notifiche standard (B4-R-33/B4-R-34), non l'anti-duplicato già consolidato.
+
+---
+
+*Documento B4 della spec ricostruita a blocchi. Parte CAP_02 Cap.8-9 (§1–§12) costruita in cieco dai soli Cap.8 (8.1–8.4) e Cap.9 (9.1–9.6) di `CAP_02_parte_II.md` (pin `a1625df`), **PASS `c3be05e`**. Estensione consegna (§E) costruita in cieco dal solo Cap.29 di `CAP_06_parte_VI.md` (lettura del B4 esistente solo per continuità-ID e no-duplicazione). File autonomo, sarà ricomposto a fine serie (dopo B8).*

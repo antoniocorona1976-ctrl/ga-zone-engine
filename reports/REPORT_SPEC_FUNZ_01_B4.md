@@ -1,7 +1,9 @@
 # REPORT — SPEC-FUNZ-01-B4 (Emissione & consegna, blocco 4/8)
 
-> Track: Business-spec (SPEC-FUNZ). Sede: CLI. Tag commit: [SPEC-FUNZ-01-B4].
-> Documento: docs/spec_funzionale/SPEC_FUNZ_01_B4.md — 50 requisiti (32 B4-R + 14 B4-CN + 4 B4-NFR).
+> Track: Business-spec (SPEC-FUNZ). Sede: CLI. Tag commit: [SPEC-FUNZ-01-B4] + estensione [SPEC-FUNZ-01-B4-EXT].
+> Documento: docs/spec_funzionale/SPEC_FUNZ_01_B4.md — 61 requisiti (40 B4-R + 14 B4-CN + 7 B4-NFR): 50 della parte CAP_02 Cap.8-9 (PASS c3be05e) + 11 dell'estensione consegna CAP_06 Cap.29.
+>
+> NOTA DI STRUTTURA: le sezioni 1-6, la tabella AC-G1..G11 e l'Applicazione RM-1 a me stesso QUI SOTTO si riferiscono alla parte CAP_02 Cap.8-9 (B4 base, PASS c3be05e) e restano invariate come storico. La sezione di ESTENSIONE (consegna CAP_06 Cap.29) e in fondo al report, intestata "## Estensione consegna — SPEC-FUNZ-01-B4-EXT".
 
 ## Conferma letture obbligatorie
 
@@ -111,3 +113,99 @@ Elenco delle affermazioni che faccio in questo report con sostegno operativo, e 
 ---
 
 *Report prodotto dallo spec_developer (passata di verifica+completamento). Il documento B4 e stato derivato in cieco da una passata Developer precedente interrotta da un errore di rete; questa passata ne ha verificato cecita/completezza/citazioni campionate/scope e ha completato il deliverable (report + commit). Nessuna correzione al documento (integro). Sede CLI, no-DAPI.*
+
+---
+
+# Estensione consegna — SPEC-FUNZ-01-B4-EXT
+
+> Tag commit: [SPEC-FUNZ-01-B4-EXT]. Sede: CLI, no-DAPI. Fonte unica: docs/methodology_v2/CAP_06_parte_VI.md, Cap.29 (par.29.1-29.5).
+> Estensione del blocco B4 che recupera la materia di CONSEGNA di CAP_06 PVI omessa dal perimetro-fonte originario. La parte CAP_02 Cap.8-9 (50 requisiti, PASS c3be05e) NON e toccata.
+
+## Conferma letture obbligatorie (estensione)
+
+Confermo di aver letto, in questo ordine, prima di scrivere l'estensione: (1) tasks/METODO.md (RM-1..RM-4 + RACC-METODO-2 + Enforcement); (2) .claude/BASE_COMUNE.md (ciclo, sede CLI, onesta claim->evidenza par.8); (3) .claude/agents/spec_developer.md (il mio ruolo); (4) tasks/ACTIVE_TASK.md (card B4-EXT: decisione di perimetro par.0, cecita par.0.1, perimetro-fonte par.1 SOLO Cap.29, AC par.2 con AC-EXT-1/2/3, sezioni par.3, out-of-scope par.4, done-when par.5); (5) FONTE: docs/methodology_v2/CAP_06_parte_VI.md Cap.29 (par.29.1-29.5, righe :142-244) per la verifica token-per-token delle citazioni; (6) ECCEZIONE same-block: docs/spec_funzionale/SPEC_FUNZ_01_B4.md (B4 esistente) SOLO per continuita-ID e no-duplicazione (par.0.1 della card).
+
+## Provenienza e cecita (estensione) — onesta tassativa (RM-1, BASE_COMUNE par.8)
+
+- Provenienza: estensione autorizzata dal supervisore AC (Opzione 1). Recupera la materia di CONSEGNA di CAP_06 PVI (Cap.29) omessa dal perimetro-fonte originario di B4 (errore di setup dell'Orchestratore, non del Planner ne dei Developer; card par.0/par.0 nota RM-2). NON e un nuovo blocco ne un rifacimento.
+- Cecita: i requisiti dell'estensione sono derivati DAL SOLO Cap.29 di CAP_06_parte_VI.md. NON ho aperto/letto/citato SPEC_FUNZ_01.md (v2), file _v1_storico, file di chunking (PROPOSTA_SUDDIVISIONE_SPEC*.md) come fonte di requisiti, ne i documenti B1/B2/B3. Eccezione necessaria same-block: ho letto SPEC_FUNZ_01_B4.md (stesso blocco) SOLO per (i) continuare lo schema-ID senza collisione (prossimi liberi B4-NFR-05, B4-R-33) e (ii) non duplicare il contratto a 9 voci di Cap.9.2 e la pubblicazione della notifica trigger_event di Cap.9.5, gia consolidate in B4. Il confronto-copertura con la v2 resta compito esclusivo del Reviewer (card par.6).
+- Invarianza parte PASS: NON ho toccato, riaperto ne rinumerato i 50 requisiti della parte CAP_02 (par.1-par.12 del documento). Ho solo: (a) appeso la sezione "# Estensione consegna — CAP_06 PVI (Cap.29)" dopo la matrice esistente; (b) aggiunto una nota in par.0.2 (continuita-ID) e una postilla al totale parziale di par.12.
+
+## 1. Cosa e stato prodotto (estensione)
+
+Appesa a SPEC_FUNZ_01_B4.md la sezione "# Estensione consegna — CAP_06 PVI (Cap.29)" con:
+- E.0 Nota di provenienza ed estensione (Opzione 1 AC; cosa recupera: NFR-6.1 + R-6.4; invarianza parte PASS c3be05e; fonte e cecita Cap.29).
+- E.1 Requisiti mobile-first (Cap.29.1-29.2): B4-NFR-05 (consegna leggibile/azionabile da cellulare in attenzione limitata), B4-NFR-06 (il layout rappresenta lo stesso payload senza nuovi/omessi campi — cosmetico, non del contratto; Cap.9.2 citato come premessa, 9 voci NON ri-elencate), B4-NFR-07 (contenuto critico senza scroll orizzontale ed entro la prima schermata).
+- E.2 Le 3 notifiche standard (Cap.29.4): B4-R-33 (esattamente 3 notifiche standard per segnale), B4-R-34 (nessun aggiornamento di stato tra le notifiche, no polling/refresh).
+- E.3 Notifica 1 emissione (Cap.29.2): B4-R-35 (1a notifica = emissione; pubblicazione gia B4, citata come premessa non duplicata).
+- E.4 Notifica 2 trigger_event (Cap.29.3): B4-R-36 (2a notifica = trigger_event al raw touch, messaggio separato; pubblicazione gia B4 §9 B4-R-28/CN-12 citata come gia-consolidata; evento del lifecycle = B3, premessa), B4-R-37 (la notifica non modifica l'emissione, no edit/append, con signal_id).
+- E.5 Notifica 3 transizione terminale (Cap.29.5): B4-R-38 (3a notifica = chiusura alla transizione a stato terminale; stati terminali = B3, premessa non ri-derivata), B4-R-39 (veicola lo stato terminale finale, 1 di 6), B4-R-40 (veicola R_gross, vuoto/n.a. se non eseguito).
+- E.6 Matrice di tracciabilita estensione (11 righe) + conteggio: estensione 8 R + 3 NFR = 11; totale B4 = 40 R + 14 CN + 7 NFR = 61.
+- E.7 Nota di rinvio: Cap.27 (pipeline/inference/EGARCH) e Cap.28 intero (anti-doppio operazionale, non-refresh, tie-break, logging candidati, determinismo del replay) rinviati a B5 (runtime != consegna), con nota di confine sull'anti-duplicato di Cap.29.4 gia coperto da Cap.9.4 in B4.
+
+Conteggio verificato: 11 nuovi ID (B4-NFR-05/06/07; B4-R-33..R-40), continui dallo schema B4 senza collisione, biunivoci con le 11 righe della matrice E.6.
+
+## 2. Ipotesi di partenza (estensione)
+
+- Derivazione in cieco dal solo Cap.29 di CAP_06_parte_VI.md (modalita B, card par.0.1). CAP_06 e chiuso PASS (citato dalla card come fonte autoritativa) e congelato (freeze G-09): sola lettura, non ri-verificato come metodologia, usato solo come fonte delle citazioni puntuali.
+- I pin depositati dall'Orchestratore nella card (par.1: :146/:154 mobile-first, :220 3 notifiche, :190 trigger, :223/:225 terminale) sono autoritativi (input dell'Orchestratore), ma li ho ri-verificati token-per-token come richiesto da AC-G7 (esito in tabella AC).
+- Correzione di fonte della card (Cap.28.4 -> Cap.29.4 per R-6.4) presa come dato autoritativo confermato da AC: le 3 notifiche stanno in Cap.29.4 :220, NON in Cap.28.4. Da Cap.28 non ho preso nulla.
+- Confronto-copertura con la v2 (NFR-6.1/R-6.4 effettivamente coperti, nessun residuo di consegna v2 caduto): fuori dal mio compito, compito esclusivo del Reviewer (card par.6).
+
+## 3. Decisioni rilevanti (estensione)
+
+1. Granularita N1 sul mobile-first: ho spezzato il concern "mobile-first" in 3 NFR distinti perche Cap.29 impacchetta 3 proposizioni verificabili separatamente: il principio di progettazione (B4-NFR-05, :146), la natura cosmetica-non-del-contratto della rappresentazione (B4-NFR-06, :146/:154), e i vincoli tecnici di leggibilita senza scroll (B4-NFR-07, :152). Ciascuna e verificabile da sola.
+2. Granularita N1 sulle 3 notifiche: ho separato l'ESISTENZA dell'insieme (B4-R-33, esattamente 3) dalla regola di NON-AGGIORNAMENTO tra le notifiche (B4-R-34, no polling/refresh) perche sono due proposizioni distinte entrambe in :220. Poi una notifica per momento (B4-R-35/36/38). Per la terminale ho aggiunto due requisiti sul CONTENUTO veicolato alla consegna (B4-R-39 stato finale :230; B4-R-40 R_gross :232) perche sono concern di consegna distinti dall'esistenza della notifica.
+3. No-duplicazione (AC-EXT-3): NON ho ri-elencato le 9 voci di Cap.9.2 (citate come premessa in B4-NFR-06 ed E.1); NON ho duplicato la pubblicazione della notifica trigger_event di Cap.9.5 (citata come gia-B4 in B4-R-36, rinviando a B4-R-28/CN-12); NON ho ri-derivato la state machine ne l'insieme degli stati terminali (citati come premessa B3 in B4-R-38/R-39). L'evento trigger_event come evento del lifecycle e B3, citato come premessa.
+4. Confine consegna/runtime (AC-EXT-2): da Cap.28 NON ho preso nulla. Nessun requisito tocca pipeline/inference (Cap.27) ne anti-doppio operazionale/non-refresh/tie-break/logging/determinismo (Cap.28). La nota E.7 rinvia esplicitamente Cap.27 e Cap.28 intero a B5. La gestione idempotenza di lettura di Cap.29.4 (anti-ripubblicazione ai restart) e stata RICONOSCIUTA gia coperta da Cap.9.4 in B4 (B4-CN-09/10) e NON ri-consolidata: di Cap.29.4 ho preso solo le 3 notifiche standard.
+5. Cautela RM-1: nessuna nuova dichiarazione "verificato X" di prima istanza; ogni requisito e un richiamo a una riga di Cap.29. Nessuna fonte esterna fonda requisiti (Telegram Bot API resta livello-4, gia [WIKI-HINT] nel B4 base; l'estensione non ne introduce di nuove).
+
+## 4. Misura prima/dopo (estensione — greenfield di consolidamento)
+
+- PRIMA: la materia di consegna di CAP_06 Cap.29 (mobile-first + 3 notifiche standard) era prosa metodologica nel CAP, non leggibile come requisiti tracciabili da un esterno; inoltre era stata OMESSA dal perimetro-fonte di B4 (i due requisiti-bersaglio NFR-6.1 e R-6.4 non risultavano recuperati). Tracciabilita della consegna CAP_06: 0 requisiti.
+- DOPO: 11 requisiti atomici (8 R + 3 NFR) tracciati a [DOC-INTERNO CAP_06_parte_VI.md:<riga>] nel perimetro Cap.29, con valore operativo dichiarato, matrice E.6 e nota di rinvio E.7. NFR-6.1 recuperato (B4-NFR-05/06/07); R-6.4 recuperato (B4-R-33/34 + le tre notifiche B4-R-35/36/38).
+- Totale B4 aggiornato: 50 -> 61 requisiti (40 R + 14 CN + 7 NFR). La parte CAP_02 (50) e invariata; +11 dalla consegna CAP_06.
+- Copertura del perimetro Cap.29: 29.1 -> E.1 (B4-NFR-05/06/07); 29.2 -> E.1+E.3 (layout + notifica emissione); 29.3 -> E.4 (notifica trigger); 29.4 -> E.2 (3 notifiche standard; idempotenza riconosciuta gia-B4); 29.5 -> E.5 (notifica terminale). Tutte e 5 le sotto-sezioni di Cap.29 coperte o riconosciute gia-consolidate.
+
+## 5. Domande aperte / Blocchi (estensione)
+
+Nessun blocco aperto. I pin della card hanno risolto puliti alla ri-verifica token-per-token (vedi AC-G7/AC-EXT in tabella). Nessun requisito e marcato [B-N PROVVISORIO] (verificato: l'estensione non contiene marcatori di contaminazione, coerente con l'assenza di blocchi).
+
+Nota di onesta: la verifica di copertura PIENA consegna-vs-v2 (che NFR-6.1 e R-6.4 siano effettivamente i soli requisiti di consegna v2 mancanti, e che nessun altro residuo di consegna v2 sia caduto) e per ruolo compito del Reviewer (card par.6), non mia: io attesto il recupero esplicito dei due bersagli nominati dalla card, non l'esaustivita rispetto alla v2 (che sono cieco di leggere).
+
+## 6. Criterio di rollback (estensione)
+
+L'estensione vive interamente nella sezione "# Estensione consegna — CAP_06 PVI (Cap.29)" appesa a SPEC_FUNZ_01_B4.md (piu una nota in par.0.2 e una postilla al totale di par.12) + questa sezione di report. L'annullamento consiste nel git revert del commit [SPEC-FUNZ-01-B4-EXT]: ripristina il documento ai 50 requisiti della parte CAP_02 (PASS c3be05e), non tocca i CAP (freeze G-09: nessun CAP modificato), non tocca 00_indice.md (N/A), non tocca i file di stato single-writer, non impatta B1/B2/B3 (file separati). La parte CAP_02 Cap.8-9 resta valida indipendentemente.
+
+---
+
+## Tabella verifica AC (estensione: AC-G + AC-EXT-1/2/3)
+
+| AC | Esito | Evidenza (file:riga) |
+|---|---|---|
+| AC-G1 Atomicita (N1) | OK | Mobile-first scomposto in 3 NFR (SPEC_FUNZ_01_B4.md, sez. E.1: B4-NFR-05/06/07); 3 notifiche scomposte in esistenza-insieme (B4-R-33) + no-refresh (B4-R-34) + una per momento (B4-R-35/36/38) + contenuto terminale (B4-R-39/40, sez. E.2-E.5). Ogni requisito = 1 proposizione verificabile. |
+| AC-G2 Tracciabilita obbligatoria | OK | Ogni requisito dell'estensione porta [DOC-INTERNO CAP_06_parte_VI.md:<riga>] nel perimetro Cap.29 (:146/:152/:154/:190/:220/:223/:225/:230/:232). Matrice E.6 (11 righe). Ri-verificato token-per-token (AC-G7 sotto). |
+| AC-G3 Valore operativo obbligatorio | OK | Ogni requisito dell'estensione ha "Valore operativo" dichiarato (sez. E.1-E.5: es. B4-NFR-05, B4-R-33, B4-R-40). Nessun invariante puro in questa estensione (tutti operativi). |
+| AC-G4 Divieto verificato-X | OK | Nessuna nuova dichiarazione "verificato X" di prima istanza nell'estensione: ogni requisito e un richiamo a una riga di Cap.29. Nessun claim empirico nuovo. |
+| AC-G5 Etichette RM-3 fonti esterne | OK | L'estensione non introduce fonti esterne: ogni requisito regge su Cap.29 (livello DOC-INTERNO). Telegram Bot API resta livello-4 gia [WIKI-HINT] nel B4 base, non usata qui come fonte. |
+| AC-G6 Grafia canonica | OK | Usata [DOC-INTERNO ...]; grafia storica [CODICE-EXISTENTE ...] assente nell'estensione. |
+| AC-G7 Floor citazioni 100% (mia ri-verifica token-per-token) | OK (mio campione = tutte le 11) | Ri-verificate contro CAP_06_parte_VI.md: :146 (29.1 mobile-first "rappresentato in un layout mobile-first") -> B4-NFR-05/06; :152 (vincoli leggibilita "senza scroll orizzontale") -> B4-NFR-07; :154 (29.2 "Layout mobile-first del messaggio di emissione") -> B4-NFR-06/B4-R-35; :190 (29.3 "Notifica trigger_event come messaggio separato") -> B4-R-36/37; :220 ("esattamente 3 notifiche standard per segnale" + "no polling, no refresh") -> B4-R-33/34/35/36/38; :223 (29.5 "Notifica di transizione terminale") -> B4-R-38; :225 (transizione active->stati terminali) -> B4-R-38; :230 ("stato terminale finale, uno dei 6") -> B4-R-39; :232 ("R_gross ... vuoto o n/a per i segnali non eseguiti") -> B4-R-40. Tutte risolvono token-per-token. Floor esaustivo finale = Reviewer per ruolo. |
+| AC-G8 Cecita preservata | OK | Estensione derivata dal solo Cap.29. Nessun ID importato (continui B4-NFR-05+/B4-R-33+). Premesse Cap.9.2/9.5/Cap.7 citate ESPLICITAMENTE come premessa, non ri-derivate. Letto B4 esistente solo per ID/no-dup (eccezione same-block). Tracce v2/B1/B2/B3 = nessuna importata. |
+| AC-G9 Scope tutto-e-solo (Cap.29) | OK | Tutti gli 11 requisiti tracciano a Cap.29. Cap.27/Cap.28 esclusi e rinviati a B5 (sez. E.7). Vedi AC-EXT-2. |
+| AC-G10 Matrice + nota di rinvio | OK | Matrice E.6 (ID|proposizione|citazione|valore, 11 righe + conteggi). Nota di rinvio E.7 (Cap.27 + Cap.28 intero -> B5, con motivazione runtime!=consegna). |
+| AC-G11 Invarianti come tali | OK (N/A sostanziale) | L'estensione non introduce nuovi invarianti di contratto (famiglia CN): tutti i requisiti sono R o NFR di consegna. B4-R-37 (no-edit della notifica) e reso coerente con l'invariante no-edit gia in B4 (B4-CN-11), citato come premessa, non ri-creato come nuovo CN. |
+| AC-EXT-1 Recupero esplicito NFR-6.1 + R-6.4 | OK | NFR-6.1 (mobile-first) -> B4-NFR-05/06/07 (sez. E.1, :146/:152/:154). R-6.4 (3 notifiche standard) -> B4-R-33/34 (sez. E.2, :220) + le tre notifiche B4-R-35/36/38 (E.3/E.4/E.5). Recupero dichiarato in E.0. |
+| AC-EXT-2 Confine consegna/runtime | OK | Nessun requisito tocca Cap.27 (pipeline/inference) ne Cap.28 (anti-doppio operazionale/non-refresh/tie-break/logging/determinismo): rinviati a B5 in E.7. Da Cap.28 preso nulla. Idempotenza di lettura di Cap.29.4 riconosciuta gia-B4 (Cap.9.4), non ri-consolidata. |
+| AC-EXT-3 Continuita ID e no-duplicazione | OK | ID continui senza collisione (B4-NFR-05/06/07; B4-R-33..R-40; verificato contro lo schema B4 esistente che arriva a NFR-04/R-32/CN-14). 9 voci di Cap.9.2 NON ri-elencate (premessa in B4-NFR-06). Notifica trigger Cap.9.5 NON duplicata (premessa gia-B4 in B4-R-36). State machine B3 NON ri-derivata (premessa in B4-R-38/39). |
+
+## Applicazione RM-1 a me stesso (estensione)
+
+- "L'estensione e completa strutturalmente (11 requisiti)" - PROVE: 11 nuove definizioni di requisito (B4-NFR-05/06/07, B4-R-33..R-40) biunivoche con le 11 righe della matrice E.6; conteggio E.6 dichiara 8 R + 3 NFR = 11 e totale 61. ALTERNATIVE ESCLUSE: collisione con ID B4 esistenti (esclusa: B4 base arriva a NFR-04/R-32, l'estensione parte da NFR-05/R-33). ALTERNATIVE NON ESCLUSE: nessuna rilevante.
+- "Le citazioni dell'estensione risolvono token-per-token" - VERIFICA: tutte e 11 ricontrollate contro CAP_06_parte_VI.md:142-244 (lettura diretta). PROVE: elenco puntuale in AC-G7 sopra. ALTERNATIVE ESCLUSE: pin errato Cap.28.4 invece di Cap.29.4 (escluso: ho letto :220 in Cap.29.4 e contiene "esattamente 3 notifiche standard"; :123 NON e stato usato). ALTERNATIVE NON ESCLUSE: il floor esaustivo finale resta verifica del Reviewer per ruolo (ma il mio campione qui coincide con l'intero insieme degli 11).
+- "La cecita e preservata (estensione)" - PROVE: derivazione dal solo Cap.29; premesse Cap.9.2/9.5/Cap.7 marcate esplicitamente come premessa; lettura del B4 esistente dichiarata e limitata a ID/no-dup (eccezione same-block della card). ALTERNATIVE NON ESCLUSE: eventuali echi lessicali dalla v2 che io non posso rilevare essendo cieco di leggerla - questa e precisamente la verifica del confronto-copertura che fa il Reviewer (card par.6). Io attesto l'assenza di ID importati e la derivazione da Cap.29, non l'assenza assoluta di ogni eco.
+- "Nessuno sconfinamento runtime (Cap.27/Cap.28)" - PROVE: lettura dell'intero Cap.29 come perimetro; da Cap.28 (:123 e dintorni) non ho tratto requisiti; E.7 rinvia Cap.27 e Cap.28 intero a B5. ALTERNATIVE NON ESCLUSE: una valutazione fine di confine su un singolo requisito resta raffinabile dal Reviewer; non ho rilevato sconfinamenti netti.
+- "No-duplicazione rispettata" - PROVE: le 9 voci di Cap.9.2 non sono ri-elencate (B4-NFR-06 le cita come premessa); la pubblicazione trigger_event di Cap.9.5 non e duplicata (B4-R-36 rinvia a B4-R-28/CN-12 gia-B4); la state machine non e ri-derivata (B4-R-38/39 citano B3 come premessa). ALTERNATIVE NON ESCLUSE: nessuna rilevante.
+
+---
+
+*Estensione consegna prodotta dallo spec_developer in cieco dal solo Cap.29 di CAP_06_parte_VI.md (lettura del B4 esistente solo per continuita-ID e no-duplicazione, eccezione same-block). Parte CAP_02 Cap.8-9 (PASS c3be05e) invariata. Sede CLI, no-DAPI.*
