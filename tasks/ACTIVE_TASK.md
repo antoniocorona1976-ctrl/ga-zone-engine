@@ -1,68 +1,72 @@
-# TASK ATTIVO: SPEC-FUNZ-01-B4-EXT — Estensione "consegna" (CAP_06 PVI Cap.29: mobile-first + 3 notifiche standard)
+# TASK ATTIVO: SPEC-FUNZ-01-B5 — Runtime DAPI, sessione & compliance (ricostruzione cieca, modalità B, blocco 5/8)
 
-> **Track**: Business-spec (SPEC-FUNZ). **Sede**: CLI (GOV-SURFACES-01). **Tag commit**: `[SPEC-FUNZ-01-B4-EXT]`. Tutto su `main`.
+> **Track**: Business-spec (SPEC-FUNZ). **Sede**: CLI (GOV-SURFACES-01). **Tag commit**: `[SPEC-FUNZ-01-B5]`. Tutto su `main`.
 >
-> **Natura**: **estensione** del blocco B4, **non** un nuovo blocco e **non** un rifacimento. La parte di B4 già chiusa (CAP_02 Cap.8-9, **PASS `c3be05e`**) **non** si ri-deriva, **non** si riapre, **non** si rivede. Qui si recupera **solo** la materia di **consegna** di CAP_06 che era stata omessa dal perimetro-fonte (errore di setup dell'Orchestratore, non del Planner né dei Developer).
->
-> **Correzione di fonte (RM-2, verifica CLI 2026-06-16)**: le **3 notifiche standard** (R-6.4) sono fondate in **Cap.29.4 (`:220`)**, **non** in Cap.28.4 (`:123` = "Determinismo del replay e logging dei candidati" = **runtime**, che va a B5). Il mobile-first (NFR-6.1) è in Cap.29.1 (`:146`). Quindi la materia di **consegna** di CAP_06 è **tutta e solo in Cap.29**; **Cap.27 e Cap.28 interi** sono runtime → B5. Il taglio consegna/runtime e l'intento dell'Opzione 1 (recuperare NFR-6.1 + R-6.4) restano invariati; cambia solo il puntatore di fonte (Cap.29.4 anziché Cap.28.4) e il rinvio a B5 diventa "Cap.28 intero". Correzione confermata da AC.
+> **Perimetro consolidato (mappa `c7ce4be`)**: B5 è **blocco unico**, ~11 requisiti, due nature (canale DAPI + sessione/compliance). Fonte: **CAP_09 P9 Cap.45, 46, 47, 50, 52, 53, 54 + CAP_01 Cap.1**. La mappa di chunking è la **fonte autoritativa del perimetro**: riconciliarla **PRIMA** di scrivere/derivare (lezione B4-EXT).
 >
 > **Letture obbligatorie del Developer, in quest'ordine, PRIMA di scrivere**: `tasks/METODO.md` (RM-1..RM-4 + RACC-METODO-2), `.claude/BASE_COMUNE.md`, `.claude/agents/spec_developer.md`, questo `tasks/ACTIVE_TASK.md`. Conferma in testa al REPORT di averli letti.
 
 ---
 
-## 0. Decisione di perimetro (autorizzata dal supervisore AC)
+## 0. Natura e cecità
 
-La mappa di chunking autoritativa (`PROPOSTA_SUDDIVISIONE_SPEC*.md`, riga ~106) assegnava a B4 **CAP_02 Cap.8-9 + CAP_06 PVI Cap.27-29 interi**. Cap.27-29 sono però di **due nature distinte**:
-
-- **Consegna** (→ resta B4): **Cap.29 intero** (operatività mobile): layout mobile-first (§29.1 `:146`, §29.2 `:154`) e le **3 notifiche standard** — emissione (§29.2), `trigger_event` (§29.3 `:190`), transizione terminale (§29.5 `:223`) — dichiarate come insieme standard in **§29.4 (`:220`)**.
-- **Runtime** (→ va a **B5**): **Cap.27** (pipeline di inference real-time, EGARCH) e **Cap.28 intero** (citazione vincolo §28.1, politica anti-doppio-segnale/non-refresh §28.2, tie-break §28.3, logging candidati e determinismo del replay §28.4).
-
-**Decisione AC (Opzione 1)**: B4 recupera **solo** la materia di consegna (**Cap.29**); il runtime di **Cap.27 e Cap.28 (interi)** è **rinviato a B5**. È uno **scostamento voluto** dalla mappa (che univa 27-29 interi a B4): rispetta il contenuto (nessun requisito perso) divergendo sul contenitore. **La mappa viene aggiornata in pari data** (riga ~106 + riga ~107 B5) per riflettere il taglio consegna/runtime. Questo scostamento è quindi **autorizzato e tracciato**, non un drift.
+**Natura**: ricostruzione cieca da zero del perimetro runtime/sessione/compliance (Sez.7 della v2). B1/B2/B3/B4 sono chiusi PASS; B6/B7/B8 non esistono ancora.
 
 ### 0.1 — Vincolo di cecità (modalità B)
 
-Il Developer costruisce i requisiti di questa estensione **DAL SOLO** `Cap.29` di **CAP_06 PVI** (perimetro §1), **cieco** rispetto a: `SPEC_FUNZ_01.md` (v2 congelata) e `*_v1_storico*`; i file di chunking (`PROPOSTA_SUDDIVISIONE_SPEC*.md`) **come fonte di contenuto-requisiti**; i documenti di B1/B2/B3 (`SPEC_FUNZ_01_B1/B2/B3.md`). **Eccezione necessaria, same-block**: il Developer **può** leggere il documento **B4 esistente** (`docs/spec_funzionale/SPEC_FUNZ_01_B4.md`) **solo** per (i) continuare lo schema-ID senza collisione e (ii) **non duplicare** il contratto a 9 voci del messaggio (Cap.9.2, già B4) e la notifica `trigger_event` già coperta su Cap.9.5: è lo stesso blocco, non una violazione di cecità. Il confronto-copertura con la v2 resta compito **esclusivo del Reviewer**.
+Il Developer deriva i requisiti **DAI SOLI** capitoli del perimetro §1 (`CAP_09 Cap.45,46,47,50,52,53,54` + `CAP_01 Cap.1`), **cieco** rispetto a: `SPEC_FUNZ_01.md` (v2 congelata) e `*_v1_storico*`; i file di chunking (`PROPOSTA_SUDDIVISIONE_SPEC*.md`) **come fonte di contenuto-requisiti**; i documenti di B1/B2/B3/B4 (`SPEC_FUNZ_01_B*.md`). Gli ID sono auto-assegnati da zero (schema `B5-R-NN` / `B5-CN-NN` / `B5-NFR-NN`). Il confronto-copertura con la v2 è compito **esclusivo del Reviewer** (§6). **Eccezione**: i capitoli citati come **premessa** nelle note di confine (§1) si possono leggere **solo** per ancorare la citazione-premessa, non per ri-derivarne i requisiti.
 
 ---
 
-## 1. Perimetro-fonte (cosa derivi) — SOLO questo
+## 1. Perimetro-fonte (cosa derivi) — SOLO questi capitoli
 
-**Fonte**: `docs/methodology_v2/CAP_06_parte_VI.md`, **limitatamente a Cap.29 (Gestione dell'operatività su mobile, §29.1–29.5)**:
+Fonte: `docs/methodology_v2/CAP_09_parte_9.md` (Cap.45,46,47,50,52,53,54) + `docs/methodology_v2/CAP_01_parte_I.md` (Cap.1, tocco). I pin-riga si **risolvono in CLI** prima della derivazione (l'Orchestratore li deposita, oppure il Developer li individua leggendo il capitolo): **nessun numero di riga è asserito a monte da chi ha scritto questa card.**
 
-- **Mobile-first** (§29.1 `:146`, §29.2 `:154`): il requisito che la consegna sia leggibile/azionabile da cellulare in attenzione limitata; il layout mobile-first **rappresenta** il payload formale **estendendo senza duplicare** il contratto a 9 voci di Cap.9.2 (già B4). → famiglia **`B4-NFR`**, recupera **NFR-6.1**. Pin: `[DOC-INTERNO CAP_06_parte_VI.md:146]` (+ `:154` per il layout del messaggio di emissione).
-- **Le 3 notifiche standard** (§29.4 `:220`): il canale pubblica **esattamente 3 notifiche standard per segnale** — (1) **emissione** (§29.2), (2) **`trigger_event`** / raw touch (§29.3 `:190`), (3) **transizione terminale** (§29.5 `:223`); tra una notifica e l'altra nessun aggiornamento di stato (no polling/refresh). → famiglia **`B4-R`**, recupera **R-6.4**. Pin: `[DOC-INTERNO CAP_06_parte_VI.md:220]` (notifiche specifiche: emissione `:154`, trigger `:190`, terminale `:223`).
+Materia da consolidare, per capitolo:
+- **Cap.46 — Architettura canale DAPI**: gateway Darwin servizio locale, **loopback 127.0.0.1 esclusivo**, triplo-porte canonico (10001 datafeed realtime IN scope; **10002 ordini mai aperta**; 10003), banner di handshake con **prefix-match** (non match esatto), banner registrato in audit (Cap.54).
+- **Cap.47 — Catalogo simboli & rollover**: sottoscrizione FIB front-month, convenzione ticker IDEM, **boot giorno scadenza / CONTRACT_SWITCH**, codici mese Directa-IDEM proprietari; **dualità miniFIB (1€/pt, esecuzione) / FIB-pieno (5€/pt, calibrazione)**.
+- **Cap.50 — Errori, recovery, riavvio Darwin**: *capitolo di contesto runtime* (vedi nota di confine — verifica se fonda un requisito proprio).
+- **Cap.52 — Sessione operativa 08:00-22:00 CET**: finestra operativa (epoca E5); fuori sessione la pipeline è in stand-by; **la chiusura 22:00 non chiude un segnale active**.
+- **Cap.53 — Gating cash europei**: indici cash (DGER/DSTX50/…) entrano **solo** come logging operativo + **gating qualitativo post-emissione**, regole **fuori dal GA**, mai feature/cromosoma/state-machine; il gating **non sopprime** mai l'emissione.
+- **Cap.54 — Audit log & retention**: log strutturato, immutabile, append-only; registra comandi/risposte DAPI, transizioni di stato, segnali emessi, decisioni di gating; eventi di lifecycle **per-stato**.
+- **Cap.45 — Premessa/collocazione** e **CAP_01 Cap.1 — Obiettivo**: *capitoli di inquadramento* (vedi nota — verosimilmente nessun requisito proprio, contesto).
 
-I pin sono stati **risolti in CLI** (RM-2, verifica diretta su CAP_06) e depositati sopra. Il Developer li **ri-verifica token-per-token** prima di citarli (AC-G7); se una riga non risolve pulita, usa `[B-N PROVVISORIO]` e segnala.
+### Note di confine (premessa vs derivazione) — CARDINE di B5
 
-**Regola di confine "consegna ≠ runtime" (cardine di questa estensione)**: derivi **SOLO** da **Cap.29**. Da **Cap.28 NON prendi nulla** (è interamente runtime: §28.1 citazione vincolo, §28.2 non-refresh, §28.3 tie-break, §28.4 determinismo/logging). Le 3 notifiche stanno in **Cap.29.4**, non in Cap.28.4. **NON** consolidare: la pipeline di inference / EGARCH (Cap.27); l'anti-doppio operazionale / tie-break / logging candidati / determinismo del replay (Cap.28 intero). Tutto questo è **B5** (runtime). Se sei tentato di tirarlo dentro, **fermati**: è scope creep verso B5.
+B5 tocca molti altri blocchi. Regola generale: **consolida il fatto runtime/sessione/compliance; cita come premessa il fatto che vive altrove, NON ri-derivarlo.**
 
-### Note di confine
-- **Notifica terminale ↔ stati terminali (B3)**: la 3ª notifica scatta alla transizione terminale del lifecycle. Gli **stati/transizioni terminali** sono materia di **B3** (Cap.7) — citali **come premessa**, **non** ri-derivare la state machine. Qui consolidi **la notifica** (che esiste, quando scatta, cosa veicola a livello di consegna), non lo stato.
-- **No-duplicazione Cap.9.2**: il contratto informativo a 9 voci del messaggio è già B4 (Cap.9.2). Cap.29 lo **estende** col layout mobile-first: consolida l'**NFR mobile-first**, cita Cap.9.2 come premessa, **non** ri-elencare le 9 voci.
-- **Notifica `trigger_event` ↔ pubblicazione già B4**: la 2ª notifica pubblica il `trigger_event`; la **pubblicazione** è già coperta dal B4 esistente (Cap.9.5). **Non** la duplicare: citala come già-consolidata e concentra la derivazione sulle 3 notifiche **come insieme standard** (R-6.4, Cap.29.4) e sulla notifica **terminale** (§29.5), non ancora coperta. L'**evento** `trigger_event` è B3 — premessa, non ri-derivare.
+- **Cap.27-28 (pipeline inference, anti-doppio) → NON derivare.** Sono **elaborazione runtime** di requisiti **già specificati altrove**: emission-only (R-1.2, B1), |A|≤1 segnale unico (R-3.10, B2), latenza (NFR-6.2, B4), determinismo replay (CN-9.4, B6). Verificato (MAP-SPLIT-03): **0 requisiti-v2 propri**. Citabili come premessa; **nessun requisito B5 li consolida**. Se ti viene da scrivere un requisito su EGARCH-recalibration o sulla pipeline di emissione, **fermati**: è premessa o materia di altri blocchi.
+- **Cap.45, Cap.50 → contesto, non assumere requisiti.** Cap.45 (premessa) e Cap.50 (errori/recovery) **non fondano requisiti di Sez.7** (verificato MAP-CONSOLIDATE-04). Derivane un requisito **solo** se trovi nel testo una proposizione che è genuinamente un requisito di prodotto; altrimenti trattali come contesto. **Non gonfiare** B5 con requisiti di recovery che non sono nel perimetro-requisiti.
+- **Dualità miniFIB / FIB-pieno (Cap.47)**: consolida la **parte miniFIB (1€, esecuzione operatore)** da Cap.47; la parte **FIB-pieno (5€, calibrazione)** è già B1 — **cita B1 (moltiplicatore 5€) come premessa**, non ri-asserirla.
+- **Gating (Cap.53)**: l'annotazione di gating si attacca al **messaggio Telegram** (contratto del messaggio = B4): **cita B4 come premessa/superficie**, non ri-derivare il contratto del messaggio.
+- **Audit lifecycle (Cap.54)**: gli eventi di lifecycle loggati (SIGNAL_EMITTED, …, i 6 terminali) sono coerenti con la **state machine di Cap.7 (B3)**: **cita B3 come premessa**, non ri-derivare la macchina a stati. L'audit è inoltre **corredo del bundle frozen** (Parte VII Cap.35 = B7) e **input della dashboard Cap.30** (fuori-scope): citali come premessa/destinazione, non consolidarli.
+- **Sessione (Cap.52)**: l'epoca E5 / calendario sessione vive in `fib_session_calendar.csv` di **Parte 8 Cap.41 (B8)**: **cita Cap.41 come premessa** per l'origine normativa della finestra, consolida la **regola operativa** (la pipeline opera 08:00-22:00; stand-by fuori; 22:00 non chiude active).
+- **Schema-dato DAPI (CANDLE/PRICE/BOOK_5, formato canonico, decoder)**: il canale riceve questi messaggi, ma lo **schema/decoder è B6** (Cap.48/49/51): **cita B6 come premessa** per il dato ricevuto, **non** consolidare il decoder/format.
 
 ---
 
 ## 2. Acceptance Criteria
 
-Si applicano **gli stessi `AC-G1..AC-G11` di B4** (atomicità N1; tracciabilità obbligatoria a riga di **CAP_06 Cap.29**; valore operativo — o **valore di sistema** per eventuali invarianti puri; divieto "verificato X" RM-1; etichette RM-3 su fonti esterne; grafia canonica; floor citazioni 100% verificato in review; **cecità preservata** estesa a B3; scope **"tutto e solo"** la materia di consegna §1; matrice di tracciabilità + nota di rinvio; invarianti come tali). In più:
+Si applicano **gli stessi `AC-G1..AC-G11` dei blocchi precedenti** (atomicità N1; tracciabilità obbligatoria a riga di `CAP_09`/`CAP_01`; valore operativo — o **valore di sistema/replay** per invarianti puri; divieto "verificato X" RM-1; etichette RM-3 su fonti esterne, qui in particolare il **wiki Directa**; grafia canonica; floor citazioni 100% verificato in review; **cecità preservata**; scope **"tutto e solo"** il perimetro §1; matrice di tracciabilità + nota di rinvio; invarianti come tali). In più:
 
-- **AC-EXT-1 — Recupero esplicito**: i due requisiti-bersaglio della v2 sono recuperati e marcati: **NFR-6.1** (mobile-first) → un `B4-NFR-NN`; **R-6.4** (3 notifiche standard) → uno o più `B4-R-NN` (atomicità N1: l'esistenza dell'insieme + ciascuna delle 3 notifiche possono generare requisiti distinti — granularità decisa dal Developer applicando N1).
-- **AC-EXT-2 — Confine consegna/runtime rispettato**: nessun requisito tocca pipeline/inference (Cap.27) né anti-doppio/tie-break/logging/determinismo (Cap.28 intero). Materia runtime inclusa = scope creep verso B5 (finding).
-- **AC-EXT-3 — Continuità ID e no-duplicazione**: ID continuati dallo schema B4 esistente senza collisione; nessuna ri-derivazione di Cap.9.2 (9 voci), della notifica trigger Cap.9.5 (già B4) né della state machine B3 (premesse citate, non consolidate).
+- **AC-B5-1 — Premesse, non ri-derivazioni**: i fatti delle note di confine §1 (Cap.27-28, dualità 5€, gating-su-messaggio, lifecycle-state-machine, epoca E5, schema-dato) sono **citati come premessa**, **non** consolidati. Ri-derivare materia di B1/B2/B3/B4/B6/B7/B8 = finding (scope creep).
+- **AC-B5-2 — PENDING-empirico marcato (RM-1)**: i requisiti la cui chiusura dipende da una verifica empirica DAPI **non ancora fatta** vanno marcati **PENDING-empirico** (come la latenza M-2 di B4), **non** asseriti come verificati. Noti a monte: **codici mese Mar/Dic** (non listati, Cap.55); **comportamento rollover/CONTRACT_SWITCH a scadenza reale** (probe V-3); **convenzione calendario/giorni-di-trading della finestra** (probe V-2). Il **valore** della finestra 08:00-22:00 e i fatti già coperti da PROVA-EMPIRICA 2026-05-27 (banner, porte) **non** sono pending: cita lo stato empirico esatto, non sovra-marcare.
+- **AC-B5-3 — RM-3 sul wiki Directa**: porte/banner/convenzioni del wiki Directa sono `[WIKI-HINT, da verificare]` salvo dove c'è già PROVA-EMPIRICA (allora `[PROVA-EMPIRICA <data>]`); mai conclusione strutturale da solo wiki.
 
 ---
 
 ## 3. Sezioni da produrre
 
-Il Developer **appende** a `docs/spec_funzionale/SPEC_FUNZ_01_B4.md` una sezione delimitata **"Estensione consegna — CAP_06 PVI (Cap.29)"** con:
-1. **Nota di provenienza ed estensione**: dichiara che è un'estensione autorizzata (Opzione 1, supervisore AC), che recupera la materia di consegna di CAP_06 (Cap.29) omessa dal perimetro-fonte originario, che la parte CAP_02 Cap.8-9 (PASS `c3be05e`) resta invariata.
-2. **Requisiti mobile-first** (`B4-NFR-NN`, da Cap.29.1/29.2): con valore operativo (operi da cellulare).
-3. **Requisiti 3 notifiche standard** (`B4-R-NN`, da Cap.29.4 `:220`, con le specifiche §29.2/29.3/29.5): emissione / `trigger_event` / terminale; ciascuna con quando scatta e valore operativo; la terminale cita gli stati terminali B3 come premessa; la trigger cita la pubblicazione Cap.9.5 già-B4 come già-consolidata (non duplicare).
-4. **Aggiornamento della matrice di tracciabilità** del documento B4 con le nuove righe.
-5. **Nota di rinvio**: dichiara esplicitamente cosa di CAP_06 è **rinviato a B5** (Cap.27 pipeline/inference; Cap.28 intero: non-refresh/tie-break/logging/determinismo) e perché (runtime ≠ consegna).
+`docs/spec_funzionale/SPEC_FUNZ_01_B5.md`:
+1. Intestazione/scopo/schema-ID + conferma cecità.
+2. **Canale DAPI** (Cap.46): loopback, triplo-porte, no-order-routing, banner/handshake.
+3. **Catalogo & rollover** (Cap.47): sottoscrizione front-month, CONTRACT_SWITCH, codici mese, dualità miniFIB.
+4. **Sessione** (Cap.52): finestra 08:00-22:00, stand-by, 22:00-non-chiude-active.
+5. **Gating cash** (Cap.53): logging + gating qualitativo post-emissione, fuori-GA.
+6. **Audit & compliance** (Cap.54): log strutturato immutabile, eventi per-stato.
+7. **Matrice di tracciabilità** + **nota di rinvio** (cosa è premessa/fuori-scope e dove vive: Cap.27-28→B1/B2/B4/B6; schema→B6; bundle→B7; dashboard Cap.30→fuori-scope; esecuzione/post-fill→B3).
 
-REPORT atteso (`reports/REPORT_SPEC_FUNZ_01_B4.md`, **aggiornato** con sezione di estensione): 6 sezioni formato supervisore + tabella AC + **"Applicazione RM-1 a me stesso"**; dichiara la cecità (Cap.29; lettura del solo B4 esistente per ID/no-dup) e la provenienza.
+REPORT (`reports/REPORT_SPEC_FUNZ_01_B5.md`): 6 sezioni formato supervisore + tabella AC + **"Applicazione RM-1 a me stesso"** + lista **PENDING-empirico**.
 
 ---
 
@@ -70,57 +74,47 @@ REPORT atteso (`reports/REPORT_SPEC_FUNZ_01_B4.md`, **aggiornato** con sezione d
 
 | Materia | Destinazione |
 |---|---|
-| Pipeline di inference real-time, EGARCH (Cap.27) | **B5** (runtime) |
-| Politica anti-doppio-segnale operazionale, non-refresh, tie-break, logging candidati, determinismo del replay (Cap.28 intero, §28.1–28.4) | **B5** (runtime) |
-| Contratto a 9 voci del messaggio (Cap.9.2), pubblicazione notifica `trigger_event` (Cap.9.5) e condizioni/regola di emissione (Cap.8) | **B4 già PASS `c3be05e`** — non ridefinire |
-| State machine e stati terminali (Cap.7) | **B3** — premessa citabile, non ri-derivabile |
-| Schema-payload, immutabilità (Cap.6) | **B2** |
+| Pipeline inference, EGARCH-recalibration, anti-doppio operazionale (Cap.27-28) | **premessa**: R-1.2 (B1), R-3.10 (B2), NFR-6.2 (B4), CN-9.4 (B6) |
+| Schema-dato DAPI / decoder / format canonico (Cap.48/49/51) | **B6** |
+| Corredo bundle frozen / gate di go-live (Cap.35, Sez.8) | **B7** |
+| Dashboard di monitoraggio lifecycle (Cap.30) | **fuori perimetro spec** (FASE-D) |
+| State machine & stati terminali (Cap.7) | **B3** — premessa |
+| Esecuzione/gestione attiva post-fill, commissioni | **B3 / B1** (CN-7.4→B3, CN-7.3→B1) — già coperti |
+| Contratto messaggio Telegram (Cap.9.2) | **B4** — premessa per il gating |
+| Calendario/epoca E5 (Cap.41) | **B8** — premessa per la sessione |
 
 ---
 
 ## 5. Done-when
 
-Un lettore, leggendo la sezione di estensione di `SPEC_FUNZ_01_B4.md`, risponde senza ambiguità a:
-1. Qual è il requisito di consegna mobile-first e perché conta per chi opera da cellulare?
-2. Quali sono le 3 notifiche standard, e in quale momento scatta ciascuna (emissione / trigger / terminale)?
-3. In che senso la notifica terminale dipende dagli stati terminali del lifecycle (B3) senza ri-definirli?
-4. Cosa di CAP_06 è stato deliberatamente rinviato a B5 e perché (Cap.27 + Cap.28 interi)?
-5. Ogni requisito traccia a una riga di **CAP_06 Cap.29** — salvo premesse citate da Cap.9.2/Cap.9.5/Cap.7 — e porta un valore dichiarato?
+Un lettore di `SPEC_FUNZ_01_B5.md` risponde senza ambiguità a:
+1. Su quali porte/loopback opera il canale DAPI, e perché 10002 non si apre mai?
+2. Come si sottoscrive il contratto e cosa succede al rollover (CONTRACT_SWITCH)? Su quale strumento esegue l'operatore (mini, 1€) vs su quale calibra il motore (pieno, 5€)?
+3. Qual è la finestra operativa e perché la chiusura delle 22:00 non chiude un segnale active?
+4. Come entrano i cash europei (logging + gating post-emissione) e perché il gating non sopprime l'emissione né tocca il GA?
+5. Cosa registra l'audit log e con quale granularità per-stato?
+6. Quali fatti sono premessa da altri blocchi (Cap.27-28, schema, lifecycle, epoca, messaggio) e cosa è rinviato?
+7. Ogni requisito traccia a una riga di `CAP_09`/`CAP_01` (salvo premesse citate dai blocchi vicini) e porta un valore dichiarato? I PENDING-empirico sono marcati?
 
 ---
 
-## 6. Modalità di review
+## 6. Modalità di review (materia del Reviewer — il Developer NON la usa per derivare)
 
-- Review formale CLI sugli AC dell'**estensione** (§2) + sui nuovi requisiti. La parte CAP_02 Cap.8-9 **non si ri-audita** (PASS `c3be05e` regge).
-- **Confronto-copertura aggiornato (modalità B)**: il Reviewer ri-esegue la copertura ora sul **perimetro di consegna PIENO** (Cap.8-9 + Cap.29) contro il **perimetro di consegna corrispondente della v2** (Sez.5+6), usando la **mappa di chunking aggiornata** come autorità di partizione (F-3). Verifica: **NFR-6.1 e R-6.4 recuperati**; nessun residuo di consegna v2 caduto; nessuno scope creep runtime (Cap.27/Cap.28).
-- Cecità del Developer come oggetto di audit (tracce v2/B1/B2/B3 importate = BUG REALE).
+- Audit formale CLI sugli AC (§2) + sui requisiti.
+- **Confronto-copertura (modalità B)**: il Reviewer confronta i requisiti B5 con il **perimetro v2 di Sez.7** (i requisiti che la **mappa consolidata `c7ce4be` assegna a B5**: Sez.7 **escl. CN-7.3/CN-7.4**, **+ CN-2.1, + CN-4.2**), usando la **mappa come autorità di partizione (F-3)**. Verifica: copertura piena del perimetro B5; **nessuno sconfinamento** in B1/B2/B3/B4/B6/B7/B8 (le premesse devono essere citate, non consolidate); **PENDING-empirico** correttamente marcati e non asseriti.
+- Cecità del Developer come oggetto di audit (tracce v2/B*/chunking importate = BUG REALE).
 - Verdetto PASS / CONDITIONAL / FAIL. ≥1 BUG REALE ⇒ non-PASS.
 
 ---
 
 ## 7. Pipeline attesa (Orchestratore)
 
-1. Pin CAP_06 risolti (Cap.29.1 `:146`/`:154`, Cap.29.4 `:220`, specifiche `:190`/`:223`) e depositati al §1.
-2. **spec_developer** (CLI, cieco §0.1) appende la sezione di estensione + aggiorna matrice; aggiorna REPORT; scrive `READY_FOR_REVIEW`; si ferma. *Recupero socket*: se l'agente si interrompe, riprendi con un Developer di completamento trasparente (provenienza nel REPORT), come già fatto per B4 base.
-3. **Check post-Developer** + boundary-check sul seam consegna/runtime (Cap.27/Cap.28 ↔ B5) e no-duplicazione (Cap.9.2/Cap.9.5/Cap.7).
-4. **spec_reviewer** (CLI): audit AC estensione + copertura piena consegna vs v2 (mappa aggiornata).
-5. **PASS** → marcatore `SPEC-FUNZ-01-B4: CHIUSO PASS <sha>` (B4 ora completo: CAP_02 Cap.8-9 + CAP_06 Cap.29 consegna). **CONDITIONAL/FAIL** → punto di controllo supervisore.
+1. **Riconcilia il perimetro con la mappa `c7ce4be`** e risolvi i pin CAP_09/CAP_01 (leggi i capitoli; deposita i numeri di riga). **PRIMA** di lanciare il Developer.
+2. **spec_developer** (CLI, cieco §0.1): scrive `SPEC_FUNZ_01_B5.md` + REPORT; `READY_FOR_REVIEW`; si ferma. *Recupero socket*: se l'agente si interrompe, completamento trasparente (provenienza nel REPORT), come per B4.
+3. **Check post-Developer** + boundary-check sulle giunte §1 (Cap.27-28 non ri-derivati; schema→B6; lifecycle→B3; gating→B4; dualità 5€→B1; epoca→B8).
+4. **spec_reviewer** (CLI): audit AC + copertura vs perimetro B5 (mappa F-3).
+5. **PASS** → punto di controllo supervisore per la chiusura `SPEC-FUNZ-01-B5: CHIUSO PASS <sha>`. **CONDITIONAL/FAIL** → punto di controllo supervisore.
 
 ---
 
-## 8. Finding di Review da risolvere — CONDITIONAL `f369276` (micro-fix citazioni, decisione AC)
-
-Review B4-EXT iterazione 1 = **CONDITIONAL** (`reviews/REVIEW_SPEC_FUNZ_01_B4_EXT_review.md`). Punto di controllo supervisore eseguito: instradati il **BUG REALE #1** (obbligatorio) + i **3 MIGLIORA #2/#3/#4** (approvati da AC). Il **NEUTRO #5 NON va toccato**. Tutti sono lo **stesso pattern**: la citazione punta all'**header** di sottosezione invece che al **paragrafo di contenuto** immediatamente successivo (convenzione CAP_06: header e paragrafo sono righe distinte). **Micro-fix di solo puntatore-riga: NESSUN cambio di contenuto, proposizione o scope.** Verifica ogni nuova riga token-per-token sul CAP (AC-G7) prima di ri-citare.
-
-| # | Requisito (file:riga) | Citazione attuale | Correzione | Costrutto da coprire |
-|---|---|---|---|---|
-| 1 (BUG REALE) | `B4-R-37` (`SPEC_FUNZ_01_B4.md:433–436`) | `:190` (header §29.3) | **→ `:192`** | "non modifica il messaggio di emissione (no edit, no append)"; "`signal_id` esplicito" |
-| 2 (MIGLIORA) | `B4-NFR-06` (`:401`) | `:146`, `:154` | **aggiungi `:148`** (lascia `:146`; togli `:154` header) | "nessun campo nuovo/omesso; payload formale immutabile vs rappresentazione mobile cosmetica" |
-| 3 (MIGLIORA) | `B4-R-35` (`:422`) | `:220`, `:154` | **`:154` → `:156`** (mantieni `:220`) | "pubblica le 9 voci nel layout mobile-first" |
-| 4 (MIGLIORA) | `B4-R-36` (`:429`) | `:220`, `:190` | **`:190` → `:192`** (mantieni `:220`) | "messaggio separato al raw touch" |
-
-**Mandato (tutto e solo questo)**: correggi le 4 citazioni come sopra in `docs/spec_funzionale/SPEC_FUNZ_01_B4.md` (sezione di estensione); aggiorna le righe corrispondenti della **matrice E.6** se vi compaiono i puntatori; aggiorna il **REPORT** (tabella AC-G7 → da PARZIALE a OK; nota nel §"Decisioni"/RM-1 sul micro-fix). **NON** toccare: gli altri requisiti, le proposizioni, il perimetro, il finding #5 (`B4-R-38` `:223` ridondante — si lascia), la parte CAP_02 Cap.8-9 (PASS `c3be05e`), il CAP (frozen). Conta come iterazione di rework v2 legata a finding di Review. Commit `[SPEC-FUNZ-01-B4-EXT]` (body: "iter.2 — fix citazioni #1 BUG + #2/#3/#4 MIGLIORA: header→paragrafo") + `READY_FOR_REVIEW`; poi fermati.
-
----
-
-*Card di estensione scritta in fase di supervisione, **rev. RM-2** (correzione fonte Cap.28.4→Cap.29.4 confermata da AC), NON committata dal Planner (lo fa l'Orchestratore). Scostamento dalla mappa autorizzato dal supervisore (AC, Opzione 1) e tracciato; mappa aggiornata in pari data. Nessuna spec scritta qui, nessun CAP modificato (freeze G-09). I pin Cap.29 sono stati risolti in CLI (RM-2), non asseriti a monte.*
+*Card scritta in fase di supervisione sul perimetro della mappa consolidata `c7ce4be`, NON committata dal Planner (lo fa l'Orchestratore). Nessuna spec scritta qui, nessun CAP modificato (freeze G-09). Nessun ID-requisito v2 né contenuto copiato da v2/B*/chunking: cecità del Developer preservata. I pin CAP_09/CAP_01 sono da risolvere in CLI, non fatti asseriti.*
