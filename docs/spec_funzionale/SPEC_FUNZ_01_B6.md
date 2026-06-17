@@ -370,7 +370,7 @@ L'adapter DAPI → bundle frozen è il cuore del blocco: traduce i record DAPI i
 | B6-R-37 | manifest JSON esteso | `[DOC-INTERNO CAP_10_parte_10.md:186-188]` | Cap.62 |
 | B6-CN-21 | source esteso (+3 BACKFILL_*) complemento | `[DOC-INTERNO CAP_10_parte_10.md:194,196-203]` | Cap.62 |
 | B6-CN-22 | archivio append-only / versioning | `[DOC-INTERNO CAP_10_parte_10.md:207]` | Cap.62 |
-| B6-CN-23 | provenienza da source, non bar_synthetic | `[DOC-INTERNO CAP_10_parte_10.md:68]` | Cap.62/58 |
+| B6-CN-23 | provenienza da source, non bar_synthetic | `[DOC-INTERNO CAP_10_parte_10.md:68]` | Cap.62 |
 | B6-CN-24 | tape NON fonte training (vincolo negativo) | `[DOC-INTERNO CAP_10_parte_10.md:209]` + premessa `CAP_08 Cap.44` | Cap.62 |
 
 ### 7.2 Nota di rinvio (premesse / fuori-scope)
@@ -410,4 +410,4 @@ Tutti i claim strutturali di questo documento poggiano su `[PROVA-EMPIRICA]` (li
 
 ---
 
-*Documento B6 prodotto dallo spec_developer del track Business-spec, cieco rispetto a SPEC_FUNZ_01 v2/v1 e ai documenti B1..B5, con eccezione RM-2 sui decoder di produzione e sugli audit empirici. ID `B6-*` auto-assegnati da zero, nessun conteggio-target. 61 requisiti: 37 R + 20 CN + 4 NFR.*
+*Documento B6 prodotto dallo spec_developer del track Business-spec, cieco rispetto a SPEC_FUNZ_01 v2/v1 e ai documenti B1..B5, con eccezione RM-2 sui decoder di produzione e sugli audit empirici. ID `B6-*` auto-assegnati da zero, nessun conteggio-target. 65 requisiti: 37 R + 24 CN + 4 NFR.*

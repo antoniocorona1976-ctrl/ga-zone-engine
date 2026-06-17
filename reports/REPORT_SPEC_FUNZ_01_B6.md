@@ -6,7 +6,7 @@
 
 ## 1. Cosa è stato prodotto
 
-docs/spec_funzionale/SPEC_FUNZ_01_B6.md: specifica funzionale schema-dato DAPI & continuità tape, **61 requisiti atomici** (37 B6-R, 20 B6-CN, 4 B6-NFR), tutti tracciati a [DOC-INTERNO CAP_09_parte_9.md:riga] / [DOC-INTERNO CAP_10_parte_10.md:riga] / [DOC-INTERNO CAP_02_parte_II.md:riga] (premessa) o [CODICE-ESISTENTE path:line] o [PROVA-EMPIRICA data], con valore dichiarato. Sette sezioni: (1) scopo/cecità/convenzioni; (2) adapter & schema-dato (CANDLE/PRICE/BOOK_5/format); (3) replay deterministico; (4) warm-up & continuità; (5) riconciliazione canonica; (6) storicizzazione tape; (7) matrice + nota di rinvio + PENDING-empirico + nota RM-3.
+docs/spec_funzionale/SPEC_FUNZ_01_B6.md: specifica funzionale schema-dato DAPI & continuità tape, **65 requisiti atomici** (37 B6-R, 24 B6-CN, 4 B6-NFR), tutti tracciati a [DOC-INTERNO CAP_09_parte_9.md:riga] / [DOC-INTERNO CAP_10_parte_10.md:riga] / [DOC-INTERNO CAP_02_parte_II.md:riga] (premessa) o [CODICE-ESISTENTE path:line] o [PROVA-EMPIRICA data], con valore dichiarato. Sette sezioni: (1) scopo/cecità/convenzioni; (2) adapter & schema-dato (CANDLE/PRICE/BOOK_5/format); (3) replay deterministico; (4) warm-up & continuità; (5) riconciliazione canonica; (6) storicizzazione tape; (7) matrice + nota di rinvio + PENDING-empirico + nota RM-3.
 
 ## 2. Ipotesi di partenza
 
@@ -26,7 +26,7 @@ docs/spec_funzionale/SPEC_FUNZ_01_B6.md: specifica funzionale schema-dato DAPI &
 
 ## 4. Misura prima/dopo (greenfield di consolidamento)
 
-PRIMA: materia schema-dato DAPI & continuità tape dispersa in 7 capitoli su 2 Parti (Cap.48/49/51 + Cap.59/60/61/62) più decoder e M-promemoria, non leggibile come elenco di requisiti da un esterno. DOPO: 61 requisiti R/CN/NFR atomici tracciati con valore dichiarato e matrice a 61 righe, schema-dato ancorato al decoder canonico con diff esplicito e permutazioni alternative escluse (RM-1), confini premessa/in-scope espliciti, PENDING-empirico separati dai certificati. Nessuna metrica GA inventata (track di prodotto).
+PRIMA: materia schema-dato DAPI & continuità tape dispersa in 7 capitoli su 2 Parti (Cap.48/49/51 + Cap.59/60/61/62) più decoder e M-promemoria, non leggibile come elenco di requisiti da un esterno. DOPO: 65 requisiti R/CN/NFR atomici tracciati con valore dichiarato e matrice a 65 righe, schema-dato ancorato al decoder canonico con diff esplicito e permutazioni alternative escluse (RM-1), confini premessa/in-scope espliciti, PENDING-empirico separati dai certificati. Nessuna metrica GA inventata (track di prodotto).
 
 ## 5. Domande aperte / Blocchi
 
@@ -88,3 +88,20 @@ Ogni asserzione fattuale del documento è un richiamo a un capitolo chiuso PASS 
 ## Lista PENDING-empirico
 
 PE-1 codici mese Mar/Dic; PE-2 ticker 1030 (PHASE-2 gated); PE-3 riavvio Darwin mezzanotte; PE-4 PRICE f5/f7; PE-5 base calendario-vs-trading-days finestre 30/100 (V-2). Tutti marcati nella spec §7.3, nessuno asserito come certo.
+
+## Iterazione 2 — risposta ai finding di Review (CONDITIONAL `fd48070`)
+
+Micro-fix di **sola accuratezza**: nessuna proposizione, ID-requisito o citazione-fonte (pin) è cambiata. Diff minimo (4 righe in 2 file).
+
+**Fix #1 (BUG REALE) — conteggio falso.** Conteggio dichiarato corretto da **61 (37 R + 20 CN + 4 NFR)** a **65 (37 R + 24 CN + 4 NFR)**. Conteggio riverificato in CLI prima della correzione (grep ID unici): `B6-R-` = 01..37 (37), `B6-CN-` = 01..24 (24), `B6-NFR-` = 01..04 (4) → 37+24+4 = 65; matrice §7.1 = 65 righe.
+- Prima→dopo:
+  - `SPEC_FUNZ_01_B6.md:413` (footer): "61 requisiti: 37 R + 20 CN + 4 NFR" → "65 requisiti: 37 R + 24 CN + 4 NFR".
+  - `REPORT_SPEC_FUNZ_01_B6.md:9` (§1): "61 requisiti atomici (37 B6-R, 20 B6-CN, 4 B6-NFR)" → "65 requisiti atomici (37 B6-R, 24 B6-CN, 4 B6-NFR)".
+  - `REPORT_SPEC_FUNZ_01_B6.md:29` (§4): "61 requisiti R/CN/NFR atomici … matrice a 61 righe" → "65 requisiti R/CN/NFR atomici … matrice a 65 righe".
+- Nessuna altra occorrenza del conteggio trovata (grep `61`/`20 CN`/`requisit` su doc e report); la tabella AC non cita la numerosità.
+- Impatto: solo accuratezza del totale dichiarato; nessun requisito modificato.
+
+**Fix #2 (NEUTRO) — etichetta-fonte orfana.** `SPEC_FUNZ_01_B6.md:373` (matrice §7.1, riga B6-CN-23): etichetta "Cap.62/58" → "Cap.62" (rimossa "/58" orfana; il pin-riga `[DOC-INTERNO CAP_10_parte_10.md:68]` resta invariato e risolve a Cap.62).
+- Impatto: solo accuratezza dell'etichetta-capitolo nella matrice; pin e proposizione invariati.
+
+**Finding #3 (B6-R-28 / B6-R-31 borderline N1)**: NEUTRO non instradato (decisione AC) → **non toccato**.
