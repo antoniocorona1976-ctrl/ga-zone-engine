@@ -137,4 +137,17 @@ NON pending (certificati, citare con stato esatto): CANDLE `C;L;H;O;V`; PRICE `f
 
 ---
 
+## 9. Finding di Review da risolvere — CONDITIONAL `fd48070` (micro-fix, decisione AC)
+
+Review B6 iterazione 1 = **CONDITIONAL** (`reviews/REVIEW_SPEC_FUNZ_01_B6_review.md`). Punto di controllo supervisore: instradati il **BUG REALE #1** (obbligatorio) + il **NEUTRO #2** (approvato da AC). Il **NEUTRO #3 (B6-R-28/R-31 borderline N1) NON va toccato** (restano proposizioni unitarie verificabili). Tutto il resto è PASS-grade (floor citazioni 100%, copertura 9/9, RM-1/2/3 OK). **Micro-fix di sola accuratezza: NESSUNA proposizione, ID-requisito o citazione-fonte cambia.**
+
+| # | Problema | Correzione | Occorrenze (verifica token-per-token) |
+|---|---|---|---|
+| 1 (BUG REALE) | Conteggio dichiarato **falso**: "61 requisiti (37 R + **20** CN + 4 NFR)". Reale (verificato CLI): **65 (37 R + 24 CN + 4 NFR)**; B6-CN-* = CN-01..CN-24; matrice §7.1 = 65 righe. | → **65 (37 R + 24 CN + 4 NFR)** | doc `SPEC_FUNZ_01_B6.md` (footer + ovunque dichiari il conteggio); REPORT `:8` (§1), `:29` (§4) + tabella AC. Correggi **ogni** occorrenza. |
+| 2 (NEUTRO) | Matrice §7.1, riga **B6-CN-23**: etichetta-fonte "Cap.62/58" — **"Cap.58" è orfana** (il pin corretto `:68` risolve a Cap.62). | rimuovi "/58" → solo **Cap.62** | riga B6-CN-23 della matrice §7.1 |
+
+**Mandato (tutto e solo questo)**: correggi le occorrenze del conteggio (#1) e l'etichetta orfana (#2) in `docs/spec_funzionale/SPEC_FUNZ_01_B6.md` e nel REPORT (#1). **NON** toccare: proposizioni, ID-requisito, citazioni-fonte (pin), gli altri requisiti, il **finding #3** (B6-R-28/R-31 — si lasciano), i capitoli-fonte (frozen G-09). Conta come iterazione di rework v2 legata a finding di Review. Commit `[SPEC-FUNZ-01-B6]` (body: "iter.2 — fix #1 conteggio 65/24 + #2 etichetta Cap.58") + `READY_FOR_REVIEW`; poi fermati.
+
+---
+
 *Card B6 scritta dall'Orchestratore/Planner, **rev. CARD-FIX-01** (7 finding di audit chiusi: F1 cecità — rimossi ID-v2/conteggio/partizione, vista per soli capitoli; F2 invariante replay bit-exact/research=runtime = in-scope, fondazione premessa CAP_02 Cap.10, pin corretto `:21` non Cap.49; F3 `f8`/`f9` separati per tipo-messaggio + RM-1; F4 PRICE/BOOK_5 = input adapter, evidenza `:172-173/:177-179`; F5 gap≤100gg e restart>100gg = requisiti distinti; F6 `L_warmup=30` congelato + 13 campi enumerati, no `~`; F7 Darwin-mezzanotte vs RUNTIME_STALE_RESTART distinti). NON committata come `tasks/ACTIVE_TASK.md`: questo task produce la card-sorgente e si ferma. Nessuna spec scritta, nessun CAP modificato (freeze G-09). Path file CAP verificati reali: `CAP_09_parte_9.md`, `CAP_10_parte_10.md`. La vista-Developer è per soli capitoli: nessun ID-requisito v2, nessun conteggio, nessuna partizione esposti — cecità preservata.*
