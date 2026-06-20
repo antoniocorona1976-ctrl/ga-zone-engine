@@ -19,11 +19,11 @@ Conseguenza: i pin-riga §1 sono affidabili a HEAD. Ho comunque riletto token-pe
 
 ## 1. Cosa è stato prodotto
 
-Un documento di specifica funzionale (`SPEC_FUNZ_01_B7.md`) che consolida il perimetro "Gate di go-live" (Cap.31-36 di Parte VII + Cap.5 di Parte I) in **38 requisiti di prodotto atomici** (N1), assegnati da zero con cecità rispetto a v2/chunking/B1-B6:
+Un documento di specifica funzionale (`SPEC_FUNZ_01_B7.md`) che consolida il perimetro "Gate di go-live" (Cap.31-36 di Parte VII + Cap.5 di Parte I) in **49 requisiti di prodotto atomici** (N1), assegnati da zero con cecità rispetto a v2/chunking/B1-B6:
 
-- **28 `B7-R-*`** (requisiti funzionali: criteri, procedure, definizioni, regole);
+- **38 `B7-R-*`** (requisiti funzionali: criteri, procedure, definizioni, regole);
 - **7 `B7-CN-*`** (vincoli/confini: immutabilità, integrità, confine di ruolo, separazione successo-segnale vs operatore, carryover);
-- **3 `B7-NFR-*`** (non funzionali: replay bit-exact, latenza qualitativa, compute budget).
+- **4 `B7-NFR-*`** (non funzionali: replay bit-exact, latenza qualitativa, compute budget).
 
 Struttura in 9 sezioni come da card §4: intestazione + cecità + nota di confine di ruolo edge-PENDING in evidenza (§1); definizione di successo Cap.5 (§2); procedura OOS Cap.31 (§3); DSR Cap.32 (§4); PBO/CSCV Cap.33 (§5); bootstrap Cap.34 come procedura di supporto (§6); frozen bundle Cap.35 (§7); gate decisionali Cap.36 con i 12 criteri come requisiti distinti (§8); matrice + rinvio + PENDING + RM-3 (§9).
 
@@ -48,7 +48,7 @@ Il documento applica il **cardine edge-PENDING** ovunque: ogni gate è "criterio
 ## 4. Misura prima/dopo (adattata al greenfield di consolidamento)
 
 - **PRIMA**: i criteri di gate di go-live erano dispersi nei capitoli metodologici Cap.31-36 + Cap.5, in forma matematico-procedurale, non leggibili da un esterno come elenco di requisiti di prodotto tracciabili e verificabili singolarmente; il rischio di confondere "criterio dichiarato" con "esito misurato" (asserzione d'edge) non era arginato da una struttura a requisiti atomici.
-- **DOPO**: 38 requisiti R/CN/NFR tracciati uno-a-uno a riga del capitolo, ciascuno con valore operativo dichiarato e stato esatto delle soglie; cardine edge-PENDING applicato come invariante (ogni grandezza d'esito marcata PENDING-empirico, confine `validator` esplicito). Nessuna metrica GA/edge inventata; nessun verdetto.
+- **DOPO**: 49 requisiti R/CN/NFR tracciati uno-a-uno a riga del capitolo, ciascuno con valore operativo dichiarato e stato esatto delle soglie; cardine edge-PENDING applicato come invariante (ogni grandezza d'esito marcata PENDING-empirico, confine `validator` esplicito). Nessuna metrica GA/edge inventata; nessun verdetto.
 
 ## 5. Domande aperte / Blocchi (F6 — batch unico)
 
@@ -68,7 +68,7 @@ Il documento è additivo (nuovo file in `docs/spec_funzionale/`, nessuna modific
 
 | AC-ID | Esito | Evidenza (file:riga) |
 |-------|-------|----------------------|
-| AC-G1 (N1 atomicità) | OK | 38 requisiti, una proposizione ciascuno; 12 criteri go-live = 12 ID distinti (`SPEC_FUNZ_01_B7.md` B7-R-25..36); DSR/PBO ID distinti (B7-R-09/10, B7-R-16/18) |
+| AC-G1 (N1 atomicità) | OK | 49 requisiti, una proposizione ciascuno; 12 criteri go-live = 12 ID distinti (`SPEC_FUNZ_01_B7.md` B7-R-25..36); DSR/PBO ID distinti (B7-R-09/10, B7-R-16/18) |
 | AC-G2 (tracciabilità a riga) | OK | ogni requisito cita `[DOC-INTERNO ...:NNN]` riletto token-per-token; matrice §9.1 completa |
 | AC-G3 (valore operativo/sistema) | OK | ogni requisito ha riga "**Valore**"; colonna "Valore" in matrice §9.1 |
 | AC-G4 (no "verificato X" prima istanza) | OK | nessun blocco VERIFICA/PROVE; tutte le asserzioni sono richiami a CAP chiusi; §9.4 |
@@ -94,7 +94,7 @@ Asserzioni fattuali che ho dichiarato e loro sostegno operativo:
 - **"I due diff freeze sono vuoti"** — eseguiti realmente via Bash (`git diff b27c1e3 HEAD ...` e `git diff e8d5424 HEAD ...`); output catturato vuoto fra i marcatori. Alternativa esclusa: diff non vuoto → avrei dovuto rileggere e citare righe diverse; non si è verificata.
 - **"I pin §1 reggono a HEAD"** — non assunto dalla card: ho aperto Cap.5 e Cap.31-36 con Read e confrontato il contenuto delle righe citate (es. `:71-75` formula $-2c$; `:568` "12 AC binari"; `:589-592` 4 sotto-cond. pipeline; `:595-597` 3 sotto-cond. dashboard; `:599` hash; `:602-605` raccomandazioni per classe). Le righe citate corrispondono al testo letto.
 - **"Nessun M nuovo / solo M-2 pertinente"** — letto `tasks/CARRYOVER.md` per intero; M-2 è l'unico OPEN con destinazione Appendice E pertinente a B7 (latenza Telegram, in scope come AC-GO-10). Gli altri M sono CLOSED-CAP-* o relativi a schema-dato (B5/B6), fuori perimetro B7.
-- **"38 requisiti, 28/7/3"** — conteggio fatto sugli ID effettivamente scritti nel documento (B7-R-01..38 con i tre namespace); riportato come descrittivo, non come target.
+- **"49 requisiti, 38/7/4"** — conteggio rifatto sugli ID effettivamente scritti nel documento e contro-verificato con grep degli header `### B7-*`: **38 `B7-R-*` (B7-R-01..38), 7 `B7-CN-*` (B7-CN-01..07), 4 `B7-NFR-*` (B7-NFR-01..04) = 49 totali**. (Il conteggio precedente "38 — 28/7/3" era errato; corretto in iter.2 a valle del finding F1, qui e in §9.1 del documento.) Riportato come descrittivo, non come target.
 
 Alternative non escluse / limiti onesti: la corrispondenza pin↔riga è stata verificata sul contenuto semantico delle righe lette; un eventuale errore di trascrizione di un singolo numero di riga resta possibile e va catturato dalla review (floor citazioni 100%, AC-G8). Non dichiaro "verificato" alcun esito d'edge: tutto ciò che è misurabile è PENDING-empirico.
 
@@ -105,3 +105,24 @@ Vedi §9.3 del documento. In sintesi: valori effettivi di DSR/PBO/$E[R_{net}]$/I
 ## Auto-check esplicito AC-B7-EDGE — conferma
 
 **Confermo: ZERO asserzioni d'esito o d'edge nel documento.** Ho riletto il documento cercando i verbi vietati ("supera/passa il gate", "DSR è positivo/significativo", "l'edge esiste/è confermato", "GO" come affermazione di esito). Ogni occorrenza di tali concetti è formulata come *criterio dichiarato dal metodo* ("il metodo richiede", "il criterio dichiarato è", "al run del validator si misurerà") oppure marcata esplicitamente "(Esito = PENDING-empirico)". L'unica occorrenza testuale di "GO" è nella **procedura** GO/NO-GO (B7-CN-06) come nome della decisione che **il validator** emette, non come verdetto asserito da B7. Nessun valore numerico d'esito è dichiarato come misurato.
+
+---
+
+## Iterazione 2 — risposta ai finding di Review (CONDITIONAL `98780f9`)
+
+Review iter.1 = **CONDITIONAL** (`reviews/REVIEW_SPEC_FUNZ_01_B7_review.md`): 2 BUG REALI (F1, F2) + 2 MIGLIORA PERFORMANCE (F3, F4). Decisione AC: instradati tutti e 4, accorpati in questo micro-pass di **sola accuratezza** (nessuna proposizione, ID-requisito o citazione-fonte cambiata). Patch chirurgiche limitate ai 4 finding.
+
+**Conteggio reale ricontato da zero (F1)** — prima di scrivere il nuovo numero ho contato gli ID distinti dagli header `### B7-*` con grep, contigui e senza buchi:
+- `B7-R-*` = **38** (B7-R-01 .. B7-R-38, contigui);
+- `B7-CN-*` = **7** (B7-CN-01 .. B7-CN-07);
+- `B7-NFR-*` = **4** (B7-NFR-01 .. B7-NFR-04);
+- **Totale = 49**. Coincide col numero indipendente del Reviewer (49 = 38 R + 7 CN + 4 NFR). Il numero suggerito nella card NON è stato preso ciecamente: è stato verificato sugli ID reali e confermato.
+
+| Finding | Classe | Correzione applicata | Prima → Dopo | Punti toccati |
+|---|---|---|---|---|
+| **F1** | BUG REALE | Conteggio requisiti corretto al valore reale verificato + auto-check RM-1 rifatto sul conteggio vero | "38 — 28 R / 7 CN / 3 NFR" → "**49 — 38 R / 7 CN / 4 NFR**" | doc `SPEC_FUNZ_01_B7.md` §9.1 (riga conteggio); REPORT §1 (totale + 3 sotto-conteggi), §"Misura prima/dopo" (DOPO), tabella AC-G1, §"Applicazione RM-1 a me stesso" (asserzione auto-smentita corretta) |
+| **F2** | BUG REALE | ID nel paragrafo atomicità AC-GO allineati al corpo reale (shift -1) | "(B7-R-33 pipeline, B7-R-34 dashboard) … B7-R-35 (hash)" → "(**B7-R-34** pipeline, **B7-R-35** dashboard) … **B7-R-36** (hash)" | doc `SPEC_FUNZ_01_B7.md:232` |
+| **F3** | MIGLIORA | Cross-reference corretto alla sezione esistente | "§10" → "**§9.3**" | doc `SPEC_FUNZ_01_B7.md` §1.4 (riga nota PENDING) |
+| **F4** | MIGLIORA | Stato-soglie uniformato allo stato esatto completo inline | "valore di lavoro provvisorio" → "valore di lavoro provvisorio, **non congelato in Parte VII, riconsiderato post-go-live**" | doc `SPEC_FUNZ_01_B7.md` B7-R-30, B7-R-31, B7-R-33, B7-NFR-03 |
+
+**Impatto**: tutti e 4 i fix sono di sola accuratezza descrittiva. Verificato (e confermato dalla review iter.1) che **nessuna proposizione di requisito, nessun ID-requisito e nessuna citazione-fonte (pin `path:line`) è cambiata**; il cardine edge-PENDING, la cecità, RM-1/RM-3 e il floor citazioni 100% restano inalterati. F2 corregge un refuso descrittivo, non l'applicazione del cardine AC-B7-ATOMICITA-GO (già corretta nel corpo). Freeze G-09 non toccato (nessuna modifica ai CAP; pre-flight: `git diff b27c1e3 HEAD -- CAP_07_parte_VII.md` e `git diff e8d5424 HEAD -- CAP_01_parte_I.md` entrambi vuoti).

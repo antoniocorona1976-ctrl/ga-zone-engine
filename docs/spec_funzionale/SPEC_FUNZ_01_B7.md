@@ -26,7 +26,7 @@ I requisiti `B7-*` sono derivati **dai soli** capitoli del perimetro (Cap.31-36 
 
 **Questo documento consolida CRITERI DICHIARATI, MAI verdetti né valori d'edge.** Ogni gate è formulato come *criterio/definizione/soglia/procedura dichiarata dal metodo*. Ogni grandezza misurabile — il valore effettivo di DSR, PBO, $E[R_{net}]$, CVaR, MDD, $r_{emit}$, $\rho_{sessions}$; l'esito dei 12 criteri di go-live; la decisione GO/NO-GO — è **PENDING-empirico (validator / FASE-D)** e **mai** asserita come "verificata", "superata", "confermata".
 
-**B7 (e l'intero track SPEC-FUNZ) NON emette verdetti GO / CONDITIONAL / NO-GO né valori d'edge.** L'emissione di tali verdetti su DSR/PBO/out-of-sample è **esclusiva del ruolo `validator`** (`.claude/agents/validator.md`), in panchina fino a FASE-D. La spec consolida la *checklist e la procedura*; l'*esito* è del validator. La lista completa delle grandezze PENDING-empirico è nella §10.
+**B7 (e l'intero track SPEC-FUNZ) NON emette verdetti GO / CONDITIONAL / NO-GO né valori d'edge.** L'emissione di tali verdetti su DSR/PBO/out-of-sample è **esclusiva del ruolo `validator`** (`.claude/agents/validator.md`), in panchina fino a FASE-D. La spec consolida la *checklist e la procedura*; l'*esito* è del validator. La lista completa delle grandezze PENDING-empirico è nella §9.3.
 
 Verbi vietati in questo documento su grandezze d'esito: "il bundle supera/passa il gate", "DSR è positivo/significativo", "l'edge esiste/è confermato", "GO". Verbi ammessi: "il metodo richiede DSR$>\theta_{DSR}$", "il criterio dichiarato è …", "al run del validator si misurerà …".
 
@@ -229,7 +229,7 @@ Il criterio dichiarato governa la sostituzione del bundle con quattro regole esp
 
 **Valore operativo trasversale**: definire la checklist binaria, deterministica e replicabile che autorizza (o nega) la pubblicazione del bundle come segnale operativo. **Ogni criterio è un gate *dichiarato*; l'esito di ciascuno e la decisione complessiva sono PENDING-empirico (validator / FASE-D).**
 
-I 12 criteri di go-live (`CAP_07_parte_VII.md:568`) sono consolidati come **12 requisiti distinti** (atomicità N1: un criterio binario OK/NOT-OK ciascuno). Per i criteri compositi al loro interno (B7-R-33 pipeline, B7-R-34 dashboard) le sotto-condizioni sono **enumerate dentro il singolo criterio** come contenuto di verifica, non spacchettate in requisiti separati; B7-R-35 (hash all'avvio) è condizione singola già atomica.
+I 12 criteri di go-live (`CAP_07_parte_VII.md:568`) sono consolidati come **12 requisiti distinti** (atomicità N1: un criterio binario OK/NOT-OK ciascuno). Per i criteri compositi al loro interno (B7-R-34 pipeline, B7-R-35 dashboard) le sotto-condizioni sono **enumerate dentro il singolo criterio** come contenuto di verifica, non spacchettate in requisiti separati; B7-R-36 (hash all'avvio) è condizione singola già atomica.
 
 ### B7-R-25 — Criterio di go-live 1: gate primario DSR
 Criterio dichiarato OK/NOT-OK: $DSR(\theta^*) > \theta_{DSR}=0{,}95$. (Esito = PENDING-empirico.)
@@ -259,12 +259,12 @@ Criterio dichiarato OK/NOT-OK: $\text{IQR}_{norm}(f_1)(\theta^*) < \theta_{IQR}=
 **Fonte**: `[DOC-INTERNO CAP_07_parte_VII.md:578]`.
 
 ### B7-R-30 — Criterio di go-live 6: CVaR entro limite (soglia provvisoria)
-Criterio dichiarato OK/NOT-OK: $\text{CVaR}_{95\%}(\theta^*) > \theta_{CVaR}=-100$ pt FIB, **valore di lavoro provvisorio**. (Esito = PENDING-empirico.)
+Criterio dichiarato OK/NOT-OK: $\text{CVaR}_{95\%}(\theta^*) > \theta_{CVaR}=-100$ pt FIB, **valore di lavoro provvisorio, non congelato in Parte VII, riconsiderato post-go-live**. (Esito = PENDING-empirico.)
 **Valore**: limita la perdita media nei segnali peggiori (worst-5%) a 100 pt, coerente con stop strutturali tipici di FIB intraday e col profilo retail 1 contratto/volta.
 **Fonte**: `[DOC-INTERNO CAP_07_parte_VII.md:580]`.
 
 ### B7-R-31 — Criterio di go-live 7: MDD intraday entro limite (soglia provvisoria)
-Criterio dichiarato OK/NOT-OK: $\text{MDD}_{intraday}(\theta^*) < \theta_{MDD}=200$ pt FIB, **valore di lavoro provvisorio** ($200\cdot 5 = 1.000$ EUR per contratto). (Esito = PENDING-empirico.)
+Criterio dichiarato OK/NOT-OK: $\text{MDD}_{intraday}(\theta^*) < \theta_{MDD}=200$ pt FIB, **valore di lavoro provvisorio, non congelato in Parte VII, riconsiderato post-go-live** ($200\cdot 5 = 1.000$ EUR per contratto). (Esito = PENDING-empirico.)
 **Valore**: limita il drawdown intraday massimo a un livello compatibile col profilo retail mobile (1 contratto/volta).
 **Fonte**: `[DOC-INTERNO CAP_07_parte_VII.md:582]`.
 
@@ -274,7 +274,7 @@ Criterio dichiarato OK/NOT-OK: $r_{emit}(\theta^*) \in [E_{min}=0{,}2; E_{max}=5
 **Fonte**: `[DOC-INTERNO CAP_07_parte_VII.md:584]`.
 
 ### B7-R-33 — Criterio di go-live 9: target operativo asimmetrico raggiunto
-Criterio dichiarato OK/NOT-OK: $\rho_{sessions} > \theta_{sessions}=0{,}60$ (**valore di lavoro provvisorio**), dove $\rho_{sessions}$ è la frazione di sessioni del fold OOS aggregato che raggiungono il **target operativo asimmetrico di Cap.1 di Parte I** — 500 pt FIB profitto netto/giorno (soglia assoluta $T_{abs}$) **OR** 70% del movimento strutturale intraday (soglia relativa $T_{rel}$), condizione OR $T(d)=T_{abs}(d)\lor T_{rel}(d)$. (Esito e $\rho_{sessions}$ effettivo = PENDING-empirico.)
+Criterio dichiarato OK/NOT-OK: $\rho_{sessions} > \theta_{sessions}=0{,}60$ (**valore di lavoro provvisorio, non congelato in Parte VII, riconsiderato post-go-live**), dove $\rho_{sessions}$ è la frazione di sessioni del fold OOS aggregato che raggiungono il **target operativo asimmetrico di Cap.1 di Parte I** — 500 pt FIB profitto netto/giorno (soglia assoluta $T_{abs}$) **OR** 70% del movimento strutturale intraday (soglia relativa $T_{rel}$), condizione OR $T(d)=T_{abs}(d)\lor T_{rel}(d)$. (Esito e $\rho_{sessions}$ effettivo = PENDING-empirico.)
 **Valore**: lega il go-live all'obiettivo operativo concreto dichiarato per il prodotto, tarato sul singolo giorno di trading.
 **Fonte**: `[DOC-INTERNO CAP_07_parte_VII.md:586]`, `[DOC-INTERNO CAP_07_parte_VII.md:609-625]`, `[DOC-INTERNO CAP_07_parte_VII.md:629-631]`.
 
@@ -314,7 +314,7 @@ Il criterio dichiarato definisce che, se gli alert di Parte VI scattano in modo 
 **Fonte**: `[DOC-INTERNO CAP_07_parte_VII.md:645]`, `[DOC-INTERNO CAP_07_parte_VII.md:647-654]`, `[DOC-INTERNO CAP_07_parte_VII.md:656]`.
 
 ### B7-NFR-03 — Latenza qualitativa del canale Telegram $L_{max}=30$ s (provvisoria; misura empirica PENDING)
-Il criterio dichiarato pone come obiettivo qualitativo della catena ingest-feature-inference-Telegram una latenza end-to-end entro $L_{max}=30$ s (**valore di lavoro provvisorio**), componente di B7-R-34. La **verifica numerica empirica** di $L_{max}$ effettivo su bot reale resta carryover di Appendice E (M-2 OPEN) → **PENDING-empirico**, mai asserita verificata qui.
+Il criterio dichiarato pone come obiettivo qualitativo della catena ingest-feature-inference-Telegram una latenza end-to-end entro $L_{max}=30$ s (**valore di lavoro provvisorio, non congelato in Parte VII, riconsiderato post-go-live**), componente di B7-R-34. La **verifica numerica empirica** di $L_{max}$ effettivo su bot reale resta carryover di Appendice E (M-2 OPEN) → **PENDING-empirico**, mai asserita verificata qui.
 **Valore**: fissa un'aspettativa di tempestività del segnale per l'operatore mobile, distinguendo l'obiettivo dichiarato dalla sua misura (rinviata).
 **Fonte**: `[DOC-INTERNO CAP_07_parte_VII.md:23]`, `[DOC-INTERNO CAP_07_parte_VII.md:592]`. M-promemoria: M-2 OPEN (CARRYOVER, Appendice E).
 
@@ -381,7 +381,7 @@ Il criterio dichiarato stabilisce che il post-processing di Parte VII (PBO + boo
 | B7-NFR-03 | Latenza $L_{max}=30$ s qualitativa | CAP_07_parte_VII.md:23, :592 | Cap.31.1/36.1 | tempestività del segnale (mobile) |
 | B7-NFR-04 | Compute budget post-processing ≤~15% | CAP_07_parte_VII.md:439, :441 | Cap.33.4/34.4 | sostenibilità del retraining |
 
-**Conteggio**: 38 requisiti totali — 28 `B7-R-*`, 7 `B7-CN-*`, 3 `B7-NFR-*`. (Nessun conteggio-target imposto; conteggio puramente descrittivo del prodotto.)
+**Conteggio**: 49 requisiti totali — 38 `B7-R-*`, 7 `B7-CN-*`, 4 `B7-NFR-*`. (Nessun conteggio-target imposto; conteggio puramente descrittivo del prodotto.)
 
 ### 9.2 Nota di rinvio — premesse e out-of-scope
 
