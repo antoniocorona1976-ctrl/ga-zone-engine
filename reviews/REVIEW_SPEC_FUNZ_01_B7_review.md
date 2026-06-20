@@ -184,3 +184,78 @@ Nessun ID-requisito v2 importato nel documento; nessun conteggio-**target** impo
 | Asserzioni d'esito/edge | 0 | 0 | ✓ cardine rispettato |
 
 **VERDETTO ITERAZIONE 1: CONDITIONAL** — 2 BUG REALI (F1, F2), 0 bloccanti, 2 osservazioni MIGLIORA PERFORMANCE (F3, F4). Floor citazioni, copertura e cardine edge-PENDING tutti superati.
+
+---
+
+# RE-REVIEW DELTA — ITERAZIONE 2 — VERDETTO: **PASS**
+
+> **Oggetto**: delta del rework iter.2, commit `46cab7e` (risposta alla CONDITIONAL iter.1 `98780f9`).
+> **Sede**: **CLI** (GOV-SURFACES-01) — audit documentale **no-DAPI**, divieto CLI attivo (nessuna probe di zelo).
+> **Modalità**: re-review del DELTA (non review piena da zero). Verifica mirata dei 4 fix (F1-F4) + ricerca attiva di regressioni sul diff `46cab7e`.
+> **Metodo**: ricontati indipendenti (grep header `### B7-*` + righe matrice §9.1), Read puntuale delle righe toccate, ispezione integrale del diff (`git show 46cab7e`). Capitoli-fonte NON riaperti (frozen G-09): il delta dichiara e mostra di non toccarli.
+
+## Sintesi
+Tutti e 4 i finding della iter.1 sono **risolti correttamente**. Il delta e' **chirurgico e circoscritto** ai 4 fix (7 righe nel documento + correzioni di conteggio/RM-1 nel report + nuova sezione narrativa iter.2). **0 regressioni**: nessuna proposizione di requisito, nessun ID-requisito, nessuna citazione-fonte (pin `path:line`) e' cambiata; il cardine edge-PENDING resta intatto (nessuna asserzione d'esito introdotta); il floor citazioni 100% resta valido sui requisiti toccati (i pin non sono stati alterati). I 2 BUG REALI che vietavano il PASS in iter.1 sono eliminati => **0 BUG REALE in tabella** => PASS (BASE_COMUNE §4).
+
+## Esito dei 4 fix
+
+### F1 (BUG REALE) — Conteggio requisiti — **RISOLTO**
+Riconteggio indipendente sul documento a HEAD:
+- `### B7-R-*` = **38** (B7-R-01..38, contigui, nessun buco) — grep header.
+- `### B7-CN-*` = **7** (B7-CN-01..07).
+- `### B7-NFR-*` = **4** (B7-NFR-01..04).
+- Righe matrice §9.1 (`| B7-`) = **49**. **Totale = 49 = 38 R + 7 CN + 4 NFR.** I due metodi (header vs matrice) concordano.
+
+Il dichiarato e' ora **49 (38 R + 7 CN + 4 NFR) in tutte le occorrenze sostanziali**:
+- doc §9.1 `:384` -> "49 requisiti totali — 38 `B7-R-*`, 7 `B7-CN-*`, 4 `B7-NFR-*`" OK
+- report §1 `:22` (totale 49), `:24` (38 R), `:25` (7 CN), `:26` (4 NFR) OK
+- report Misura/DOPO `:51` (49) OK
+- report tabella AC-G1 `:71` (49) OK
+- report "Applicazione RM-1 a me stesso" `:97`: l'asserzione auto-smentita e' **corretta** — ora "49 requisiti, 38/7/4 … 38 `B7-R-*` (B7-R-01..38)", coerente con gli ID reali (non piu' "28"). L'aggravante RM-1 (claim "verificato" su dato falso) e' rimossa.
+- I due residui "28/7/3" rimasti (report `:97` e `:123`) sono **riferimenti storici espliciti** ("il conteggio precedente era errato" / colonna Prima->Dopo della tabella iter.2): narrativi e veri, non asserzioni di conteggio corrente. Corretto lasciarli.
+
+### F2 (BUG REALE) — ID atomicita' AC-GO (doc `:232`) — **RISOLTO**
+doc `:232` ora: "(B7-R-34 pipeline, B7-R-35 dashboard) … B7-R-36 (hash all'avvio)". Confronto col corpo reale:
+- B7-R-34 `:281` = "Criterio go-live 10: **pipeline** (composito)" OK
+- B7-R-35 `:286` = "Criterio go-live 11: **dashboard** (composito)" OK
+- B7-R-36 `:291` = "Criterio go-live 12: **hash** bundle frozen all'avvio (singola)" OK
+Gli ID corrispondono token-per-token al corpo. Lo shift -1 e' eliminato.
+
+### F3 (MIGLIORA) — Cross-ref (doc `:29`) — **RISOLTO**
+doc `:29` ora rinvia a **§9.3**. §9.3 esiste (`:400` "Lista PENDING-empirico (marcata, MAI asserita)"). **Nessun residuo "§10"** nel documento (grep vuoto). Il documento ha 9 sezioni; il rinvio rotto e' corretto.
+
+### F4 (MIGLIORA) — Stato-soglie inline — **RISOLTO**
+La clausola completa "valore di lavoro provvisorio, **non congelato in Parte VII, riconsiderato post-go-live**" e' ora presente inline sui 4 requisiti target:
+- B7-R-30 (CVaR) `:262` OK · B7-R-31 (MDD) `:267` OK · B7-R-33 (rho_sessions) `:277` OK · B7-NFR-03 (L_max) `:317` OK.
+Le 3 occorrenze "troncate" residue (righe `:146/:167/:190`) sono i **titoli-header** di B7-R-17/20/23 che recano l'etichetta breve "(valore di lavoro provvisorio)"; il **corpo** di quei requisiti (`:147`, `:168`) porta gia' la clausola completa. Nessun corpo troncato residuo. Uniformita' raggiunta.
+
+## 0 regressioni — verifica sul diff `46cab7e`
+- **Diff documento = 7 righe modificate**, tutte e sole i 4 fix (1×F1 conteggio §9.1, 1×F2 ID, 1×F3 §10->§9.3, 4×F4 soglie). Nessun'altra riga del documento toccata.
+- **Pin `path:line` invariati**: 0 occorrenze di `[DOC-INTERNO ...]` nelle righe +/- del diff doc. Tutte le citazioni-fonte sono righe non toccate => il floor citazioni 100% (PASS in iter.1) regge per costruzione sui requisiti toccati.
+- **Proposizioni di requisito invariate**: nei 4 fix F4 i valori numerici delle soglie (-100 pt, 200 pt, 0,60, 30 s), gli operatori di confronto e la struttura restano identici; si aggiunge solo la coda della clausola di provvisorieta'. F2 cambia solo 3 ID in una frase **descrittiva** (paragrafo introduttivo §8), non dentro un requisito. F1 tocca una riga di conteggio descrittivo. F3 tocca la nota di confine.
+- **Cardine edge-PENDING intatto**: tutte le righe modificate conservano "(Esito = PENDING-empirico)"/"PENDING-empirico"; la riga F3 e' proprio la nota "B7 NON emette verdetti GO/CONDITIONAL/NO-GO" e il suo contenuto di divieto e' invariato. **Nessuna asserzione d'esito/edge introdotta** dal delta.
+- **ID-requisito invariati**: nessun header `### B7-*` aggiunto/rimosso/rinominato (il riconteggio coincide con quello atteso 38/7/4 = 49).
+- **Diff report**: correzioni di conteggio F1 + correzione dell'asserzione RM-1 (resa veritiera) + nuova sezione narrativa "Iterazione 2 — risposta ai finding". Nessuna nuova asserzione di verifica empirica; nessun blocco `VERIFICA/PROVE` di prima istanza introdotto.
+- **Freeze G-09**: il delta non tocca alcun file in `docs/methodology_v2/` (diff su 3 file: doc spec, report, DEV_STATUS). I capitoli-fonte restano congelati.
+
+## Applicazione RM-1 a me stesso (delta)
+- **"49 = 38 R + 7 CN + 4 NFR"** — non assunto: ricontato due volte con strumenti indipendenti a HEAD — (a) grep degli header `### B7-R-/CN-/NFR-` (38/7/4); (b) conteggio righe `| B7-` della matrice §9.1 (49). I due concordano. Alternativa esclusa: header senza riga in matrice (o viceversa) -> i conteggi coinciderebbero solo se la corrispondenza e' 1:1, ed e' cosi'.
+- **"0 regressioni"** — non assunto: ispezionato l'intero diff `46cab7e` riga per riga (`git show`), enumerato ogni `+`/`-`; confermato che le sole modifiche sostanziali sono i 4 fix. Limite onesto: ho verificato il diff di QUESTO commit; un'eventuale regressione introdotta in un commit precedente alla iter.1 sarebbe stata gia' coperta dalla review iter.1 (PASS-grade su tutto tranne F1-F4).
+- **"pin invariati"** — grep `DOC-INTERNO` sulle righe +/- del diff doc = 0; quindi nessuna citazione-fonte modificata.
+- **"cardine edge-PENDING intatto"** — verificato che ogni riga modificata che riguarda una grandezza d'esito conserva il marcatore PENDING; la riga F3 conserva il divieto di verdetti.
+- **Confine di sede**: audit interamente documentale in CLI; nessuna probe DAPI (divieto CLI di zelo rispettato).
+
+## Tabella "Classificazione per il supervisore" (delta iter.2)
+
+| # | Problema | file:riga | Classificazione | Mandare a Development? |
+|---|----------|-----------|-----------------|-----------------------|
+| — | Nessun finding nuovo. F1, F2 (BUG REALE iter.1) risolti; F3, F4 (MIGLIORA iter.1) risolti. | — | — | No |
+
+**0 BUG REALE in tabella, 0 bloccanti.**
+
+## Lista "Empirico-CLI da verificare"
+**VUOTA** (attesa). Il delta e' di sola accuratezza documentale; non introduce fatti empirici.
+
+---
+
+**VERDETTO RE-REVIEW DELTA ITER.2: PASS.** I 4 fix (F1, F2, F3, F4) sono risolti correttamente e verificati indipendentemente; conteggio reale = **49 (38 R + 7 CN + 4 NFR)** in tutte le occorrenze sostanziali; **0 regressioni** (nessuna proposizione/ID/pin cambiata, cardine edge-PENDING intatto, floor citazioni 100% preservato). Combinato con la iter.1 (floor citazioni, copertura Sez.8, cardine edge-PENDING tutti PASS-grade), il blocco SPEC-FUNZ-01-B7 e' **PASS pieno**.
