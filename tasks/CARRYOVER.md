@@ -18,7 +18,7 @@ L'Orchestratore della **nuova** sessione legge questo file come input obbligator
 
 | M-ID | Origine | Contenuto | Destinazione | Stato |
 |------|---------|-----------|--------------|-------|
-| M-2  | Review v1 CAP-02 | Verifica empirica latenza Telegram ($L_{max}=30$s) | Appendice E | OPEN — requisito incardinato come **NFR-6.2** `[B-1 PROVVISORIO]` in SPEC-FUNZ-01 v2 (`ab7450f`, 2026-06-14; era NFR-1 nella v1 `a16a4c0`); **ri-incardinato nel blocco B4 (ricostruzione cieca) come `B4-NFR-03/04`** (vincolo $L\le L_{max}$ + valore 30s **provvisorio dal CAP**, Cap.9.3) alla chiusura B4 PASS `8500159` (2026-06-16); la verifica empirica del valore resta **OPEN** a Appendice E / FASE-D (PENDING-empirico, mai dichiarata verificata — RM-1/AC-G4). **NON chiuso.** |
+| M-2  | Review v1 CAP-02 | Verifica empirica latenza Telegram ($L_{max}=30$s) | Appendice E | OPEN — requisito incardinato come **NFR-6.2** `[B-1 PROVVISORIO]` in SPEC-FUNZ-01 v2 (`ab7450f`, 2026-06-14; era NFR-1 nella v1 `a16a4c0`); **ri-incardinato nel blocco B4 (ricostruzione cieca) come `B4-NFR-03/04`** (vincolo $L\le L_{max}$ + valore 30s **provvisorio dal CAP**, Cap.9.3) alla chiusura B4 PASS `8500159` (2026-06-16); **richiamato anche in B7 come `B7-NFR-03`** (latenza qualitativa $L_{max}=30$s del canale Telegram dentro il criterio AC-GO-10, premessa di gate, Cap.36) alla chiusura B7 PASS `37d2166` (2026-06-21); la verifica empirica del valore resta **OPEN** a Appendice E / FASE-D (PENDING-empirico, mai dichiarata verificata — RM-1/AC-G4). **NON chiuso.** |
 | M-4  | Review v4 CAP-01 | Tasso di rimpiazzo NSGA-II che giustifica baseline 12.800-25.600 min | Parte V (Cap.23) | CLOSED-CAP-05 (Cap.23.6: formula $N_{eval}^{actual}=P(1+G(1-r_{cache}))=17.408$ con $r_{cache}$ provvisorio 0,15; range M-4 derivato come $17.408 \cdot t_{eval}$ con $t_{eval}\in[0,74;1,47]$ min/cromosoma, post-rework v2 dimensionalmente coerente) |
 | M-5  | Review v1 CAP-03 (Q-06 / C-4.3) | Benchmark comparativo rolling vs expanding vs EWMA su FIB con test Inoue-Rossi (2011); criterio di rollback automatico | Parte V (Cap.25 window selection del walk-forward) | CLOSED-CAP-05 (Cap.25.3: 7 candidate windows + test Inoue-Rossi 2011 con $p=0,05$ + tie-break + rollback deterministico normativo) |
 | M-6  | Review v1 CAP-03 (Q-09 / C-7.3) | Classificazione di regime in parallelo media e mediana; test di stabilita' con soglia da definire | Parte V (Cap.25-26 gestione regimi nel walk-forward) | CLOSED-CAP-05 (Cap.25.4: formula $\eta_{div}$ + soglia 0,10 + flag instabile) |
@@ -49,6 +49,14 @@ Alla chiusura PASS di B6 (territorio incidente CANDLE, cautela RM massima):
   4. **PRICE `f5`/`f7`** contatori cumulativi — non disambiguati (verifica parziale).
   5. **Base calendario-vs-giorni-di-trading** delle finestre warm-up 30gg / recupero 100gg — convenzione IDEM (**probe V-2**). Nota: il valore `L_warmup=30` è **congelato**; è la resa in giorni-di-calendario che è pending.
 - **Finding #3 NEUTRO** (B6-R-28/R-31 borderline N1): non instradato (decisione AC), restano proposizioni unitarie verificabili.
+
+### Eredità chiusura SPEC-FUNZ-01-B7 (Gate di go-live) — `37d2166`, 2026-06-21
+
+Alla chiusura PASS di B7 (settimo blocco della ricostruzione cieca a 8 blocchi; ponte verso FASE-D; **cardine edge-PENDING**):
+
+- **Nessun M nuovo emesso da B7.** L'unico M pertinente è **M-2** (latenza Telegram), già OPEN: richiamato in B7 come **B7-NFR-03** dentro il criterio AC-GO-10 (premessa qualitativa di gate), misura empirica resta **PENDING-empirico** (mai asserita — RM-1). Vedi riga M-2 sopra. **M-16 condizionale** (Cox time-varying) è materia metodologica già **CLOSED-CAP-07** (Cap.31.3), non riaperto da B7.
+- **Cardine edge-PENDING** (vincolo cardine di B7): B7 consolida i **criteri di gate dichiarati** (DSR/PBO/bootstrap/$E[R_{net}]$/CVaR/MDD/12 AC-GO/frozen bundle/decisione GO-NO-GO) come **definizioni/soglie/procedure**, **MAI** come esiti. **Tutte le claim sull'esistenza/misura dell'edge restano PENDING-empirico**, esclusiva del ruolo **`validator`** (in panchina fino a FASE-D). Verificato dal Reviewer: 0 asserzioni d'esito, 30 marcature PENDING, confine di ruolo `validator` esplicito.
+- **Soglie tutte provvisorie**: $\theta_{DSR}=0{,}95$, $\theta_{PBO}=0{,}50$, $\theta_{f_5}=0{,}30$, $\theta_{IQR}=0{,}40$, $\theta_{t_2}=0{,}30$, $\theta_{CVaR}=-100$ pt, $\theta_{MDD}=200$ pt, $\theta_{sessions}=0{,}60$, $L_{avg}=10$, $\theta_{cost}=100$ USD/run, $B=2.000$ — consolidate come "valore di lavoro provvisorio, non congelato in Parte VII, riconsiderato post-go-live" (PENDING / FASE-D, NON definitive).
 
 ## RACCOMANDAZIONI-METODO (namespace separato dai M-promemoria di capitolo)
 
