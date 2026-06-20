@@ -186,4 +186,19 @@ Tutte le claim sull'edge/esito sono **PENDING-empirico (validator / FASE-D)**; i
 
 ---
 
+## 10. Finding di Review da risolvere — CONDITIONAL `98780f9` (iter.2, decisione AC: tutti e 4)
+
+Review B7 iterazione 1 = **CONDITIONAL** (`reviews/REVIEW_SPEC_FUNZ_01_B7_review.md`). Punto di controllo supervisore: **AC ha instradato tutti e 4 i finding** (F1+F2 BUG REALE obbligatori; F3+F4 MIGLIORA PERFORMANCE approvati, accorpati nello stesso micro-pass). Tutto il resto è PASS-grade (floor citazioni 100%, copertura Sez.8 0 buchi/sconfinamenti/orfani, cardine edge-PENDING rispettato, RM-1/3 e cecità OK). **Micro-fix di SOLA ACCURATEZZA: NESSUNA proposizione, ID-requisito o citazione-fonte (pin) cambia.** Il conteggio reale verificato dal Reviewer è **49 = 38 R + 7 CN + 4 NFR**.
+
+| # | Problema | Correzione | Occorrenze (verifica token-per-token) |
+|---|----------|------------|----------------------------------------|
+| F1 (BUG REALE) | Conteggio requisiti dichiarato **falso**: "38 (28 R + 7 CN + 3 NFR)". Reale (verificato CLI): **49 (38 R + 7 CN + 4 NFR)**. Aggravato: la sezione "Applicazione RM-1 a me stesso" del REPORT lo auto-dichiara "verificato sugli ID reali" riportando un dato falso (RM-1). | → **49 (38 R + 7 CN + 4 NFR)** ovunque; **correggi anche l'asserzione RM-1** del report perché rifletta il conteggio reale verificato | doc `SPEC_FUNZ_01_B7.md:384` (§9.1) + ogni altra occorrenza del conteggio; REPORT `:22, :24-26, :51, :71, :97`. Correggi **ogni** occorrenza. |
+| F2 (BUG REALE) | Riferimento interno errato agli ID nel paragrafo atomicità AC-GO: cita "B7-R-33 pipeline, B7-R-34 dashboard, B7-R-35 hash" mentre il corpo reale è **B7-R-34 (pipeline) / B7-R-35 (dashboard) / B7-R-36 (hash)**. | → **B7-R-34 / B7-R-35 / B7-R-36** | doc `SPEC_FUNZ_01_B7.md:232` |
+| F3 (MIGLIORA) | Cross-reference a sezione inesistente: §1.4 rinvia alla "§10" ma la lista PENDING è in **§9.3** (il doc ha 9 sezioni). | → rinvio a **§9.3** | doc `SPEC_FUNZ_01_B7.md:29` |
+| F4 (MIGLIORA) | Grafia stato-soglie non uniforme inline: la clausola "valore di lavoro provvisorio, non congelato in Parte VII, riconsiderato post-go-live" è **troncata** su B7-R-30/31/33 + B7-NFR-03 (lo stato esatto completo è comunque presente in §9.3). | → uniforma lo **stato esatto completo** inline su quei 4 requisiti | doc `SPEC_FUNZ_01_B7.md:262, :267, :277, :317` |
+
+**Mandato (tutto e solo questo)**: correggi le 4 occorrenze come sopra in `docs/spec_funzionale/SPEC_FUNZ_01_B7.md` e nel REPORT (F1). **NON** toccare: proposizioni, ID-requisito, citazioni-fonte (pin), gli altri requisiti, i capitoli-fonte (frozen G-09), il cardine edge-PENDING. **Riconta gli ID reali** (R/CN/NFR) prima di scrivere il nuovo conteggio: deve essere il conteggio vero, non quello suggerito alla cieca. Conta come iterazione di rework v2 legata a finding di Review. Commit `[SPEC-FUNZ-01-B7]` (body: "iter.2 — fix F1 conteggio 49/38R/4NFR + F2 ID AC-GO + F3 cross-ref §9.3 + F4 stato-soglie") + `READY_FOR_REVIEW`; poi fermati.
+
+---
+
 *Card B7 (card-sorgente `Business Spec/Final/ACTIVE_TASK_B7.md`, prodotta sotto `ISTRUZIONI_B7-01`). **NON installata**: `tasks/ACTIVE_TASK.md` resta storico su B6; l'install di questa card + l'avvio del ciclo Developer→Review sono **decisione AC**. Nessuna spec scritta, nessun CAP modificato (freeze G-09). Path file CAP verificati reali: `CAP_07_parte_VII.md` (Parte VII, numero romano), `CAP_01_parte_I.md` (Parte I). SHA frozen pinnabili: CAP-07 `b27c1e3`, CAP-01 `e8d5424` (corretto da `b76c32c` in CARD-FIX-01/F4: CAP_01 evoluto post-PASS via FIX-01/03/04, vedi intestazione). La vista-Developer è per soli capitoli: nessun ID-requisito v2, nessun conteggio-target, nessuna partizione esposti — cecità preservata. Vincolo cardine in evidenza: criteri DICHIARATI, mai verdetti; ogni claim d'edge è PENDING-empirico (validator/FASE-D).*
