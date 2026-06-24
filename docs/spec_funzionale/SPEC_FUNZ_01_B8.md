@@ -161,6 +161,13 @@ Il prodotto **dichiara** che l'**implementazione del codice operativo** della pi
 - **Stato esatto**: **aperta**, rinviata a **FASE-D**. La codifica non è materia della spec corrente (metodologia/prodotto, non implementazione).
 - **Valore di sistema**: rende esplicito il confine fra specifica (chiusa con la serie B1..B8) e implementazione (FASE-D), così che il go-live non sia confuso con la disponibilità di codice eseguibile.
 
+### B8-R-13 — L'estensione dell'immutabilità CANDLERANGE oltre T+3 resta dipendenza aperta (probe addizionale FASE-D)
+
+Il prodotto **dichiara** l'estensione del perimetro di immutabilità delle barre `CANDLERANGE` **oltre l'orizzonte T+3** (e oltre la finestra morning / su finestre afternoon e usopen / su strumenti non testati) come **dipendenza aperta**: il perimetro empirico onesto entro cui l'immutabilità è attestata empiricamente in modo diretto è T+3 morning sui ticker FIB6F/DITAS; oltre tale perimetro l'immutabilità è **assunta per estensione, sorvegliata dal gate di riconciliazione (Cap.60)**, e una eventuale estensione **richiede un nuovo probe empirico** (Q-XX al Planner, NON dentro Parte 10), da rifinire con probe addizionale in **FASE-D** se emerge necessità `[DOC-INTERNO docs/methodology_v2/CAP_10_parte_10.md:234]`.
+
+- **Stato esatto**: **aperta**, PENDING-empirico, rinviata a **FASE-D** (probe addizionale) / sorvegliata dal gate Cap.60 nel frattempo. L'estensione del perimetro di immutabilità **non è risolta da B8** e **non è asserita** come dimostrata oltre T+3 morning.
+- **Valore di sistema**: rende esplicito che la garanzia di idempotenza/immutabilità del backfill `CANDLERANGE` vale solo entro il perimetro empirico testato (T+3 morning, FIB6F/DITAS); fuori da quel perimetro è un'assunzione sorvegliata, non un fatto dimostrato — input per FASE-D prima di affidarvi backfill oltre quell'orizzonte.
+
 ---
 
 ## 3. Lista PENDING-empirico (marcate, NON asserite)
@@ -177,6 +184,7 @@ B8 **dichiara** le dipendenze aperte; il loro **esito/valore** è PENDING-empiri
 | Decodifica codici mese Directa-IDEM mancanti (oltre `F`/`I`) | B8-R-07 | runtime-discovery (ANAG) / FASE-D | dipendenza aperta dichiarata; lookup incompleta |
 | Abilitazione FDAX standard (account non abilitato 2026-05-27) | B8-R-08 | valutazione PHASE-2 | dipendenza aperta dichiarata; non decisa |
 | Scelta vendor cross-index pluriennale (training PHASE-2) | B8-R-09 | attivazione PHASE-2 | dipendenza aperta dichiarata; non scelto |
+| Estensione immutabilità barre `CANDLERANGE` oltre T+3 (e finestre afternoon/usopen / strumenti non testati) | B8-R-13 | probe addizionale FASE-D (Q-XX Planner) / gate Cap.60 nel frattempo | dipendenza aperta dichiarata; immutabilità oltre T+3 morning assunta per estensione, non dimostrata |
 
 > **Nota M-GOV-1 (orario di sessione).** La finestra-sessione FIB 08:00-22:00 CET (epoca E5) è premessa B5-owned, origine normativa in `CAP_08_parte_8.md` Cap.41 `:133`. B8 la **cita solo** come dipendenza aperta (upgrade empirico M-GOV-1, da WIKI-HINT a PROVA-EMPIRICA), **non ri-consolida** la regola operativa di sessione (perimetro B5). La regola di sessione resta in vigore; ciò che è PENDING è l'**upgrade empirico** del valore.
 
@@ -209,6 +217,7 @@ B8 **dichiara** le dipendenze aperte; il loro **esito/valore** è PENDING-empiri
 | B8-R-10 | Flusso DAPI come fonte di training = dipendenza aperta (nuovo task Planner) | CAP_09_parte_9.md:404; CAP_10_parte_10.md:238 | sistema: confine dati del prodotto (tape ≠ training) |
 | B8-R-11 | Migrazione formato legacy→esteso = dipendenza aperta (una-tantum FASE-D) | CAP_10_parte_10.md:230, :235 | sistema: debito di migrazione archivio |
 | B8-R-12 | Implementazione codice pipeline = dipendenza aperta (FASE-D) | CAP_09_parte_9.md:406; CAP_10_parte_10.md:231 | sistema: confine specifica ↔ implementazione |
+| B8-R-13 | Estensione immutabilità CANDLERANGE oltre T+3 = dipendenza aperta (probe addizionale FASE-D / gate Cap.60) | CAP_10_parte_10.md:234 | sistema: garanzia di idempotenza backfill solo entro T+3 morning testato |
 
 ### 4.2 Nota di rinvio (premesse §5 / out-of-scope §6)
 

@@ -142,8 +142,8 @@ Alla chiusura (22:00 CET) la pipeline registra il marker **`SESSION_CLOSE`** in 
 
 ### B5-CN-05 — La chiusura 22:00 non chiude un segnale `active`
 Un segnale in stato **`active`** alla chiusura 22:00 CET **non viene chiuso automaticamente** dalla pipeline: la transizione terminale è governata esclusivamente dal counter cromosoma-specifico della state machine (timer post-trigger $\Delta t_{cromosoma}$), **mai dalla chiusura di sessione**.
-*Tracciabilità*: `[DOC-INTERNO CAP_09_parte_9.md:292]`, `[DOC-INTERNO CAP_09_parte_9.md:302]`.
-*Valore*: di sistema — preserva la semantica multiday del segnale: il dominio temporale (fino a ~due giornate, $\Delta t$ fino a 1680 min) scavalca l'interruzione notturna. La state machine e i suoi stati terminali sono premessa di B3 Cap.7 (vedi §7); qui si consolida la sola regola "22:00 non chiude active".
+*Tracciabilità*: `[DOC-INTERNO CAP_09_parte_9.md:292]`, `[DOC-INTERNO CAP_09_parte_9.md:302]`. Il dettaglio numerico "$\Delta t$ fino a 1680 min / ~due giornate" è ancorato a `[DOC-INTERNO CAP_09_parte_9.md:290]` (unica occorrenza del numero 1680: "dominio fino a 1680 minuti, scavalca le interruzioni notturne fra sessioni").
+*Valore*: di sistema — preserva la semantica multiday del segnale: il dominio temporale (fino a ~due giornate, $\Delta t$ fino a 1680 min `[DOC-INTERNO CAP_09_parte_9.md:290]`) scavalca l'interruzione notturna. La state machine e i suoi stati terminali sono premessa di B3 Cap.7 (vedi §7); qui si consolida la sola regola "22:00 non chiude active".
 
 ### B5-CN-06 — Persistenza dello stato del segnale attraverso l'interruzione notturna
 Fuori sessione la pipeline **mantiene lo stato del segnale `active` in memoria persistente** (su disco); al boot del giorno successivo lo riprende e, se il counter $\Delta t_{cromosoma}$ è scaduto fuori sessione, applica la transizione al primo boot utile marcandola in audit con timestamp coerente.
@@ -260,7 +260,7 @@ Sotto commissioni mensili `< 200 EUR` la pipeline **tollera** l'addebito automat
 | B5-R-12 | 4 | CAP_09:273 | operativo |
 | B5-R-13 | 4 | CAP_09:294,299 | operativo/compliance |
 | B5-R-14 | 4 | CAP_09:302 | operativo |
-| B5-CN-05 | 4 | CAP_09:292,302 | di sistema |
+| B5-CN-05 | 4 | CAP_09:292,302 (numero 1680 / ~due giornate: CAP_09:290) | di sistema |
 | B5-CN-06 | 4 | CAP_09:292 | di sistema/replay |
 | B5-R-15 | 5 | CAP_09:310,308 | operativo |
 | B5-R-16 | 5 | CAP_09:311,324 | operativo |

@@ -301,6 +301,41 @@ L'adapter DAPI → bundle frozen è il cuore del blocco: traduce i record DAPI i
 
 ---
 
+## 6bis. Gap-closure AUDITFIX-01 (F1, F4, F5)
+
+> Requisiti aggiunti dal task **SPEC-FUNZ-01-AUDITFIX-01** a chiusura di tre gap confermati dall'audit indipendente (`wf_589a4b92`). ID assegnati in coda allo schema del blocco; ogni riga-fonte CAP è stata riletta token-per-token a HEAD. Nessuna proposizione preesistente è modificata.
+
+### 6bis.1 Regola di consumo a valle per-categoria-di-feature (F1, Cap.49 — Coerenza con la regola d'uso a valle di Cap.40)
+
+A valle dell'adapter, il consumo delle barre dipende dalla **categoria di feature**: le regole d'uso congelate in Parte 8 Cap.40 si applicano simmetricamente al runtime (identiche a training). La distinzione decisiva è fra feature che **devono ignorare le barre sintetiche** (volatilità, volume, touch) e feature che **usano la griglia uniforme completa** (prezzo, struttura).
+
+**B6-R-38** — Le feature di **volatilità** (EGARCH, classificazione di regime, dispersione realized) devono essere calcolate **esclusivamente su barre con `bar_synthetic = False`** (barre reali), mai su barre sintetiche.
+*Tracciabilità*: `[DOC-INTERNO CAP_09_parte_9.md:185]`. *Valore*: includere barre sintetiche (rendimento log identicamente nullo) introdurrebbe bias verso bassa volatilità e contaminerebbe lo stato condizionato; la regola tiene la stima di volatilità in produzione identica a quella di training.
+
+**B6-R-39** — Le feature di **prezzo** (livelli, distanze da zone, distanze da pivot strutturali) devono usare la **griglia uniforme completa**, inclusi i minuti sintetici.
+*Tracciabilità*: `[DOC-INTERNO CAP_09_parte_9.md:186]`. *Valore*: i livelli e le distanze sono definiti su ogni minuto della griglia (un prezzo esiste anche nei minuti senza trade, via forward-fill); escludere i minuti sintetici romperebbe l'allineamento temporale con il training.
+
+**B6-R-40** — Le feature di **volume** devono usare **esclusivamente barre con `bar_synthetic = False`** (le barre sintetiche hanno `volume = 0` per costruzione).
+*Tracciabilità*: `[DOC-INTERNO CAP_09_parte_9.md:187]`. *Valore*: contare i minuti sintetici (volume zero per costruzione) distorcerebbe le statistiche di volume; la regola è identica a training.
+
+**B6-R-41** — Le feature di **struttura** (pivot frattali, EMA con reset cross-session) devono usare la **griglia uniforme completa** per il time-indexing; i pivot non sono spostati dalle barre sintetiche.
+*Tracciabilità*: `[DOC-INTERNO CAP_09_parte_9.md:188]`. *Valore*: la struttura (pivot, EMA) è indicizzata sull'intera griglia temporale; le barre sintetiche partecipano al time-indexing senza spostare i pivot, preservando la simmetria con training.
+
+**B6-R-42** — Il **touch della entry zone** (raw touch) **non deve mai essere dichiarato su una barra con `bar_synthetic = True`**.
+*Tracciabilità*: `[DOC-INTERNO CAP_09_parte_9.md:189]`. *Valore*: dichiarare un touch su una barra sintetica (prezzo forward-fillato, nessun trade reale) genererebbe un trigger su un evento di prezzo mai accaduto sul mercato; la gap semantics è simmetrica fra training e runtime per l'invariante research = runtime.
+
+### 6bis.2 Vincolo di encoding dell'header CSV runtime (F4, Cap.48)
+
+**B6-CN-25** — Ogni file CSV prodotto dalla pipeline runtime deve avere **header con BOM UTF-8** (encoding del file: UTF-8 con Byte Order Mark).
+*Tracciabilità*: `[DOC-INTERNO CAP_09_parte_9.md:117]` ("Ogni file CSV prodotto dalla pipeline runtime ha header obbligatorio BOM UTF-8 ...") + `[DOC-INTERNO CAP_09_parte_9.md:145]` (lo script di riferimento "definisce ... il header CSV con BOM UTF-8"). *Valore*: il vincolo di encoding è un concern distinto dall'enumerazione dei 13 campi (B6-CN-05): fissa la codifica byte del file, garantendo che i consumer downstream leggano l'header correttamente e che il diff byte-per-byte del test di regressione (Gap-5) sia stabile rispetto all'encoding.
+
+### 6bis.3 Marker di esito-verifica del backfill e routing al gate (F5, Cap.59)
+
+**B6-R-43** — Nella validazione di idempotenza del backfill `CANDLERANGE`, l'adapter deve marcare l'esito con `BACKFILL_VERIFIED_T3` se la finestra recuperata rientra nell'orizzonte empirico testato (T+3 morning); altrimenti deve marcare `BACKFILL_UNVERIFIED` con flag operativo che **instrada il record al check di riconciliazione di Cap.60** (gate end-of-day).
+*Tracciabilità*: `[DOC-INTERNO CAP_10_parte_10.md:90]` ("Marker di esito: `BACKFILL_VERIFIED_T3` se la finestra rientra nell'orizzonte empirico testato; altrimenti `BACKFILL_UNVERIFIED` con flag operativo che richiede il check di riconciliazione di Cap.60."). *Valore*: separa onestamente il backfill la cui immutabilità è attestata empiricamente in modo diretto (T+3 morning) da quello assunto-per-estensione, instradando quest'ultimo al gate di sorveglianza periodica (Cap.60) invece di trattarlo come dato certo — coerente con il perimetro empirico esplicito di Cap.59 e con la dipendenza aperta B8-R-13.
+
+---
+
 ## 7. Matrice di tracciabilità, nota di rinvio, PENDING-empirico, nota RM-3
 
 ### 7.1 Matrice di tracciabilità
@@ -372,6 +407,13 @@ L'adapter DAPI → bundle frozen è il cuore del blocco: traduce i record DAPI i
 | B6-CN-22 | archivio append-only / versioning | `[DOC-INTERNO CAP_10_parte_10.md:207]` | Cap.62 |
 | B6-CN-23 | provenienza da source, non bar_synthetic | `[DOC-INTERNO CAP_10_parte_10.md:68]` | Cap.62 |
 | B6-CN-24 | tape NON fonte training (vincolo negativo) | `[DOC-INTERNO CAP_10_parte_10.md:209]` + premessa `CAP_08 Cap.44` | Cap.62 |
+| B6-R-38 | volatilità solo su barre reali (bar_synthetic=False) — F1 | `[DOC-INTERNO CAP_09_parte_9.md:185]` | Cap.49 |
+| B6-R-39 | prezzo (livelli/distanze) su griglia completa, inclusi sintetici — F1 | `[DOC-INTERNO CAP_09_parte_9.md:186]` | Cap.49 |
+| B6-R-40 | volume solo su barre reali (bar_synthetic=False) — F1 | `[DOC-INTERNO CAP_09_parte_9.md:187]` | Cap.49 |
+| B6-R-41 | struttura (pivot/EMA) su griglia completa — F1 | `[DOC-INTERNO CAP_09_parte_9.md:188]` | Cap.49 |
+| B6-R-42 | touch entry zone mai su barra sintetica — F1 | `[DOC-INTERNO CAP_09_parte_9.md:189]` | Cap.49 |
+| B6-CN-25 | header CSV runtime con BOM UTF-8 — F4 | `[DOC-INTERNO CAP_09_parte_9.md:117,145]` | Cap.48 |
+| B6-R-43 | marker BACKFILL_VERIFIED_T3/BACKFILL_UNVERIFIED + routing gate Cap.60 — F5 | `[DOC-INTERNO CAP_10_parte_10.md:90]` | Cap.59 |
 
 ### 7.2 Nota di rinvio (premesse / fuori-scope)
 
@@ -410,4 +452,4 @@ Tutti i claim strutturali di questo documento poggiano su `[PROVA-EMPIRICA]` (li
 
 ---
 
-*Documento B6 prodotto dallo spec_developer del track Business-spec, cieco rispetto a SPEC_FUNZ_01 v2/v1 e ai documenti B1..B5, con eccezione RM-2 sui decoder di produzione e sugli audit empirici. ID `B6-*` auto-assegnati da zero, nessun conteggio-target. 65 requisiti: 37 R + 24 CN + 4 NFR.*
+*Documento B6 prodotto dallo spec_developer del track Business-spec, cieco rispetto a SPEC_FUNZ_01 v2/v1 e ai documenti B1..B5, con eccezione RM-2 sui decoder di produzione e sugli audit empirici. ID `B6-*` auto-assegnati da zero, nessun conteggio-target. 65 requisiti nella stesura originale (37 R + 24 CN + 4 NFR); **72 requisiti dopo SPEC-FUNZ-01-AUDITFIX-01 (43 R + 25 CN + 4 NFR)**: +6 R (B6-R-38..43, F1+F5) + 1 CN (B6-CN-25, F4).*

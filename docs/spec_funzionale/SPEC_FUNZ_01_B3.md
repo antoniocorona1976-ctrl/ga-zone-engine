@@ -265,6 +265,9 @@ Ogni requisito porta: la **proposizione** (atomica, N1), la **tracciabilità** `
 **B3-R-47** — Le metriche della submacchina ($\pi_{t_2 \mid t_1}$, MFE/MAE post-target_1, $f_{stop \mid t_1}$) entrano nella fitness multi-obiettivo del GA come **obiettivi di qualità informativa del payload**, **non** come variabili decisionali del cromosoma. `[DOC-INTERNO CAP_02_parte_II.md:399]`
 *Valore operativo*: assicura all'operatore che il GA è spinto a pubblicare livelli target_2 e stop_loss strutturalmente robusti (realizzati dal mercato con alta probabilità), migliorando la qualità informativa dei segnali che riceve.
 
+**B3-R-48** — La metrica **primaria** di successo del motore è il **profitto netto al netto delle commissioni** (in punti FIB) realizzato dai segnali eseguiti; le metriche della submacchina ($\pi_{t_2 \mid t_1}$, MFE, MAE, $f_{stop \mid t_1}$) sono **strumenti di verifica e calibrazione subordinati**, non la definizione di successo. `[DOC-INTERNO CAP_02_parte_II.md:411]`
+*Valore operativo*: dichiara senza ambiguità che cosa il prodotto considera "successo" (il profitto netto realizzato dall'operatore, già al netto dei 5 EUR/op), così che le metriche strutturali della submacchina siano lette come supporto di calibrazione e non come obiettivo a sé. **Criterio dichiarato, non esito d'edge**: nessun valore di profitto è asserito qui; l'esito d'edge resta PENDING-empirico, esclusiva del ruolo `validator` in FASE-D.
+
 ---
 
 ## Sezione 7 — Invarianti di modellazione del lifecycle (riepilogo)
@@ -334,6 +337,7 @@ Questa sezione raccoglie, per evidenza, le proprietà **invarianti/strutturali**
 | B3-R-45 | eventi submacchina, non stati del segnale | :385, :386, :387, :388, :389 | operativo |
 | B3-R-46 | terminale `tracking_closed` | :391 | operativo |
 | B3-R-47 | metriche in fitness come qualità informativa | :399 | operativo |
+| B3-R-48 | profitto netto = metrica primaria; π/MFE/MAE/f_stop subordinati | :411 | operativo |
 | B3-CN-01 | `invalidated` distinto da `stopped` | :105 | operativo |
 | B3-CN-02 | terminalità assoluta (no transizioni uscenti) | :99 | operativo |
 | B3-CN-03 | `target_1_hit → revoked` non esiste (NB-9) | :113 | operativo |
