@@ -67,6 +67,15 @@ Alla chiusura PASS di B8 (**ottavo e ULTIMO blocco**; chiude la copertura della 
 - **SERIE B1..B8 COMPLETA — 75/75 req-v2 coperti** (B1=9, B2=12, B3=6, B4=14, B5=11, B6=9, B7=11, B8=3). Le **10 dipendenze aperte** enumerate da B8 (latenza Telegram, θ_reconcile, 10 param tuning post-go-live, run validator sull'edge, lookup codici mese IDEM, abilitazione FDAX standard, vendor cross-index pluriennale, flusso DAPI come training, migrazione formato legacy→esteso, implementazione codice pipeline) costituiscono il **debito dichiarato verso FASE-D / post-go-live**, tutte **OPEN/PENDING** — dichiarate, mai risolte.
 - **Nota di processo**: card-sorgente + ESITO B8 committati in `3136a55` con `[RM-HOOK-OVERRIDE]` **autorizzato da AC** (override out-of-band rispetto alla sessione CLI; flaggato dall'Orchestratore e ratificato — disciplina: ogni override va sempre flaggato ad AC, mai assunto come fabbricazione).
 
+### Eredità audit indipendente + AUDITFIX-01 — `392a3f5`, 2026-06-25
+
+Audit multi-agente **indipendente** (`wf_589a4b92`, 34 agenti ostili) della spec contro i CAP-fonte, ignorando le review esistenti: **8 blocchi SOUND** (365/366 citazioni fedeli; 0 fabbricazioni / 0 distorsioni / 0 asserzioni d'edge), **v2 problemi minori**, **12 difetti confermati** (0 high, 3 medium, 9 low).
+
+- **Nessun M nuovo.** L'edge resta **PENDING-empirico (validator/FASE-D)** — confermato dall'audit (0 asserzioni d'esito in tutti i documenti, v2 inclusa).
+- **Scoperta dell'audit (punto cieco condiviso, lezione di processo)**: il gap **Cap.49** — regola di consumo per-categoria-di-feature (volatilità solo su barre reali; touch/livello mai su barre sintetiche, `CAP_09_parte_9.md:185-189`) — mancava in **B6 *e* v2** e non era stato visto né dal ciclo a blocchi né dalle review. Trovato **solo** dalla rete indipendente. → Una rete di review diversa dalla propria trova i buchi a cui la propria è cieca. **Chiuso in B6** (`B6-R-38..42`).
+- **AUDITFIX-01 (CHIUSO PASS `392a3f5`)**: chiusi i **6 difetti che vivono nei blocchi** (F1 Cap.49 MEDIUM + F2..F6 LOW). Conteggi aggiornati: B3 62→63, B6 65→72, B8 17→18 (B5 invariato, solo ancora). Blocchi emendati post-PASS via task dedicato: i **marcatori PASS originali** (B3 `10ade01` / B5 `5ec899c` / B6 `a5cfa80` / B8 `09cc7d9`) restano storici; l'emendamento è coperto dalla review `392a3f5`.
+- **Debito v2 (6 difetti SOLO-v2) → ASSEMBLAGGIO**: submacchina di posizione Cap.11 (già presente in B3); miscitation CN-2.1 / R-3.7 / NFR-8.3 / R-10.2. **NON patchati in v2** (documento destinato all'archivio): il veicolo corretto è l'assemblaggio B1..B8, che rimpiazza v2 con i blocchi corretti. Da chiudere quando/se si esegue l'assemblaggio.
+
 ## RACCOMANDAZIONI-METODO (namespace separato dai M-promemoria di capitolo)
 
 Registro delle raccomandazioni di processo emerse dalle Review di audit non-CAP (es. FONDAMENTA-XX). NON sono M-promemoria di capitolo. Non vincolano un CAP successivo: sono debito di manutenzione metodologica che il supervisore valuta quando opportuno.
