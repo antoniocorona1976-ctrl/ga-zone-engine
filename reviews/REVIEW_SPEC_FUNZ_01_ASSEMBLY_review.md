@@ -126,3 +126,50 @@ La tabella AC del REPORT (AC-ASM-1..10 + AC-G1..4 + 13 done-when tutti OK) è ve
 - **"6 difetti v2 non reintrodotti"** → VERIFICATO. PROVE: Read delle 4 righe-CAP ex-miscitation (CAP_09:75, CAP_02:41/51, CAP_07:574, CAP_08:143) + confronto con `_v2_storico.md`. ALTERNATIVE ESCLUSE: riflusso v2 — escluso (merge strutturalmente dai blocchi; schema-ID dell'assemblato diverso dalla v2). 
 - **"verbi vietati 0 come asserzioni"** → VERIFICATO. PROVE: `grep -niE` dei pattern → 2 match, entrambi ispezionati = enunciazioni del divieto.
 - **"freeze G-09 + tag + v2 copia esatta"** → VERIFICATO. PROVE: `git diff --name-only 8d7ff60^ 8d7ff60` su CAP/blocchi/METODO = 0 file; `git rev-list -n1 spec-funz-01-v2-storico` = `8d7ff60`; `diff` v2_storico vs `8d7ff60^:…SPEC_FUNZ_01.md` = vuoto. ALTERNATIVE NON ESCLUSE: nessuna.
+
+---
+
+# RE-REVIEW DI DELTA (iterazione 2) — micro-pass OSS-1
+
+> **Trigger**: micro-pass approvato (solo OSS-1, classificato MIGLIORA PERFORMANCE nella review PASS `4eaa7df`). Fix applicato dal Developer, commit `217f522`. OSS-2 (NEUTRO) NON instradato.
+> **Natura**: re-review **di DELTA** — audito SOLO la differenza tra l'assemblato già PASS (`8d7ff60`) e lo stato post-fix (`217f522`); non ri-audito da capo il merge (già PASS in iterazione 1). Sede CLI, no-DAPI, divieto CLI.
+> **Disclosure di processo (per trasparenza)**: l'edit di contenuto è dello spec_developer; il commit `217f522` è stato finalizzato dall'Orchestratore dopo uno stallo watchdog del subagente — passo meccanico (commit + DEV_STATUS), non scrittura di contenuto. **Confermato sul diff**: il commit message di `217f522` lo documenta esplicitamente e il diff effettivo è coerente (1 sola riga di contenuto + DEV_STATUS, nessuna scrittura sostanziale fuori dal fix approvato).
+
+## VERDETTO DELTA: **PASS**
+
+Il fix è esattamente circoscritto a OSS-1, 0 regressioni, 0 effetti collaterali. La review precedente (PASS `4eaa7df`) resta valida; questo delta la conferma e chiude l'unica osservazione MIGLIORA PERFORMANCE approvata.
+
+## Esito dei 4 punti
+
+### 1. Diff circoscritto — **OK**
+`git diff 8d7ff60 217f522 -- docs/spec_funzionale/SPEC_FUNZ_01.md` mostra **una sola riga** modificata (nota di testa, r.11):
+- `374`→`375`, con aggiunta della clausola esplicativa *"il conteggio 375 — non 374 — è dovuto a B5 che ha 36 requisiti effettivi, non 35, vedi nota §11.1"*.
+- Nessun requisito, ID, citazione, matrice o tabella di mapping toccati. Il commit `217f522` tocca solo 2 file: l'assemblato (1 riga, `2 +-`) e `tasks/DEV_STATUS.md`. REPORT, v2_storico, CAP, blocchi B1..B8, METODO/SINTESI: **0** modifiche.
+
+### 2. 0 regressioni — **OK**
+- Loss-less ancora **375/375** su `217f522`: 375 ID-blocco mappati univoci, 375 ID-assemblato univoci (riconteggio su `git show 217f522:…`).
+- **Sez.11 (matrice + tabella di mapping) IDENTICA**: `diff` della sezione tra `8d7ff60` e `217f522` = **vuoto**. Citazioni intatte, mapping intatto.
+- Edge-PENDING intatto: la riga modificata non tocca verbi/asserzioni d'edge (è la frase sul conteggio nella nota di testa).
+
+### 3. Coerenza conteggio — **OK**
+- Dopo il fix la nota di testa (r.11) recita `375 requisiti-blocco`, allineata al 375 del resto del documento (Sez.11.1 r.1612, nota correttiva r.1614, conteggi per Sezione, mapping).
+- Occorrenze residue di "374" nell'assemblato — tutte **legittime e correttamente conservate**:
+  - r.11: solo dentro la nuova clausola esplicativa "375 — non 374 — … B5=36";
+  - r.590 / r.602: `:374` = numeri di riga CAP citati (non conteggi);
+  - r.1614: nota esplicativa "375 vs 374" (deve restare).
+- REPORT non toccato (`git diff` REPORT vuoto): i suoi "374" restano come riferimento storico alla card — corretto, non un errore.
+
+### 4. OSS-2 non instradato — **OK**
+CN-9.25 (`SPEC_FUNZ_01.md:1976`) **invariato**: `| CN-9.25 | B6-CN-25 | [DOC-INTERNO CAP_09_parte_9.md:117] |` identico tra `8d7ff60` e `217f522`. Il NEUTRO non approvato non è stato toccato per errore.
+
+## Classificazione per il supervisore (delta)
+Nessun nuovo finding. 0 BUG REALE, 0 non-bloccanti, 0 osservazioni. OSS-1 della iterazione 1 è **risolto**; OSS-2 resta aperto-non-instradato (decisione AC, invariata).
+
+## Lista "Empirico-CLI da verificare"
+**VUOTA** (delta editoriale, nessuna materia empirica).
+
+## Applicazione RM-1 a me stesso (delta)
+- **"diff = sola riga nota di testa 374→375"** → VERIFICATO. PROVE: `git diff 8d7ff60 217f522 -- …SPEC_FUNZ_01.md` = 1 hunk, 1 riga `-`/`+`; `git show --stat 217f522` = 2 file (assemblato 1 riga + DEV_STATUS). ALTERNATIVE ESCLUSE: modifiche nascoste a requisiti/mapping — escluse dal `diff` Sez.11 vuoto. ALTERNATIVE NON ESCLUSE: nessuna.
+- **"loss-less 375/375 invariato"** → VERIFICATO. PROVE: riconteggio ID su `217f522` = 375/375; `diff` Sez.11 = vuoto.
+- **"OSS-2 intatto"** → VERIFICATO. PROVE: `grep` CN-9.25 su entrambi i commit = riga identica.
+- **"commit meccanico Orchestratore, non contenuto"** → VERIFICATO sul diff. PROVE: il diff di contenuto è la sola riga del fix dello spec_developer; il commit message `217f522` documenta la finalizzazione meccanica post-watchdog. ALTERNATIVE NON ESCLUSE: nessuna (nessuna scrittura sostanziale dell'Orchestratore nel diff).
