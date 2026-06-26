@@ -265,3 +265,13 @@ Il Developer produce, nell'**unica sessione batch** (F6: tutti i blocchi/ambigui
 ---
 
 *Card scritta dallo spec_planner del track Business-spec. Merge editoriale NON cieco (Planner e Developer leggono blocchi + mappa). Nessun CAP toccato (freeze G-09). Nessun file-blocco toccato. Card NON committata dal Planner (lo fa l'Orchestratore). Riconciliazione mappa-Orchestratore ↔ file di chunking: **nessuna discrepanza** (vedi §2 + report al supervisore).*
+
+---
+
+## 13. Finding di Review da risolvere (micro-pass post-PASS — decisione AC 2026-06-26)
+
+Review `4eaa7df` = **PASS** (0 BUG REALE). AC ha approvato **un solo** micro-pass sul finding non bloccante OSS-1; OSS-2 (NEUTRO) **non instradato**.
+
+- **OSS-1 (MIGLIORA PERFORMANCE) — `docs/spec_funzionale/SPEC_FUNZ_01.md:11` (nota di testa)**: la nota di testa riporta il conteggio totale come **"374"**, mentre il totale reale e verificato indipendentemente (Developer + Reviewer, B5=36 non 35) è **375**. Correggere il numero nella nota di testa da `374` a `375` (e ogni altra occorrenza residua di "374" come conteggio-totale nell'assemblato, se presente), allineandolo al 375 già coerente nel resto del documento (Sez.11, matrice, mapping). **Fix di sola accuratezza editoriale**: nessuna modifica ai requisiti, agli ID, alle citazioni, alla matrice o al mapping. Loss-less invariato (375). Edge-PENDING invariato.
+
+Vincolo: micro-pass minimale, diff circoscritto alla/e riga/e del conteggio. Poi re-review di delta del Reviewer (CLI).
