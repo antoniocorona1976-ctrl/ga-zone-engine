@@ -173,3 +173,50 @@ Nessun nuovo finding. 0 BUG REALE, 0 non-bloccanti, 0 osservazioni. OSS-1 della 
 - **"loss-less 375/375 invariato"** → VERIFICATO. PROVE: riconteggio ID su `217f522` = 375/375; `diff` Sez.11 = vuoto.
 - **"OSS-2 intatto"** → VERIFICATO. PROVE: `grep` CN-9.25 su entrambi i commit = riga identica.
 - **"commit meccanico Orchestratore, non contenuto"** → VERIFICATO sul diff. PROVE: il diff di contenuto è la sola riga del fix dello spec_developer; il commit message `217f522` documenta la finalizzazione meccanica post-watchdog. ALTERNATIVE NON ESCLUSE: nessuna (nessuna scrittura sostanziale dell'Orchestratore nel diff).
+
+---
+
+# RE-REVIEW DI DELTA (iterazione 3) — micro-pass 2 (OSS-2 + aritmetica B5)
+
+> **Trigger**: secondo micro-pass post-PASS. Due fix instradati: OSS-2 (CN-9.25 mapping `:117`→`:117,145` — che io avevo classificato NEUTRO in iterazione 1) + correzione aritmetica del file-blocco B5 (`:281` "35"→"36", coerente col conteggio B5=36 che io stesso avevo verificato indipendentemente). Commit `74d75c8` (instradamento `2bf0a8c`).
+> **Natura**: re-review **di DELTA** sullo stato chiuso precedente (`ee1ea13` re-review / `217f522` assemblato); audito SOLO la differenza `217f522`→`74d75c8`. Sede CLI, no-DAPI, divieto CLI.
+> **Nota di processo osservata (trasparenza)**: la catena git mostra che dopo la mia re-review PASS `ee1ea13` era stato scritto un marcatore di chiusura `4dff43e` ("CHIUSO PASS ee1ea13"), poi lo slot è stato riaperto per questo secondo micro-pass instradato (decisione AC riferita dal coordinatore — trattata come contesto da verificare sul repo, non come autorità). Questo non è un difetto del fix qui auditato; lo registro come fatto di processo. Il commit `74d75c8` è autore ANAC, non riscrive history (5ec899c intatto).
+
+## VERDETTO DELTA: **PASS**
+
+Entrambi i fix sono esattamente circoscritti, fedeli (ripristino di tracciabilità, non alterazione), 0 regressioni. OSS-2 (NEUTRO) e la discrepanza aritmetica B5 sono ora chiusi. La review precedente (PASS) resta valida.
+
+## Esito dei 4 punti
+
+### 1. Diff circoscritto — **OK**
+`git show 74d75c8 --stat` = **3 file, 3 righe** (3 insertions, 3 deletions):
+- `SPEC_FUNZ_01.md:1976` (Sez.11 tabella mapping, riga CN-9.25): `[DOC-INTERNO CAP_09_parte_9.md:117]` → `[DOC-INTERNO CAP_09_parte_9.md:117,145]` (unica riga dell'assemblato modificata, verificato con `git diff` filtrato).
+- `SPEC_FUNZ_01_B5.md:281`: "Conteggio: **35 requisiti**" → "**36 requisiti**"; la parentetica `(B5-R: 20, B5-CN: 9, B5-NFR: 7)` **invariata**.
+- `tasks/DEV_STATUS.md` (segnale di stato).
+Nessun altro requisito, ID, citazione, matrice o tabella toccati.
+
+### 2. OSS-2 corretto e fedele — **OK**
+- (a) **`:145` risolve a riga reale coerente**: `CAP_09_parte_9.md` ha 445 righe; r.145 = *"Ruolo dello script `export_directa_history_parametric.py`… definisce… il header CSV con BOM UTF-8"* — coerente con la materia BOM UTF-8 / header CSV di CN-9.25 (assieme a r.117 = "Schema CSV BOM UTF-8").
+- (b) **Allineamento (ripristino di fedeltà, non alterazione)**: la tabella di mapping ora coincide sia col **corpo CN-9.25** (`SPEC_FUNZ_01.md:1491`, che già citava `:117` **e** `:145` — verificato **identico** tra `217f522` e `74d75c8`, NON toccato), sia con la **matrice-fonte B6** (`SPEC_FUNZ_01_B6.md:415` = `:117,145`, NON toccata; B6 = 0 modifiche nel commit). Prima del fix la mappa ometteva `:145` rispetto a corpo e fonte; il fix la riallinea. Confermo: ripristino di fedeltà. Era esattamente OSS-2 della review iniziale.
+
+### 3. B5 = 36 corretto — **OK**
+- Riconteggio ID univoci B5 su `74d75c8`: R=20, CN=9, NFR=7 → **20+9+7 = 36**. Identico a `217f522` (pre-fix): il **set di ID B5 è invariato** (`diff` dei set = vuoto) — nessun requisito aggiunto/tolto, è **solo la somma dichiarata** corretta da 35 a 36.
+- Il marcatore PASS originale di B5 `5ec899c` resta **storico e intatto** (il commit non riscrive history). L'emendamento del file-blocco post-PASS è coperto da questa re-review (analogo al precedente AUDITFIX-01). 
+
+### 4. 0 regressioni — **OK**
+- Loss-less assemblato ancora **375/375** (375 ID-blocco mappati univoci, 375 ID-assemblato univoci su `74d75c8`).
+- **Freeze G-09**: 0 CAP toccati dal commit.
+- Nessun altro file-blocco toccato oltre B5 (atteso); v2_storico e REPORT non toccati.
+- Edge-PENDING intatto: la riga modificata è in Sez.11 (encoding CSV), nessuna materia/verbo d'edge; 0 asserzioni edge introdotte nel diff.
+
+## Classificazione per il supervisore (delta)
+Nessun nuovo finding. 0 BUG REALE, 0 non-bloccanti, 0 osservazioni. **Tutte le osservazioni della review iniziale sono ora chiuse**: OSS-1 risolto (iterazione 2), OSS-2 risolto (questa iterazione). La discrepanza aritmetica B5 del file-blocco è chiusa.
+
+## Lista "Empirico-CLI da verificare"
+**VUOTA** (delta editoriale/tracciabilità, nessuna materia empirica).
+
+## Applicazione RM-1 a me stesso (delta)
+- **"diff = 3 righe (CN-9.25 mapping + B5 35→36 + DEV_STATUS)"** → VERIFICATO. PROVE: `git show 74d75c8 --stat` = 3 file/3+3 righe; `git diff 217f522 74d75c8 -- SPEC_FUNZ_01.md` filtrato = sola riga CN-9.25. ALTERNATIVE ESCLUSE: modifiche nascoste — escluse (loss-less 375/375 invariato, corpo CN-9.25 identico). ALTERNATIVE NON ESCLUSE: nessuna.
+- **"`:145` risolve e allinea, non altera"** → VERIFICATO. PROVE: `sed -n 145p CAP_09_parte_9.md` = riga BOM/script reale; corpo r.1491 e B6 r.415 invariati e già `:117,145`. ALTERNATIVE ESCLUSE: `:145` inventato/fuori range — escluso (445 righe, r.145 esiste e coerente).
+- **"B5=36, set ID invariato"** → VERIFICATO. PROVE: `grep -oE 'B5-...' | sort -u | wc -l` = 36 pre e post; `diff` dei set = vuoto. ALTERNATIVE NON ESCLUSE: nessuna.
+- **"0 regressioni, freeze G-09"** → VERIFICATO. PROVE: 375/375 su `74d75c8`; 0 CAP/v2_storico/REPORT/altri-blocchi toccati dal commit. ALTERNATIVE NON ESCLUSE: nessuna.
