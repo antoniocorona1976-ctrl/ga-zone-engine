@@ -1973,7 +1973,7 @@ Copertura completa dei **375 requisiti-blocco** della serie B1..B8 (B1=34, B2=42
 | CN-9.22 | B6-CN-22 | [DOC-INTERNO CAP_10_parte_10.md:207] |
 | CN-9.23 | B6-CN-23 | [DOC-INTERNO CAP_10_parte_10.md:68] |
 | CN-9.24 | B6-CN-24 | [DOC-INTERNO CAP_10_parte_10.md:209] |
-| CN-9.25 | B6-CN-25 | [DOC-INTERNO CAP_09_parte_9.md:117] |
+| CN-9.25 | B6-CN-25 | [DOC-INTERNO CAP_09_parte_9.md:117,145] |
 | NFR-9.1 | B6-NFR-01 | [DOC-INTERNO CAP_02_parte_II.md:291,293] |
 | NFR-9.2 | B6-NFR-02 | [DOC-INTERNO CAP_09_parte_9.md:21] |
 | NFR-9.3 | B6-NFR-03 | [DOC-INTERNO CAP_09_parte_9.md:21] |

@@ -278,7 +278,7 @@ Sotto commissioni mensili `< 200 EUR` la pipeline **tollera** l'addebito automat
 | B5-NFR-06 | 6 | CAP_09:365 | di sistema/compliance |
 | B5-NFR-07 | 6 | CAP_09:373,376,377 | operativo |
 
-Conteggio: **35 requisiti** (`B5-R`: 20, `B5-CN`: 9, `B5-NFR`: 7).
+Conteggio: **36 requisiti** (`B5-R`: 20, `B5-CN`: 9, `B5-NFR`: 7).
 
 ### 7.2 Nota di rinvio — premesse citate (NON consolidate qui)
 
