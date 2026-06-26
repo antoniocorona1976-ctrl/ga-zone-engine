@@ -275,3 +275,13 @@ Review `4eaa7df` = **PASS** (0 BUG REALE). AC ha approvato **un solo** micro-pas
 - **OSS-1 (MIGLIORA PERFORMANCE) — `docs/spec_funzionale/SPEC_FUNZ_01.md:11` (nota di testa)**: la nota di testa riporta il conteggio totale come **"374"**, mentre il totale reale e verificato indipendentemente (Developer + Reviewer, B5=36 non 35) è **375**. Correggere il numero nella nota di testa da `374` a `375` (e ogni altra occorrenza residua di "374" come conteggio-totale nell'assemblato, se presente), allineandolo al 375 già coerente nel resto del documento (Sez.11, matrice, mapping). **Fix di sola accuratezza editoriale**: nessuna modifica ai requisiti, agli ID, alle citazioni, alla matrice o al mapping. Loss-less invariato (375). Edge-PENDING invariato.
 
 Vincolo: micro-pass minimale, diff circoscritto alla/e riga/e del conteggio. Poi re-review di delta del Reviewer (CLI).
+
+## 14. Secondo micro-pass post-PASS (decisione AC 2026-06-27) — OSS-2 + aritmetica B5
+
+Dopo la chiusura ASSEMBLY (`ee1ea13`), AC ha approvato **due** ulteriori fix editoriali (entrambi accuratezza, nessun requisito cambia):
+
+- **OSS-2 (era NEUTRO) — `docs/spec_funzionale/SPEC_FUNZ_01.md:1976` (tabella di mapping, riga `CN-9.25`)**: la colonna citazione elenca solo `[DOC-INTERNO CAP_09_parte_9.md:117]`, mentre la fonte B6 (`SPEC_FUNZ_01_B6.md:415`, matrice) e il **corpo stesso** di CN-9.25 nell'assemblato (`:1491`) citano **entrambi** `:117` **e** `:145`. È una **regressione del merge nella sola tabella di mapping**. Fix: ripristinare la riga 1976 a `[DOC-INTERNO CAP_09_parte_9.md:117,145]` (allineamento verbatim alla fonte B6). **Nessuna modifica a B6** (B6 è corretto); nessuna modifica al corpo (già corretto).
+
+- **Aritmetica B5 — `docs/spec_funzionale/SPEC_FUNZ_01_B5.md:281`**: la riga di conteggio interno dice "**35 requisiti** (`B5-R`: 20, `B5-CN`: 9, `B5-NFR`: 7)"; 20+9+7 = **36**. Fix: `35`→`36` (la parentetica è già corretta). Se altre occorrenze di "35" come conteggio-totale-B5 esistono nel file B5 (es. intestazione/matrice), allinearle a 36. **Solo accuratezza aritmetica**: nessun requisito aggiunto/tolto (i 36 erano già tutti presenti ed elencati). Il marcatore PASS originale di B5 (`5ec899c`) resta storico; l'emendamento è coperto dalla re-review di questo micro-pass (precedente AUDITFIX-01).
+
+Vincoli: due edit puntuali, diff minimale. NON toccare altro nell'assemblato né in B5; NON toccare i CAP (freeze G-09), gli altri blocchi, METODO/SINTESI. Loss-less assemblato invariato (375). Edge-PENDING invariato. Poi re-review di delta del Reviewer (CLI).
