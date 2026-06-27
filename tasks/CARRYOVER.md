@@ -87,6 +87,19 @@ Alla chiusura PASS dell'assemblaggio (merge editoriale NON cieco degli 8 blocchi
 - **OSS-2 — RISOLTA (2° micro-pass `74d75c8`, 2026-06-27)**: nella tabella di mapping dell'assemblato (`SPEC_FUNZ_01.md:1976`, riga `CN-9.25`) la colonna citazione elencava solo `:117` — **regressione del solo merge** (il corpo a r.1491 e la matrice-fonte B6 a `:415` citavano entrambi `:117,145`). Su decisione AC, ripristinato a `:117,145` (allineamento di fedeltà, non alterazione). B6 non toccato. **Tutte le osservazioni della review iniziale `4eaa7df` ora CHIUSE** (OSS-1 `217f522` + OSS-2 `74d75c8`).
 - **Nota di processo (RM-4 / disciplina subagenti)**: i due commit di contenuto del Developer (`8d7ff60` assemblato; `217f522` micro-pass) hanno richiesto **finalizzazione meccanica dell'Orchestratore** (commit + segnale DEV_STATUS) dopo **stalli watchdog** del subagente su documento ~2000 righe. L'edit di contenuto è verificato su disco come opera del Developer **prima** del commit (diff ispezionato: per `217f522`, unica riga 374→375); l'Orchestratore non ha scritto contenuto. Documentato nei commit message.
 
+### Procurement dati FIB — Portara CQG (VALUTAZIONE, acquisto NON concluso) — 2026-06-27
+
+Nota non-CAP (non emessa da Review): valutazione di **Portara CQG** come fonte dati storica FIB per FASE-D / harness, collegata al debito B8 *"vendor cross-index pluriennale"* e a **M-GOV-1** (orario/sessione FIB, ancora PENDING-empirico). **Acquisto NON concluso al 2026-06-27** — tutto sotto resta `[WIKI-HINT]` salvo il formato sample, decodificato `[PROVA-EMPIRICA 2026-06-27]`. Dettaglio in memoria di progetto `project-portara-fib-data-source`.
+
+- **Formato sample decodificato** (da `ISP2022Z.txt`/`ISP2023Z.txt`, bucket pubblico Portara, Chicago time): 9 col CSV no-header `Symbol,Date(YYYYMMDD),Time(HHMM),O,H,L,C,TickCount,Volume`; prezzi punti-interi; **col8=TickCount, col9=Volume** verificato via barre piatte (RM-1, non assunto). Simbolo FTSE MIB future su IDEM = `ISP`. File per-contratto.
+- **Caveat harness (PENDING-empirico, da onorare a consegna, NON asseribili come verificati ora)**:
+  1. **Back-adjustment** distorce i livelli assoluti → pretendere `unadjusted close` + `roll spread` + `cumulative spread` + roll log (critico per motore a zone su prezzo assoluto).
+  2. **Barre di settlement iniettate** (fuori sequenza, volume 0) → filtrare.
+  3. **Griglia sparsa** (minuti no-trade omessi) → gestione buchi esplicita nel backtest.
+  4. **Niente flag di sessione** → calendario storico (cambiato negli anni) da ricostruire; lega a **M-GOV-1** / probe V-1/V-2.
+  5. **Print off-5 a ~17:38 CET** (ipotesi asta/indice di chiusura): la regola tick-5 vale solo per il continuous; filtrare per timestamp. Caveat aggiunto anche alla memoria `project-fib-instrument`.
+- **Se si compra, fissare al final formatting**: timezone exchange Milano (CET/CEST) non Chicago; SOB; tutte le colonne opzionali + roll log.
+
 ## RACCOMANDAZIONI-METODO (namespace separato dai M-promemoria di capitolo)
 
 Registro delle raccomandazioni di processo emerse dalle Review di audit non-CAP (es. FONDAMENTA-XX). NON sono M-promemoria di capitolo. Non vincolano un CAP successivo: sono debito di manutenzione metodologica che il supervisore valuta quando opportuno.
