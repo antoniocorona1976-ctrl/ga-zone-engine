@@ -283,7 +283,7 @@ Quando si introduce una regola che richiede un **marcatore meccanico greppabile*
 La spina resta quella dell'handoff §4 (3 ruoli; 1 task attivo; Planner decide / Developer
 non ridefinisce / Review non ripianifica; RM-2; GOV-SURFACES; forma-card; fonte-di-verità =
 SPEC_FUNZ_01.md per il contratto e CAP per il motore; done-when test-based; review = test + diff;
-cecità CADE; GOV-CARDAUDIT-01). Questo blocco fissa solo i 4 organi che la spina non copriva.
+cecità CADE). Questo blocco fissa solo i 4 organi che la spina non copriva.
 
 GC-1 — Baseline & 0-regressioni.
 "0 regressioni" è vincolante dal SECONDO task-codice in poi. Il PRIMO task (M0/loader) non ha
@@ -315,3 +315,6 @@ Ogni task: (i) localizza le sezioni pertinenti (grep/indice ##/###), (ii) legge 
 (sed -n 'a,bp' o view con range), (iii) cita in output le righe lette (path:Sez X / righe a-b).
 Questa regola e' ANCHE riportata come precondizione esplicita in OGNI ISTRUZIONI_*.md di modulo
 (duplicazione voluta: organo qui + precondizione nella singola card).
+
+<!-- GOV-CARDAUDIT-01: RITIRATO (modo 2) il 2026-06-30. Strumento facoltativo non adottato;
+menzione rimossa da GOV-CODICE-01 per coerenza. Recuperabile da: git show dd35508:tasks/METODO.md (righe 246-254). -->
