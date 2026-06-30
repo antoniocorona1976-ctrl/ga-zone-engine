@@ -243,16 +243,6 @@ Da 2026-06-12 un guard meccanico (`scripts/claude_hooks/rm_guard.py`, registrato
 - **Claude Code Web** è limitato al ruolo di **sede Web della probe-review RM-4** (matrice §RM-4): audit statico di output non-CAP, quando l'Orchestratore lo instrada esplicitamente. Non esegue il ciclo spec.
 - **Claude.ai (chat)** è la superficie di **supervisione e pianificazione di AC**: non è un agente formale del ciclo e non esegue review formali. Le review formali vivono in Claude Code, sul repo.
 
-<!-- GOV-CARDAUDIT-01 — TETTO (limite, non obbligo) -->
-## [GOV] Audit-card Claude.ai — strumento facoltativo (NON è un gate)
-
-- L'audit ostile di una **card-sorgente** da parte di **Claude.ai** (superficie di supervisione) è uno **strumento facoltativo**, attivato **a discrezione di AC** prima dell'installazione della card in `tasks/ACTIVE_TASK.md`. **Non è uno step del ciclo.** Nessuna card è tenuta a passarci.
-- **Oggetto**: l'artefatto-card sul piano **logico/strutturale** — cecità, integrità del perimetro, confini premessa-vs-derivazione, atomicità (N1), coerenza done-when ↔ scope. **Non** comporta grep né verifica RM-2 di pin/decoder.
-- **Output**: `CARD-OK` oppure `CARD-DA-CORREGGERE(findings)`. **Non** è un verdetto `PASS/CONDITIONAL/FAIL`: quello resta **esclusivo del `spec_reviewer` in CLI** (post-Developer, sul repo). Due gate, due autorità, nessuna sovrapposizione.
-- **Limite di estensione (VINCOLANTE)**: questo strumento **NON si applica al codice**. La review del codice è **CLI / RM-2** (ruolo Review che legge il repo). Un audit del codice prodotto da Claude.ai — memory-derived, senza repo — è **vietato**: è il failure mode dell'incidente CANDLE.
-- **Bounded**: **un solo passaggio** di audit → findings ad AC → AC decide (correggere-e-andare oppure procedere). Nessun loop audit↔fix.
-<!-- /GOV-CARDAUDIT-01 -->
-
 ## Precedenza fra documenti normativi — vincolante, 2026-06-13
 
 In caso di conflitto fra documenti normativi, l'ordine di precedenza è:
