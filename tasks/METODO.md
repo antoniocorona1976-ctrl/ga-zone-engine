@@ -243,6 +243,16 @@ Da 2026-06-12 un guard meccanico (`scripts/claude_hooks/rm_guard.py`, registrato
 - **Claude Code Web** è limitato al ruolo di **sede Web della probe-review RM-4** (matrice §RM-4): audit statico di output non-CAP, quando l'Orchestratore lo instrada esplicitamente. Non esegue il ciclo spec.
 - **Claude.ai (chat)** è la superficie di **supervisione e pianificazione di AC**: non è un agente formale del ciclo e non esegue review formali. Le review formali vivono in Claude Code, sul repo.
 
+<!-- GOV-CARDAUDIT-01 — TETTO (limite, non obbligo) -->
+## [GOV] Audit-card Claude.ai — strumento facoltativo (NON è un gate)
+
+- L'audit ostile di una **card-sorgente** da parte di **Claude.ai** (superficie di supervisione) è uno **strumento facoltativo**, attivato **a discrezione di AC** prima dell'installazione della card in `tasks/ACTIVE_TASK.md`. **Non è uno step del ciclo.** Nessuna card è tenuta a passarci.
+- **Oggetto**: l'artefatto-card sul piano **logico/strutturale** — cecità, integrità del perimetro, confini premessa-vs-derivazione, atomicità (N1), coerenza done-when ↔ scope. **Non** comporta grep né verifica RM-2 di pin/decoder.
+- **Output**: `CARD-OK` oppure `CARD-DA-CORREGGERE(findings)`. **Non** è un verdetto `PASS/CONDITIONAL/FAIL`: quello resta **esclusivo del `spec_reviewer` in CLI** (post-Developer, sul repo). Due gate, due autorità, nessuna sovrapposizione.
+- **Limite di estensione (VINCOLANTE)**: questo strumento **NON si applica al codice**. La review del codice è **CLI / RM-2** (ruolo Review che legge il repo). Un audit del codice prodotto da Claude.ai — memory-derived, senza repo — è **vietato**: è il failure mode dell'incidente CANDLE.
+- **Bounded**: **un solo passaggio** di audit → findings ad AC → AC decide (correggere-e-andare oppure procedere). Nessun loop audit↔fix.
+<!-- /GOV-CARDAUDIT-01 -->
+
 ## Precedenza fra documenti normativi — vincolante, 2026-06-13
 
 In caso di conflitto fra documenti normativi, l'ordine di precedenza è:
@@ -277,3 +287,41 @@ Quando si introduce una regola che richiede un **marcatore meccanico greppabile*
 - `tasks/STATO_CORRENTE.md` — single source of truth dello stato del progetto, namespace M-note tecniche di sessione
 - `.claude/CLAUDE.md` — orchestratore: si aspetta che tutti gli agenti rispettino RM-1..RM-4
 - `.claude/agents/*.md` — i 3 sub-agenti hanno blocchi specifici di applicazione RM-1..RM-4
+
+### GOV-CODICE-01 — Organi della fase-codice (spina §4 invariata)
+
+La spina resta quella dell'handoff §4 (3 ruoli; 1 task attivo; Planner decide / Developer
+non ridefinisce / Review non ripianifica; RM-2; GOV-SURFACES; forma-card; fonte-di-verità =
+SPEC_FUNZ_01.md per il contratto e CAP per il motore; done-when test-based; review = test + diff;
+cecità CADE; GOV-CARDAUDIT-01). Questo blocco fissa solo i 4 organi che la spina non copriva.
+
+GC-1 — Baseline & 0-regressioni.
+"0 regressioni" è vincolante dal SECONDO task-codice in poi. Il PRIMO task (M0/loader) non ha
+baseline: porta la PROPRIA suite, done-when = "i suoi test passano + comportamento = requisito
+citato". Da lì la suite committata È la baseline; ogni task successivo gira l'INTERA suite,
+0 fallimenti nuovi.
+
+GC-2 — Convenzioni-dato / fonte-di-verità: citazione obbligatoria.
+Le convenzioni e i comportamenti NON si assumono, si CITANO, e la fonte è DOPPIA:
+ - CONTRATTO (payload, state-machine, regola di emissione, consegna, runtime, gate, audit,
+   schema-dato) -> SPEC_FUNZ_01.md, citato R-*/CN-*/NFR-* con riga:path (RM-2).
+ - MOTORE (feature/pivot Parte III; derivazione zone/target/stop Parte IV; GA/NSGA-II/
+   walk-forward + valori-soglia congelati Parte V; matematica gate Parte VII) -> CAP, citato
+   CAP_* riga:path (RM-2).
+ - Fatti vendor (gap/no-trade, tz, volume pre-2000) -> PROVA-EMPIRICA (vendor-attestata), RM-3.
+Una card che fissa un comportamento del MOTORE citando la spec (che non lo contiene), o un
+comportamento del CONTRATTO inventando un valore congelato di Parte V, = bug di fonte.
+
+GC-3 — Test su fixture, non su dati vivi.
+I test del data-layer e dei moduli girano su fixture COMMITTATE (es. sample ISP ridotto,
+sequenze barre sintetiche), mai sul tape-pagato Portara né su pull DAPI. La suite deve passare
+su qualunque clone senza dati esterni. Dati grezzi (tape, DAPI) fuori dal repo (.gitignore) e
+fuori dai test.
+
+GC-4 — Lettura mirata della spec/CAP (anti-dump).
+La lettura di SPEC_FUNZ_01.md e dei CAP avviene per RANGE DI SEZIONE MIRATO al perimetro del
+task, MAI dump integrale del file (es. niente `cat` dell'intero SPEC_FUNZ_01.md ~2084 righe).
+Ogni task: (i) localizza le sezioni pertinenti (grep/indice ##/###), (ii) legge SOLO quei range
+(sed -n 'a,bp' o view con range), (iii) cita in output le righe lette (path:Sez X / righe a-b).
+Questa regola e' ANCHE riportata come precondizione esplicita in OGNI ISTRUZIONI_*.md di modulo
+(duplicazione voluta: organo qui + precondizione nella singola card).
