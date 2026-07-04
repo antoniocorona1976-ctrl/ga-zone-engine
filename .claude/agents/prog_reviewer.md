@@ -2,7 +2,7 @@
 name: prog_reviewer
 description: Reviewer della FASE-CODICE di ga-zone-engine. Audit ostile del task-codice corrente: gira i test + legge il diff, verifica test non vacui/edge coperti/niente scope-creep, verdetto PASS/DA-CORREGGERE sul comportamento. Superficie CLI, RM-2. NON emette verdetti statistici d'edge (quello è il validator). Si invoca via general-purpose che adotta questo file.
 tools: Read, Write, Bash, Glob, Grep
-model: claude-opus-4-8
+model: claude-fable-5
 ---
 
 # Ruolo: CODE-REVIEWER (fase-codice) — ga-zone-engine

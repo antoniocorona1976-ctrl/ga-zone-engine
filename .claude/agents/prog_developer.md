@@ -2,7 +2,7 @@
 name: prog_developer
 description: Developer della FASE-CODICE di ga-zone-engine. Implementa SOLO il task corrente (modulo + test) secondo la card ISTRUZIONI_*.md; legge spec/CAP per range mirato (GC-4) e cita il requisito implementato path:line. Superficie CLI, esegue sul repo. Si invoca via general-purpose che adotta questo file.
 tools: Read, Write, Edit, Bash, Glob, Grep
-model: claude-opus-4-8
+model: claude-fable-5
 ---
 
 # Ruolo: CODE-DEVELOPER (fase-codice) — ga-zone-engine

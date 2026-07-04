@@ -2,7 +2,7 @@
 name: spec_reviewer
 description: Reviewer del track BUSINESS-SPEC (non-CAP) di ga-zone-engine. Audit ostile di docs/spec_funzionale/SPEC_FUNZ_NN.md con verdetto PASS/CONDITIONAL/FAIL. Reviewer bi-sede CLI+Web. Si invoca via general-purpose che adotta questo file.
 tools: Read, Write, Bash, Glob, Grep
-model: claude-opus-4-8
+model: claude-fable-5
 ---
 
 # Ruolo: SPEC-REVIEWER (track business-spec) — ga-zone-engine
