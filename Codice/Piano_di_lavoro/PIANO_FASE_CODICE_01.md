@@ -2,6 +2,7 @@
 ---
 **Stato: RATIFICATO da AC — 05/07/2026.** Versione ufficiale del piano di fase codice.
 Provenienza: bozza finale del 30/06 (linea v3) + §0 decreti. Bozze storiche in `Esito/`.
+`v1.1 — 05/07/2026: corpo allineato a §0 (chiusura CONFLITTO-§0 da ESITO RATIFICA-PIANO-01).`
 
 ## §0 — Decreti vincolanti del supervisore (AC)
 
@@ -34,9 +35,9 @@ La spec è la **vista-prodotto/contratto**; la matematica del motore è nei **CA
 - **Contratto (SPEC_FUNZ_01)**: schema-dato canonico, payload, state-machine, regola di emissione, consegna, runtime DAPI, gate di go-live, audit. Cit. `R-*/CN-*/NFR-*`.
 - **Motore (CAP / metodologia v2)**: feature+pivot (Parte III), derivazione geometrica (Parte IV), GA/NSGA-II/walk-forward + soglie congelate (Parte V), matematica gate (Parte VII), **back-adjustment/roll/pre-expiry + le tre serie prezzo** (Parte 8). Cit. `CAP_* path:line` / capitolo.
 
-> **Caso speciale — convenzioni di prezzo (AUDIT-1/2):** governato da CAP (Parte 8, tre serie) **e** dal contratto (CN-9.16: runtime=unadjusted; CN-5.2: 80pt floor assoluto). Materia di entrambe le fonti, dichiarata in M0 (§3, inv.7). La metodologia fissa: ratio per la **valutazione del segnale**, Panama per l'**audit monetario**, unadjusted per **sanity**.
+> **Caso speciale — convenzioni di prezzo (AUDIT-1/2):** governato da CAP (Parte 8, tre serie) **e** dal contratto (CN-9.16: runtime=unadjusted; CN-5.2: 80pt floor assoluto). Materia di entrambe le fonti, dichiarata in M0 (§3, inv.7). La metodologia fissa: ratio per la **valutazione del segnale** (condizioni di emissione), Panama per l'**audit monetario**, unadjusted per **sanity**; il **floor 80pt** è valutato su punti reali/unadjusted (**DEC-B**).
 
-Una card-modulo che fissa un comportamento del motore citando la spec (che non lo contiene) è bug di fonte. Una card del contratto che inventa una soglia congelata di Parte V è scope-creep. **Una card che inverte la mappatura-prezzo della metodologia (es. 80pt su unadjusted) è override del CAP — vietato.**
+Una card-modulo che fissa un comportamento del motore citando la spec (che non lo contiene) è bug di fonte. Una card del contratto che inventa una soglia congelata di Parte V è scope-creep. **Una card che contraddice un decreto §0 è vietata; il caso 80pt-su-unadjusted è normato da DEC-B (prevale sul CAP, debito di riconciliazione in `DECISIONI.md`).**
 
 ---
 
@@ -58,7 +59,7 @@ Una card-modulo che fissa un comportamento del motore citando la spec (che non l
                                    M4 Signal constr.          │
                                    + emissione                │
                                    (RATIO in eval; 80pt       │
-                                    floor su serie eval)      │
+                                    floor su unadjusted—DEC-B)│
                                           │                   │
                                           ▼                   │
                                    M5 GA core ─▶ M6 Frozen     │
@@ -84,7 +85,7 @@ Una card-modulo che fissa un comportamento del motore citando la spec (che non l
 | **M1** | Payload & invarianti | Tupla `S`, domini, invarianti geometrici (`d_stop>b`, multipli 5, ordinamento target), immutabilità, segnale-unico-attivo | Sez.3 (R-3.1..37, CN-3.1..5) | — | **Sì** (fixture) |
 | **M2** | State-machine & lifecycle | 1 stato non-terminale + 6 terminali, transizioni, precedenza eventi, raw touch, timer pre/post-trigger, submacchina posizione | Sez.4 (R-4.1..48, CN-4.1..12) | M1 | **Sì** (fixture) |
 | **M3** | Feature engineering | Pivot, 37 feature causali, EGARCH, regime — **su serie ratio** (inv.7) | **CAP Parte III** (Cap.12–15). Consumo: Sez.9 (R-9.38..42) | M0 | No (dato reale) |
-| **M4** | Signal construction + emissione | Derivazione `entry_zone`/`target_*`/`stop_loss` + tipi; regola emissione (3 cond. + **80pt floor**, AND), **valutata sulla serie di valutazione-segnale (ratio)** | Derivazione: **CAP Parte IV** (Cap.16–21). Emissione: Sez.5 (R-5.1..16, CN-5.1..3). 80pt: CN-5.2 + metodologia (riga valutazione-segnale=ratio) | M3, M1 | No |
+| **M4** | Signal construction + emissione | Derivazione `entry_zone`/`target_*`/`stop_loss` + tipi; regola emissione (3 cond. + **80pt floor**, AND): le 3 condizioni valutate su **ratio**, il **floor 80pt su unadjusted (DEC-B)**, logica AND invariata | Derivazione: **CAP Parte IV** (Cap.16–21). Emissione: Sez.5 (R-5.1..16, CN-5.1..3). 80pt: CN-5.2 + metodologia (riga valutazione-segnale=ratio) | M3, M1 | No |
 | **M5** | GA core | Cromosoma, NSGA-II, fitness multi-obiettivo, walk-forward nested (purge/embargo) — **su ratio** | **CAP Parte V** (Cap.22–26) | M0–M4 | No (AWS) |
 | **M6** | Frozen bundle | Artefatto immutabile 6 elementi, SHA-256, verifica-su-load fail-stop | Sez.8 (CN-8.3/.4/.5, R-8.24/.36) + Cap.35 | M5 | No |
 | **M7** | Validator | Aggregazione OOS, DSR, PBO via CSCV, bootstrap; **audit monetario (E[R_net]/CVaR/MDD in €) su serie PANAMA** (5€/pt scala originale, Parte I Cap.2); 12 criteri → GO/NO-GO | Sez.8 (R-8.1..38, CN-8.1..7) + matematica **Parte VII** | M6 | No (**in panchina**) |
@@ -106,13 +107,13 @@ Una card-modulo che fissa un comportamento del motore citando la spec (che non l
 5. **edge = esclusiva del validator, PENDING** (Sez.8): **nessun modulo** asserisce GO/NO-GO né valori d'edge. Solo M7, in FASE-D. Verbi vietati ("supera il gate", "edge confermato", "GO") fuori da M7.
 6. **PHASE-1 FIB-only — scope del MOTORE** (R-10.1, CN-10.1/.2): nessuna covarianza cross-index nel **feature tensor / cromosoma / walk-forward**. Lo scope "FIB-only" è del motore, **non dell'archivio**: M8a logga/archivia anche i cash europei (DGER/DSTX50/DITAS/DFRA) per il **solo gating qualitativo** (R-7.15, CN-7.8), fuori dal feature tensor. Archivio multi-strumento, motore single-instrument.
 7. **Tre serie prezzo, consumatore esclusivo — mappatura della metodologia (AUDIT-1/2).** Il prezzo FIB esiste in tre rappresentazioni; nessun modulo le confonde. **M0 carica le due consegnate da Portara e deriva la terza.**
-   - **(a) ratio-adjusted / multiplicative** (continua, scale-invariant; **consegnata** + ricostruibile/verificabile da `unadjustedClose`+`RollSpread`+roll-log) → **modelli a rendimenti log** (EGARCH, regime, feature, Cox) **E la valutazione del segnale** — geometria zona/target/stop e regola di emissione, **incluso il floor 80pt** — in training/backtest (metodologia: replay su ratio per la valutazione del segnale, Parte VII Cap.31.1 + Parte II Cap.10).
+   - **(a) ratio-adjusted / multiplicative** (continua, scale-invariant; **consegnata** + ricostruibile/verificabile da `unadjustedClose`+`RollSpread`+roll-log) → **modelli a rendimenti log** (EGARCH, regime, feature, Cox) **E la valutazione del segnale** — geometria zona/target/stop e condizioni di emissione, **escluso il floor 80pt (valutato su unadjusted per DEC-B)** — in training/backtest (metodologia: replay su ratio per la valutazione del segnale, Parte VII Cap.31.1 + Parte II Cap.10).
    - **(b) Panama-additive** (continua in punti assoluti; **consegnata nativa** da Portara, settle back-adjusted) → **audit monetario M7** (E[R_net]/CVaR/MDD in €, 5€/pt sulla scala originale, Parte I Cap.2) + sanity visivo + replay di controllo. **Non** entra nei modelli probabilistici (i suoi rendimenti log distorcono la varianza relativa).
    - **(c) unadjusted concatenata** (UnadjustedClose riga-per-riga + marker roll; **derivata** da M0) → **solo sanity check** (Cap.43, validazione finestra recente) **E** convenzione del **tape runtime** (CN-9.16: al runtime le barre arrivano unadjusted native del front-month).
    
-   M0 done-when: cross-check ratio-consegnata vs ricostruzione (catch bug); 80pt **mai** valutato su Panama o su unadjusted in fase di valutazione-segnale (sarebbe override della metodologia).
+   M0 done-when: cross-check ratio-consegnata vs ricostruzione (catch bug); il floor 80pt si valuta su **unadjusted** per decreto **DEC-B** (**mai** su Panama); il contrasto con la metodologia è sanato dal debito registrato in `DECISIONI.md`.
 
-   > **DOMANDA DI METODOLOGIA APERTA (dall'audit, NON-BLOCCANTE) — seam train/runtime sulle distanze assolute.** Le distanze assolute (zona ±40, target, stop, **floor 80pt**) sono valutate **su ratio in training** (inv.7a, metodologia) ma **su unadjusted al runtime** (CN-9.16). Per una soglia *assoluta* in punti, ratio e unadjusted differiscono per il fattore cumulato di roll: "80 punti" su ratio ≠ 80 punti reali per le barre storiche lontane dall'ancora. La metodologia ha scelto ratio per la valutazione-segnale; il piano la **rispetta** (non la inverte). **Se** questo seam sia materiale rispetto a research=runtime (NFR-9.2) è una **domanda per il track Metodologia / AC**, non risolta qui. **M4 done-when misura il seam** (80pt valutato in replay-training vs runtime sulla stessa barra) e lo **riporta** come diagnostico, senza deciderlo.
+   > **DOMANDA DI METODOLOGIA APERTA (dall'audit, NON-BLOCCANTE) — seam train/runtime sulle distanze assolute.** Le distanze assolute (zona con semiampiezza b ∈ {5,10,15,20} — DEC-A, target, stop, **floor 80pt**) sono valutate **su ratio in training** (inv.7a, metodologia) ma **su unadjusted al runtime** (CN-9.16). Per una soglia *assoluta* in punti, ratio e unadjusted differiscono per il fattore cumulato di roll: "80 punti" su ratio ≠ 80 punti reali per le barre storiche lontane dall'ancora. La metodologia ha scelto ratio per la valutazione-segnale; il piano la **rispetta** (non la inverte). **Se** questo seam sia materiale rispetto a research=runtime (NFR-9.2) è una **domanda per il track Metodologia / AC**: **risolta da DEC-B per il floor 80pt** (valutato su unadjusted), **aperta SOLO per zona/target/stop** (gate M4→M5 invariato). **M4 done-when misura il seam** (80pt valutato in replay-training vs runtime sulla stessa barra) e lo **riporta** come diagnostico, senza deciderlo.
 
 ---
 
@@ -125,7 +126,7 @@ Una card-modulo che fissa un comportamento del motore citando la spec (che non l
   2. **M1** payload + invarianti. 3. **M2** state-machine + lifecycle + submacchina.
 - **Track-dati parallelo (sblocca dopo M0, NON gated su bundle):**
   - **M8a** Directa data-layer. **Codice** costruibile dopo M0 (fixture DIRECTA già in repo). **Run live** = job post-22:00, gated D-6 (niente DGo/TradingView su B6086); accumula il forward (perituro dopo fine tape) e backfilla i ~100gg dalla 10003. *Da avviare appena scelta la root (b) e verificato D-6.*
-- **Fase B — Motore (gated: 2 tape + M0 chiusa):** 4. **M3** (ratio). 5. **M4** (emissione/80pt su serie eval=ratio).
+- **Fase B — Motore (gated: 2 tape + M0 chiusa):** 4. **M3** (ratio). 5. **M4** (emissione su ratio; floor 80pt su unadjusted — DEC-B).
 - **Fase C — Ottimizzazione (gated: pipeline replayabile su storico):** 6. **M5** GA core (AWS). 7. **M6** frozen bundle.
 - **Fase D — Validazione (gated: bundle esistente):** 8. **M7** validator (audit € su Panama) → GO/NO-GO. *(In panchina finché M6 non produce un bundle.)*
 - **Fase E — Forward-run (gated: bundle + DAPI + probe):** 9. **M8b** inference adapter. 10. **M9** Telegram. 11. **M10** audit (accanto a M8a/M8b).
@@ -158,7 +159,7 @@ L'ordine in Fase A fra M0 e M1/M2 non è forzato dalle dipendenze (M1/M2 fixture
 
 - **Done-when (test-based, GC-1):** per ogni modulo la sua suite passa + comportamento = requisiti citati + **0 regressioni** sulla suite cumulativa (vincolante da M1 in poi; M0 primo task, porta la sua suite, nessuna baseline).
   - **M0 done-when**: le 2 serie consegnate caricate + la 3ª derivata, instradate ai consumatori (inv.7); **cross-check ratio-consegnata vs ricostruita** (diff ≤ tolleranza dichiarata, marker su scostamento); filtro righe settle (vol 0) + diagnostico fuori-calendario; diagnostico tick-grid (% O/H/L/C ÷5 per anno/contratto); column-tolerance verificata su sample ISP (9-col) e, a consegna, su tape Portara.
-  - **M4 done-when**: 80pt valutato sulla **serie di valutazione-segnale (ratio)** (inv.7a); **diagnostico seam** train(ratio)/runtime(unadjusted) sull'80pt riportato (§3 nota), non deciso.
+  - **M4 done-when**: 80pt valutato su **unadjusted (DEC-B)**; condizioni di emissione valutate su **ratio** (inv.7a); **diagnostico seam** train(ratio)/runtime(unadjusted) sull'80pt riportato (§3 nota), non deciso.
   - **M7 done-when**: audit monetario su serie **Panama** (inv.7b), 5€/pt scala originale.
   - **M8a done-when**: riconciliazione end-of-day (schema 13-campi + 840 timestamp + monotonia, R-9.31, marker `RECONCILE_SCHEMA_FAIL`); scrittura archivio append-only versionata (CN-9.22) su root (b).
 - **Citazione (GC-2):** ogni modulo cita la fonte come da §1/tabella. Niente comportamento del motore giustificato dalla spec; niente convenzione-prezzo implicita; **niente inversione della mappatura metodologica**.
@@ -172,7 +173,7 @@ L'ordine in Fase A fra M0 e M1/M2 non è forzato dalle dipendenze (M1/M2 fixture
 
 - **Probe DAPI** prima del forward-run live (Fase E), batch unico gated D-6: **V-2** (finestra 100gg cal vs trading), **V-3** (rollover/`CONTRACT_SWITCH` a scadenza reale), **SOB/EOB** (bar-stamp DAPI da riconciliare col tape Portara; se EOB, shift 1-min al seam). Mordono solo alla cucitura storico↔live.
 - **Run live di M8a** (job post-22:00): gated D-6. Serve solo la root (b) decisa.
-- **Domanda di metodologia — seam 80pt ratio/unadjusted** (§3 nota): da girare al track Metodologia / AC. Non blocca il build (il piano segue la metodologia); M4 la misura.
+- **Domanda di metodologia — seam ratio/unadjusted** (§3 nota): **risolta per il floor 80pt da DEC-B**; resta al track Metodologia / AC **solo per zona/target/stop** (gate M4→M5 invariato). Non blocca il build; M4 la misura.
 - **5 PENDING-empirico** da B6 (codici mese Mar/Dic; PRICE f5/f7; ticker 1030; riavvio mezzanotte) → runtime-discovery/FASE-D.
 - **`rm_guard` fix** (A-1/D-14) → track Metodologia, separato.
 - **Verifica sample ISP**: confermare presenza su disco (incl. `Downloads`) o ri-scaricare, prima che M0 parta.
