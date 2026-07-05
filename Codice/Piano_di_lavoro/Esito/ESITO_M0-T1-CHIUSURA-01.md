@@ -33,3 +33,12 @@ Controllo di non-riscrittura: i diff dei due file nel commit di chiusura sono di
 ## 4. Stato finale
 
 Ciclo M0-T1 CHIUSO su verdetto PASS della re-review (`7d44349`, che dichiara "il ciclo M0-T1 è chiudibile"); slot LIBERO; prossimo task M0-T2 gated su consegna tape, con i 6 vincoli d'acceptance registrati in STATO_CORRENTE. `git status --short` finale sul perimetro: nell'appendice.
+
+---
+
+## Appendice di chiusura (post-commit)
+
+- **Hash commit di chiusura**: `5c7c67d` — `CHIUSURA M0-T1: PASS (7d44349) - slot libero, vincoli M0-T2 registrati` — 4 file, **86 inserzioni, 0 rimozioni** (conferma append-only sui file di stato).
+- **Push confermato**: `7d44349..5c7c67d  main -> main`; `git status -sb` = `## main...origin/main` (in pari).
+- **`git status --short` finale sul perimetro dei 4 path**: pulito (nessuna modifica pendente su `tasks/STATO_CORRENTE.md`, `tasks/DEV_STATUS.md`, card, ESITO dopo il commit di chiusura; questo file riceve la sola presente appendice in un commit dedicato).
+- Guard `rm_guard`: nessun blocco, nessun override.
