@@ -109,4 +109,31 @@ Stampa T8 (`pytest -s`):
 
 ## 7. Appendice di chiusura (post-commit) — hash finale + prova GC-3 integrale
 
-*Compilata nel commit di chiusura, dopo il push del commit finale.*
+- **Hash commit fix finale**: **`e656315`** — 6 file, 348 inserzioni / 46 rimozioni (i soli file della add-list §4). Push eseguito: `c78c358..e656315 main -> main`.
+- **Prova GC-3 su worktree pulito** (card §1.3) — comando di creazione:
+  `git worktree add "C:\Users\AN\AppData\Local\Temp\claude\C--Users-AN-Documents-Projects-ga-zone-engine\2eeaf63e-745e-4032-a8bd-907c1fda672c\scratchpad\wt_m0t1fix" HEAD`
+  (worktree da HEAD = `e656315`, detached: contiene i SOLI file tracciati — suite in forma finale, T1..T9). Esecuzione nel worktree: `python -m pytest tests/data_layer/ -v`. Output integrale:
+
+```
+platform win32 -- Python 3.13.13, pytest-9.1.1, pluggy-1.6.0 -- C:\Users\AN\miniconda3\python.exe
+cachedir: .pytest_cache
+rootdir: C:\Users\AN\AppData\Local\Temp\claude\C--Users-AN-Documents-Projects-ga-zone-engine\2eeaf63e-745e-4032-a8bd-907c1fda672c\scratchpad\wt_m0t1fix
+plugins: anyio-4.12.1
+collecting ... collected 9 items
+
+tests/data_layer/test_isp_loader.py::test_t1_parser_legge_fixture_integrale_con_conteggi PASSED [ 11%]
+tests/data_layer/test_isp_loader.py::test_t2_zero_settle_row_nell_output PASSED [ 22%]
+tests/data_layer/test_isp_loader.py::test_t3_header_13_campi_tipi_e_valori_costanti PASSED [ 33%]
+tests/data_layer/test_isp_loader.py::test_t4_giornata_completa_840_timestamp_monotoni_passo_60s PASSED [ 44%]
+tests/data_layer/test_isp_loader.py::test_t5_forward_fill_minuti_no_trade_e_bar_synthetic PASSED [ 55%]
+tests/data_layer/test_isp_loader.py::test_t6_determinismo_output_byte_identico PASSED [ 66%]
+tests/data_layer/test_isp_loader.py::test_t7_diagnostica_tick_grid_rileva_30319_senza_alterare PASSED [ 77%]
+tests/data_layer/test_isp_loader.py::test_t8_timezone_prima_ultima_barra_reale_per_giornata PASSED [ 88%]
+tests/data_layer/test_isp_loader.py::test_t9_dec_e_giorni_bordo_esclusi_e_contati PASSED [100%]
+
+============================== 9 passed in 1.16s ==============================
+```
+
+  **9/9 PASSED su soli file tracciati** (GC-3 dimostrata: la fixture arriva dal commit `c78c358`, nessun dato esterno). Worktree rimosso a fine prova (`git worktree remove ...`; `git worktree list` → solo il repo principale).
+- **`git status --short` finale**: zero modifiche su file tracciati (`git status --short | grep -v "^??"` → vuoto, prima di questo commit di chiusura); `git status` = `Your branch is up to date with 'origin/main'`. Restano le voci untracked `??` preesistenti al task (noise di progetto), non toccate — la fixture e `ISTRUZIONI_M0-T1-FIX-01.md` non ne fanno più parte (ora tracciate).
+- Questo aggiornamento (sezione 7) è il commit di chiusura dedicato al solo `ESITO_M0-T1-FIX-01.md` (stesso schema della deviazione D1 già classificata NEUTRO in review: l'hash del commit non può vivere dentro il commit stesso; la suite non è toccata, la prova GC-3 resta valida su `e656315`).
