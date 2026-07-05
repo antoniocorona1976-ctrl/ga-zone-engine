@@ -204,4 +204,7 @@ Le barre restano intatte in griglia (T7 controlla `high==30319` presente e conte
 
 ## 12. Appendice di chiusura (post-commit)
 
-*Compilata nel commit di chiusura, dopo il push del commit finale.*
+- **Hash commit finale**: `adc30d1` — 7 file, 834 inserzioni: `src/data_layer/__init__.py`, `src/data_layer/isp_loader.py`, `tests/data_layer/conftest.py`, `tests/data_layer/test_isp_loader.py`, `tasks/ACTIVE_TASK.md`, `Codice/Piano_di_lavoro/Istruzioni/ISTRUZIONI_M0-T1_v2.md`, `Codice/Piano_di_lavoro/Esito/ESITO_M0-T1.md`.
+- **Push**: eseguito, `55dc943..adc30d1 main -> main`; `git status` riporta `Your branch is up to date with 'origin/main'` (nessun "ahead").
+- **`git status --short` finale**: zero modifiche su file tracciati (`git status --short | grep -v "^??"` → vuoto); restano 55 voci untracked `??` preesistenti al task (noise di progetto: `Business Spec/Final/*`, `.claude/scheduled_tasks.lock`, ecc.), non toccate e non committate.
+- Questo aggiornamento (sezione 12) è il commit di chiusura dedicato al solo `ESITO_M0-T1.md`, previsto dalla sezione 11.
