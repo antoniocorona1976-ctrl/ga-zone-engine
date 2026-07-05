@@ -3,3 +3,4 @@ M0-T1 — loader fixture ISP → griglia canonica 13-campi. Commit finale adc30d
 REVIEW M0-T1: CONDITIONAL — 2026-07-05
 FIX M0-T1: READY_FOR_RE-REVIEW — 2026-07-05
 RE-REVIEW M0-T1: PASS — 2026-07-05
+CHIUSURA M0-T1: slot libero — 2026-07-05
