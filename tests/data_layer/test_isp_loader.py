@@ -1,7 +1,9 @@
-"""Test M0-T1 (T1..T8) — loader fixture ISP -> griglia canonica 13-campi.
+"""Test M0-T1 (T1..T9) — loader fixture ISP -> griglia canonica 13-campi.
 
-Card: Codice/Piano_di_lavoro/Istruzioni/ISTRUZIONI_M0-T1_v2.md (SS3-SS4).
-Fixture committata (GC-3): data/samples/portara_isp/ISP2023Z.txt (1000 righe, 9 colonne).
+Card: Codice/Piano_di_lavoro/Istruzioni/ISTRUZIONI_M0-T1_v2.md (SS3-SS4) +
+ciclo di fix Codice/Piano_di_lavoro/Istruzioni/ISTRUZIONI_M0-T1-FIX-01.md (SS1-SS2).
+Fixture (GC-3): data/samples/portara_isp/ISP2023Z.txt (1000 righe, 9 colonne),
+tracciata nel repo dal commit c78c358 "M0-T1-FIX: fixture ISP tracciata (GC-3)".
 
 Requisiti-fonte citati (GC-2):
 - R-9.3  docs/spec_funzionale/SPEC_FUNZ_01.md:1224 — griglia 1-min uniforme sessione
@@ -16,9 +18,13 @@ Requisiti-fonte citati (GC-2):
 - DEC-C / DEC-D: Codice/Piano_di_lavoro/DECISIONI.md — source=PORTARA, symbol=FIB,
   timeframe=token del decoder legacy ("60s",
   scripts/export_directa_history_parametric.py:797,802,885-887).
+- DEC-E: Codice/Piano_di_lavoro/DECISIONI.md (commit 01c53aa) — giorni di bordo a
+  copertura parziale ESCLUSI dalla griglia, con conteggio ed elenco nel report;
+  parzialita' interne = anomalia da riportare (attese: 0 sul sample).
 
-Costanti empiriche attese: PROVA-EMPIRICA 2026-07-05 sul sample committato
-(accertamento documentato in Codice/Piano_di_lavoro/Esito/ESITO_M0-T1.md, blocchi RM-1).
+Costanti empiriche attese: PROVA-EMPIRICA 2026-07-05 sul sample tracciato in repo
+(accertamento documentato in Codice/Piano_di_lavoro/Esito/ESITO_M0-T1.md, blocchi RM-1;
+aggiornamento DEC-E in ESITO_M0-T1-FIX-01.md).
 """
 
 import hashlib
@@ -41,11 +47,16 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 FIXTURE = REPO_ROOT / "data" / "samples" / "portara_isp" / "ISP2023Z.txt"
 FIXTURE_TZ = "America/Chicago"  # PROVA-EMPIRICA 2026-07-05: vedi test T8 + ESITO_M0-T1.md
 
-# Costanti empiriche del sample (PROVA-EMPIRICA 2026-07-05, ESITO_M0-T1.md)
+# Costanti empiriche del sample (PROVA-EMPIRICA 2026-07-05, ESITO_M0-T1.md + FIX-01)
 N_RAW = 1000
 N_SETTLE = 1
 N_BARS = 999
 COMPLETE_DAY = "2023-12-14"  # unica giornata con copertura sessione piena post-normalizzazione
+N_REAL_COMPLETE_DAY = 745  # barre reali della giornata completa (sole barre in griglia, DEC-E)
+N_SYNTH_COMPLETE_DAY = 95  # 840 - 745 minuti no-trade forward-fillati
+# DEC-E: giorni di bordo esclusi attesi — (data CET, righe osservate = ampiezza
+# copertura [prima reale, ultima reale] in minuti; card FIX-01 SS2: 262 e 65)
+EXPECTED_EXCLUDED_EDGE_DAYS = [("2023-12-13", 262), ("2023-12-15", 65)]
 EXPECTED_OFFTICKS = {
     OffTick(date="20231213", time="1038", field="high", value=30319),
     OffTick(date="20231214", time="1039", field="open", value=30389),
@@ -59,8 +70,18 @@ def parsed():
 
 
 @pytest.fixture(scope="module")
-def grid(parsed):
+def result(parsed):
     return build_canonical_grid(parsed.bars, tz=FIXTURE_TZ)
+
+
+@pytest.fixture(scope="module")
+def grid(result):
+    return result.frame
+
+
+@pytest.fixture(scope="module")
+def report(result):
+    return result.report
 
 
 def test_t1_parser_legge_fixture_integrale_con_conteggi(parsed):
@@ -71,7 +92,7 @@ def test_t1_parser_legge_fixture_integrale_con_conteggi(parsed):
     assert parsed.n_raw == len(parsed.bars) + len(parsed.settle_rows)
 
 
-def test_t2_zero_settle_row_nell_output(parsed):
+def test_t2_zero_settle_row_nell_output(parsed, grid):
     """T2 — discriminante settle-row: volume == 0 (colonna 9 del sample).
 
     Prova empirica (RM-1, dettaglio nel blocco VERIFICA di ESITO_M0-T1.md):
@@ -79,7 +100,8 @@ def test_t2_zero_settle_row_nell_output(parsed):
     file, flat a 30434 (prezzo off-tick, non multiplo di 5), con orario 1038
     fuori sequenza rispetto al flusso 1-min della giornata. Alternative al
     discriminante (col8==0; barra flat; prezzo off-tick) escluse: contano
-    rispettivamente 146, 320 e 3 righe di barre regolari infra-sessione.
+    rispettivamente 146, 319 (piu' la settle stessa) e 3 righe di barre
+    regolari infra-sessione.
     """
     assert all(b.volume > 0 for b in parsed.bars)
     assert len(parsed.settle_rows) == 1
@@ -88,9 +110,9 @@ def test_t2_zero_settle_row_nell_output(parsed):
     assert settle.date == "20231215"
     assert settle.time == "1038"
     assert settle.open == settle.high == settle.low == settle.close == 30434
-    # nessuna settle-row raggiunge la griglia canonica
-    g = build_canonical_grid(parsed.bars, tz=FIXTURE_TZ)
-    assert (g["volume"] == 0).sum() == int(g["bar_synthetic"].sum())
+    # nessuna settle-row raggiunge la griglia canonica: le sole righe a
+    # volume 0 sono i minuti sintetici del forward-fill
+    assert (grid["volume"] == 0).sum() == int(grid["bar_synthetic"].sum())
 
 
 def test_t3_header_13_campi_tipi_e_valori_costanti(grid):
@@ -155,13 +177,14 @@ def test_t5_forward_fill_minuti_no_trade_e_bar_synthetic(parsed, grid):
             assert row.tick_count == 0
         prev_close = row.close
     assert n_synth == int(grid["bar_synthetic"].sum())
-    assert n_synth > 0  # il sample contiene minuti no-trade
+    assert n_synth == N_SYNTH_COMPLETE_DAY  # 95 minuti no-trade nella giornata completa
 
     # ogni barra reale della griglia = barra del sample (OHLC+volume+tick_count)
     reali = grid[~grid["bar_synthetic"]]
-    assert len(reali) == len(parsed.bars)  # nessuna barra reale persa o duplicata
-    # confronto puntuale su una giornata: ricostruisco la chiave raw dalla
-    # conversione tz usata dal loader (stessa strada del modulo)
+    # DEC-E: in griglia restano le sole barre reali della giornata completa
+    assert len(reali) == N_REAL_COMPLETE_DAY
+    # confronto puntuale: ricostruisco la chiave raw dalla conversione tz
+    # usata dal loader (stessa strada del modulo)
     from zoneinfo import ZoneInfo
 
     cet = ZoneInfo("Europe/Rome")
@@ -181,40 +204,70 @@ def test_t6_determinismo_output_byte_identico(parsed, tmp_path):
     hashes = []
     for i in (1, 2):
         p = parse_isp_file(FIXTURE)
-        g = build_canonical_grid(p.bars, tz=FIXTURE_TZ)
+        res = build_canonical_grid(p.bars, tz=FIXTURE_TZ)
         out = tmp_path / f"run{i}.csv"
-        write_canonical_csv(g, out)
+        write_canonical_csv(res.frame, out)
         hashes.append(hashlib.sha256(out.read_bytes()).hexdigest())
     assert hashes[0] == hashes[1]
 
 
-def test_t7_diagnostica_tick_grid_rileva_30319_senza_alterare(parsed, grid):
+def test_t7_diagnostica_tick_grid_rileva_30319_senza_alterare(parsed, grid, report):
     """T7 — diagnostica off-tick: rileva il noto 30319, elenca ogni altro
-    off-tick, nessun clamping/drop (la barra resta intatta nella griglia)."""
+    off-tick, nessun clamping/drop (le barre restano intatte)."""
     findings = tick_grid_findings(parsed.bars)
     values = {f.value for f in findings}
     assert 30319 in values
     # elenco esaustivo degli off-tick delle barre valide del sample
     assert set(findings) == EXPECTED_OFFTICKS
-    # nessuna alterazione: la barra col 30319 e' nella griglia con high intatto
-    hit = grid[(grid["high"] == 30319) & (~grid["bar_synthetic"])]
+    # nessuna alterazione: la barra col 30389 (giornata completa) e' in griglia
+    # con open/high intatti
+    hit = grid[(grid["high"] == 30389) & (~grid["bar_synthetic"])]
     assert len(hit) == 1
-    # nessun drop: conteggio barre reali invariato
-    assert len(grid[~grid["bar_synthetic"]]) == N_BARS
+    assert hit["open"].iloc[0] == 30389
+    # la barra col 30319 appartiene a un giorno di bordo escluso (DEC-E):
+    # non alterata ne' scartata in silenzio — il giorno e' elencato nel report
+    assert "2023-12-13" in {d.date for d in report.excluded_edge_days}
+    # nessun drop dentro la giornata completa: conteggio barre reali atteso
+    assert len(grid[~grid["bar_synthetic"]]) == N_REAL_COMPLETE_DAY
 
 
-def test_t8_timezone_prima_ultima_barra_reale_per_giornata(parsed, grid, capsys):
+def test_t8_timezone_prima_ultima_barra_reale_per_giornata(parsed, grid, report, capsys):
     """T8 — coerenza tz: con tz=America/Chicago la giornata completa copre
     esattamente la sessione 08:00-21:59 CET (R-9.3). Stampa prima/ultima
-    barra reale per giornata."""
+    barra reale per giornata (griglia + giorni di bordo esclusi dal report)."""
     reali = grid[~grid["bar_synthetic"]]
     for day, sub in reali.groupby("date"):
         print(f"{day}: prima barra reale {sub['time'].iloc[0]} "
               f"ultima barra reale {sub['time'].iloc[-1]} (CET)")
+    for d in report.excluded_edge_days:
+        print(f"{d.date}: prima barra reale {d.first_time} "
+              f"ultima barra reale {d.last_time} (CET) — bordo escluso, DEC-E")
     day = reali[reali["date"] == COMPLETE_DAY]
     # 0100 America/Chicago (CST, UTC-6) == 08:00 CET; 1459 == 21:59 CET
     assert day["time"].iloc[0] == "08:00:00"
     assert day["time"].iloc[-1] == "21:59:00"
-    # tutte le barre reali di ogni giornata cadono nella finestra di sessione
+    # tutte le barre reali in griglia cadono nella finestra di sessione
     assert (reali["time"] >= "08:00:00").all()
     assert (reali["time"] <= "21:59:00").all()
+    # coerenza tz anche sui bordi esclusi (copertura entro la sessione CET)
+    assert report.excluded_edge_days[0].first_time == "17:38:00"
+    assert report.excluded_edge_days[0].last_time == "21:59:00"
+    assert report.excluded_edge_days[1].first_time == "08:00:00"
+    assert report.excluded_edge_days[1].last_time == "09:04:00"
+
+
+def test_t9_dec_e_giorni_bordo_esclusi_e_contati(grid, report):
+    """T9 — pinna DEC-E (Codice/Piano_di_lavoro/DECISIONI.md, commit 01c53aa):
+    output della fixture = sole giornate complete (840 righe, tutte del
+    14/12/2023); report con i 2 giorni di bordo esclusi (262 e 65 righe
+    osservate); zero parzialita' interne."""
+    assert len(grid) == 840
+    assert set(grid["date"]) == {COMPLETE_DAY}
+    assert [(d.date, d.rows_observed) for d in report.excluded_edge_days] == (
+        EXPECTED_EXCLUDED_EDGE_DAYS
+    )
+    # barre reali osservate nei giorni esclusi (trasparenza, mai scarto
+    # silenzioso): 211 (13/12) e 43 (15/12: 44 righe raw meno la settle-row)
+    assert [d.real_bars for d in report.excluded_edge_days] == [211, 43]
+    # parzialita' interne: anomalia da riportare — attese 0 sul sample
+    assert report.internal_partial_days == ()

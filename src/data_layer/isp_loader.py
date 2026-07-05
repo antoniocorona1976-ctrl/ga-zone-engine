@@ -1,7 +1,9 @@
 """M0-T1 — loader fixture ISP (Portara sample 9-colonne) -> griglia canonica 13-campi.
 
-Card: Codice/Piano_di_lavoro/Istruzioni/ISTRUZIONI_M0-T1_v2.md (SS3).
-Fixture: data/samples/portara_isp/ISP2023Z.txt (committata, GC-3).
+Card: Codice/Piano_di_lavoro/Istruzioni/ISTRUZIONI_M0-T1_v2.md (SS3) + ciclo di fix
+Codice/Piano_di_lavoro/Istruzioni/ISTRUZIONI_M0-T1-FIX-01.md (SS1-SS2).
+Fixture (GC-3): data/samples/portara_isp/ISP2023Z.txt, tracciata nel repo dal
+commit c78c358 "M0-T1-FIX: fixture ISP tracciata (GC-3)".
 
 Requisiti-fonte (GC-2):
 - R-9.3  docs/spec_funzionale/SPEC_FUNZ_01.md:1224 — griglia 1-min uniforme per la
@@ -34,13 +36,14 @@ blocchi RM-1 di Codice/Piano_di_lavoro/Esito/ESITO_M0-T1.md):
 Discriminante settle-row: volume == 0 (unica riga del sample; flat, prezzo off-tick,
 orario fuori sequenza in coda al file).
 
-Politica giornate troncate (decisione di modulo, documentata nell'ESITO): la griglia
-di una giornata copre [max(apertura sessione, prima barra reale),
-min(ultimo minuto di sessione, ultima barra reale)]. Su una giornata con copertura
-piena questo coincide con l'intera finestra R-9.3 (840 minuti). Il sample e' un
-estratto troncato: i minuti a monte della prima barra reale non hanno un Close
-precedente da propagare, e i minuti a valle dell'ultima barra reale sono troncatura
-del sample, non minuti no-trade. Da riesaminare su tape pieno in M0-T2.
+Politica giorni parziali — DEC-E (Codice/Piano_di_lavoro/DECISIONI.md, commit
+01c53aa): i giorni a copertura parziale ai BORDI del dataset (primo/ultimo giorno
+osservato, incompleti rispetto alla sessione 08:00-22:00) sono ESCLUSI dalla
+griglia, con conteggio ed elenco espliciti nel report del loader
+(`GridReport.excluded_edge_days`) — mai scarto silenzioso. Parzialita' nei giorni
+INTERNI = anomalia riportata in `GridReport.internal_partial_days` (il giorno resta
+in griglia sull'intervallo osservato; gestione decisa in M0-T2). Sessioni corte da
+calendario di borsa: policy rinviata a M0-T2.
 """
 
 from __future__ import annotations
@@ -122,6 +125,33 @@ class OffTick:
     value: int
 
 
+@dataclass(frozen=True)
+class PartialDay:
+    """Giorno a copertura parziale rispetto alla sessione 08:00-22:00 CET (DEC-E)."""
+
+    date: str  # YYYY-MM-DD (CET)
+    rows_observed: int  # ampiezza copertura [prima reale, ultima reale] in minuti
+    real_bars: int  # barre reali osservate nel giorno
+    first_time: str  # prima barra reale (HH:MM:SS CET)
+    last_time: str  # ultima barra reale (HH:MM:SS CET)
+
+
+@dataclass(frozen=True)
+class GridReport:
+    """Report del loader (DEC-E): esclusioni ed anomalie, mai scarto silenzioso."""
+
+    excluded_edge_days: tuple[PartialDay, ...]  # giorni di bordo parziali ESCLUSI
+    internal_partial_days: tuple[PartialDay, ...]  # anomalie interne (gestione M0-T2)
+
+
+@dataclass(frozen=True)
+class GridResult:
+    """Griglia canonica (frame) + report DEC-E del loader."""
+
+    frame: pd.DataFrame
+    report: GridReport
+
+
 def parse_isp_file(path: str | Path) -> ParseResult:
     """Legge il sample ISP 9-colonne e filtra le settle-row (volume == 0).
 
@@ -191,14 +221,18 @@ def build_canonical_grid(
     symbol: str = SYMBOL_DEFAULT,
     timeframe: str = TIMEFRAME_DEFAULT,
     source: str = SOURCE_DEFAULT,
-) -> pd.DataFrame:
-    """Costruisce la griglia canonica 1-min a 13 campi (CN-9.5) in CET.
+) -> GridResult:
+    """Costruisce la griglia canonica 1-min a 13 campi (CN-9.5) in CET + report DEC-E.
 
     - ``tz``: zona IANA dei timestamp nativi del sample (parametro esplicito,
       card SS3.1); la normalizzazione avviene sempre verso ``Europe/Rome`` (CET).
     - griglia per giornata CET: passo 60s, chiave ``timestamp`` start-of-bar
-      (CN-9.9), finestra di sessione 08:00-21:59 CET (R-9.3), delimitata alla
-      copertura reale del sample per le giornate troncate (vedi docstring modulo).
+      (CN-9.9), finestra di sessione 08:00-21:59 CET (R-9.3).
+    - DEC-E (DECISIONI.md, commit 01c53aa): i giorni di bordo a copertura parziale
+      sono esclusi dalla griglia ed elencati in ``report.excluded_edge_days``
+      (data, righe osservate, barre reali); parzialita' nei giorni interni =
+      anomalia in ``report.internal_partial_days`` (giorno tenuto in griglia
+      sull'intervallo osservato; gestione decisa in M0-T2).
     - minuti no-trade: forward-fill R-9.3 con ``bar_synthetic=True``; barre
       presenti nel sample: ``bar_synthetic=False`` (R-9.14).
     """
@@ -209,15 +243,47 @@ def build_canonical_grid(
     for bar in bars:
         cet_dt = _to_cet(bar, src_zone, cet_zone)
         if not (SESSION_START <= cet_dt.time() < SESSION_END):
-            # fuori sessione: non entra nella griglia (R-9.3); nel sample
-            # committato non accade (accertamento ESITO_M0-T1.md)
+            # fuori sessione: non entra nella griglia (R-9.3); sul sample
+            # tracciato non accade (accertamento ESITO_M0-T1.md); contatore
+            # diagnostico rinviato a M0-T2 (review M0-T1, finding #4)
             continue
         if cet_dt in reals:
             raise ValueError(f"barra duplicata sul minuto CET {cet_dt}")
         reals[cet_dt] = bar
 
+    observed_days = sorted({dt.date() for dt in reals})
+    excluded_edge: list[PartialDay] = []
+    internal_partial: list[PartialDay] = []
+    grid_days: list = []
+    for idx, day in enumerate(observed_days):
+        day_minutes = sorted(dt for dt in reals if dt.date() == day)
+        first_real, last_real = day_minutes[0], day_minutes[-1]
+        last_session_minute = datetime.combine(day, SESSION_END) - timedelta(minutes=1)
+        is_complete = (
+            first_real == datetime.combine(day, SESSION_START)
+            and last_real == last_session_minute
+        )
+        if is_complete:
+            grid_days.append(day)
+            continue
+        coverage = PartialDay(
+            date=day.strftime(_DATE_FMT),
+            rows_observed=int((last_real - first_real).total_seconds() // 60) + 1,
+            real_bars=len(day_minutes),
+            first_time=first_real.strftime(_TIME_FMT),
+            last_time=last_real.strftime(_TIME_FMT),
+        )
+        if idx in (0, len(observed_days) - 1):
+            # DEC-E: giorno di bordo parziale -> escluso e contato nel report
+            excluded_edge.append(coverage)
+        else:
+            # DEC-E: parzialita' interna -> anomalia riportata, giorno tenuto
+            # in griglia sull'intervallo osservato (gestione decisa in M0-T2)
+            internal_partial.append(coverage)
+            grid_days.append(day)
+
     rows: list[tuple] = []
-    for day in sorted({dt.date() for dt in reals}):
+    for day in grid_days:
         day_minutes = sorted(dt for dt in reals if dt.date() == day)
         grid_start = max(datetime.combine(day, SESSION_START), day_minutes[0])
         last_session_minute = (
@@ -266,7 +332,11 @@ def build_canonical_grid(
     for col in ("open", "high", "low", "close", "volume", "tick_count"):
         frame[col] = frame[col].astype("int64")
     frame["bar_synthetic"] = frame["bar_synthetic"].astype(bool)
-    return frame
+    report = GridReport(
+        excluded_edge_days=tuple(excluded_edge),
+        internal_partial_days=tuple(internal_partial),
+    )
+    return GridResult(frame=frame, report=report)
 
 
 def write_canonical_csv(frame: pd.DataFrame, path: str | Path) -> None:
